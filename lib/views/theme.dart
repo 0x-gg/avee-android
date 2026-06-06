@@ -476,9 +476,6 @@ class _NewDashboardItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final header = ref.watch(currentProfileProvider
-        .select((p) => p?.providerHeaders['flclashx-newboard']));
-    final headerPinned = header == 'true' || header == 'false';
     final enabled = ref.watch(newDashboardEnabledProvider);
     return ListItem.switchItem(
       leading: const Icon(Icons.dashboard_customize),
@@ -491,16 +488,14 @@ class _NewDashboardItem extends ConsumerWidget {
       ),
       delegate: SwitchDelegate(
         value: enabled,
-        // When the active profile pins the board through the header, the toggle
-        // just reflects it and can't be changed; otherwise it's the user's
-        // manual switch.
-        onChanged: headerPinned
-            ? null
-            : (value) {
-                ref.read(appSettingProvider.notifier).updateState(
-                      (state) => state.copyWith(newDashboard: value),
-                    );
-              },
+        // Always user-controllable. A `flclashx-newboard: true` header only sets
+        // the default (via newDashboardEnabledProvider) until the user toggles;
+        // toggling writes an explicit value that then wins over the header.
+        onChanged: (value) {
+          ref.read(appSettingProvider.notifier).updateState(
+                (state) => state.copyWith(newDashboard: value),
+              );
+        },
       ),
     );
   }

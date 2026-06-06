@@ -1545,6 +1545,16 @@ class AppController {
   void _applyCustomViewSettings(Profile profile) {
     final headers = profile.providerHeaders;
 
+    // New-look dashboard: writes the user-facing `newDashboard` setting. Gated by
+    // the caller's flclashx-custom policy (update => every apply, add => only on
+    // first add), and the settings toggle stays user-controllable afterwards.
+    final newboard = headers['flclashx-newboard'];
+    if (newboard == 'true' || newboard == 'false') {
+      _ref.read(appSettingProvider.notifier).updateState(
+            (state) => state.copyWith(newDashboard: newboard == 'true'),
+          );
+    }
+
     final dashboardLayout = headers['flclashx-widgets'];
     if (dashboardLayout != null && dashboardLayout.isNotEmpty) {
       final newLayout = DashboardWidgetParser.parseLayout(dashboardLayout);

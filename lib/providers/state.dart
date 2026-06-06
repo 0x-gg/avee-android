@@ -481,24 +481,15 @@ bool globalModeEnabled(Ref ref) {
 }
 
 /// Single source of truth for whether the "new look" (hero) dashboard is shown.
-/// The `flclashx-newboard` profile header wins when present: `true` enables the
-/// board, `false` disables it. When the header is absent we leave the decision
-/// to the manual `newDashboard` setting. Because the header overrides the setting
-/// rather than being shadowed by it, a persisted legacy `false` no longer hides
-/// the board on profiles that ask for it.
+/// Just the `newDashboard` setting — the toggle is never locked. The
+/// `flclashx-newboard` header writes this setting via _applyCustomViewSettings under
+/// the standard `flclashx-custom` policy (`update` re-applies on every profile apply,
+/// `add` only when the subscription is first added), so the provider can switch the
+/// board on/off through the normal header pipeline rather than overriding here.
 @riverpod
 bool newDashboardEnabled(Ref ref) {
-  final headerNewBoard = ref.watch(
-    currentProfileProvider
-        .select((p) => p?.providerHeaders['flclashx-newboard']),
-  );
-  final settingNewDashboard =
-      ref.watch(appSettingProvider.select((state) => state.newDashboard));
-  return switch (headerNewBoard) {
-    'true' => true,
-    'false' => false,
-    _ => settingNewDashboard ?? false,
-  };
+  return ref.watch(appSettingProvider.select((state) => state.newDashboard)) ??
+      false;
 }
 
 @riverpod
