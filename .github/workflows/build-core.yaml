@@ -9,10 +9,6 @@ on:
       version:
         description: "Core version (e.g. v1.19.24)"
         required: true
-      branch:
-        description: "Branch to build the core from"
-        required: true
-        default: "main"
 
 jobs:
   build:
@@ -62,7 +58,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch }}
           submodules: recursive
 
       - name: Setup Go
