@@ -151,10 +151,25 @@ class RemoteService : Service() {
                     State.delegate = delegate
                     delegate.bind()
 
-                    androidx.core.content.ContextCompat.startForegroundService(
-                        this@RemoteService,
-                        serviceIntent,
-                    )
+                    val fgsResult = runCatching {
+                        androidx.core.content.ContextCompat.startForegroundService(
+                            this@RemoteService,
+                            serviceIntent,
+                        )
+                    }
+                    if (fgsResult.isFailure) {
+                        // FGS start can be rejected (e.g. ForegroundServiceStartNotAllowed
+                        // when the UID races to background on Android 12+). Fail fast and
+                        // unwind instead of letting the Dart caller hang for the full
+                        // timeout while an empty auto-created foreground service lingers.
+                        GlobalState.log("startService: startForegroundService failed: ${fgsResult.exceptionOrNull()?.message}")
+                        runCatching { delegate.unbind() }
+                        State.delegate = null
+                        State.intent = null
+                        com.follow.clashx.common.SavedParams.setVpnActive(false)
+                        runCatching { result.onResult(0L) }
+                        return@withLock
+                    }
                     val startResult = delegate.useService(timeoutMillis = 10_000L) { proxy ->
                         proxy.handleStart(options)
                     }

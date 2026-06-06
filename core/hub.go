@@ -150,22 +150,44 @@ func handleShutdown() bool {
 }
 
 func startHealthCheckForwarder() {
-	stopHealthCheckForwarder()
+	// Reset the emit-dedup so the immediate warm-up emit below actually re-sends
+	// the currently-known histories; otherwise a surviving signature (e.g. a
+	// desktop stop->start where the executor lives on) is deduped and the UI shows
+	// nothing until a value next changes.
+	resetHealthCheckForwarderState()
+	// Stop+recreate atomically under one lock hold. Two starts can overlap
+	// (setupConfig and handleStartListener's goroutine, neither serialised by
+	// runLock here); a separate stop()-then-create would let the second overwrite
+	// healthCheckStopCh while the first goroutine keeps running on an unreferenced
+	// channel that nothing can ever close — a leaked forwarder goroutine.
 	healthCheckChMu.Lock()
+	if healthCheckStopCh != nil {
+		close(healthCheckStopCh)
+	}
 	healthCheckStopCh = make(chan struct{})
 	stopCh := healthCheckStopCh
 	healthCheckChMu.Unlock()
 	go func(stopCh chan struct{}) {
 		log.Infoln("[HealthCheck] forwarder fg interval: %s, bg interval: %s", minHealthCheckInterval, backgroundHealthCheckInterval)
-		select {
-		case <-time.After(3 * time.Second):
-			forwardHealthCheckDelays()
-		case <-stopCh:
-			return
+		// Warm-up: surface pings the moment the tunnel comes up instead of after a
+		// full interval. Emit immediately (re-sends surviving histories), then a few
+		// quick follow-ups to catch the fresh url-tests setupConfig kicks off as they
+		// complete. Offsets are cumulative (~0, 0.7s, 1.5s, 3s). Dedup keeps repeat
+		// ticks cheap and emits are foreground-only.
+		for _, d := range []time.Duration{0, 700 * time.Millisecond, 800 * time.Millisecond, 1500 * time.Millisecond} {
+			select {
+			case <-time.After(d):
+				if uiActive.Load() {
+					forwardHealthCheckDelays()
+				}
+			case <-stopCh:
+				return
+			}
 		}
 		for {
-			// Recompute each cycle so backgrounding/foregrounding the UI takes
-			// effect on the next tick without restarting the goroutine.
+			// Recompute each cycle so foreground/background transitions take effect
+			// on the next tick without restarting the goroutine. Steady-state cadence
+			// is the min group/provider interval from the config (minHealthCheckInterval).
 			interval := minHealthCheckInterval
 			if !uiActive.Load() && backgroundHealthCheckInterval > interval {
 				interval = backgroundHealthCheckInterval
@@ -174,11 +196,13 @@ func startHealthCheckForwarder() {
 			case <-time.After(interval):
 				if uiActive.Load() {
 					forwardHealthCheckDelays()
-				} else {
-					// Keep proxy providers warm so url-test/fallback selection
-					// stays valid, but don't ping/emit to a backgrounded UI.
-					touchProvidersSafely()
 				}
+				// Backgrounded: do nothing. Previously this force-touched every
+				// provider every 5 min to keep lazy url-tests warm, which defeated
+				// mihomo's background dormancy and woke the radio/CPU under the
+				// wakelock for a UI nobody is watching. Real traffic re-warms
+				// providers on demand (URLTest dial -> Touch); foreground return
+				// emits immediately via handleSetUiActive.
 			case <-stopCh:
 				return
 			}
@@ -298,7 +322,10 @@ func startRequestForwarder() {
 	stopCh := requestStopCh
 	requestChMu.Unlock()
 	go func(stopCh chan struct{}) {
-		ticker := time.NewTicker(2 * time.Second)
+		// 4s (was 2s): this only feeds the Requests live-log; halving the poll rate
+		// halves the foreground O(connections) scan + IPC churn that runs even when
+		// that page isn't open, with no user-visible loss on a log view.
+		ticker := time.NewTicker(4 * time.Second)
 		defer ticker.Stop()
 		for {
 			select {
@@ -471,18 +498,25 @@ func handleResetTraffic() {
 }
 
 func handleAsyncTestDelay(paramsString string, fn func(string)) {
-	mBatch.Go(paramsString, func() (bool, error) {
+	// Async, capped at 50 concurrent tests. Replaces a process-wide batch.Batch
+	// whose result map was never drained (slow retention + dead cancel/err state);
+	// a plain weighted semaphore preserves the concurrency cap and the
+	// returns-immediately contract without retaining anything.
+	go func() {
+		_ = testDelaySem.Acquire(context.Background(), 1) // never errors with Background
+		defer testDelaySem.Release(1)
+
 		var params = &TestDelayParams{}
 		err := json.Unmarshal([]byte(paramsString), params)
 		if err != nil {
 			fn("")
-			return false, nil
+			return
 		}
 
 		expectedStatus, err := utils.NewUnsignedRanges[uint16]("")
 		if err != nil {
 			fn("")
-			return false, nil
+			return
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(params.Timeout))
@@ -499,7 +533,7 @@ func handleAsyncTestDelay(paramsString string, fn func(string)) {
 			delayData.Value = -1
 			data, _ := json.Marshal(delayData)
 			fn(string(data))
-			return false, nil
+			return
 		}
 
 		testUrl := "https://www.gstatic.com/generate_204"
@@ -514,7 +548,7 @@ func handleAsyncTestDelay(paramsString string, fn func(string)) {
 			delayData.Value = -1
 			data, _ := json.Marshal(delayData)
 			fn(string(data))
-			return false, nil
+			return
 		}
 
 		delayData.Value = int32(delay)
@@ -526,9 +560,7 @@ func handleAsyncTestDelay(paramsString string, fn func(string)) {
 			Type: DelayMessage,
 			Data: delayData,
 		})
-
-		return false, nil
-	})
+	}()
 }
 
 func handleGetConnections() string {
@@ -798,6 +830,39 @@ func handleHealthCheck(groupName string, fn func(value string)) {
 			log.Infoln("[HealthCheck] group %s done, %d results", name, len(dm))
 		}
 		fn("")
+	}()
+}
+
+// handleHealthProbe is a cheap liveness probe for the background watchdog: a
+// SINGLE generate_204 through the currently-selected GLOBAL outbound, instead of
+// URL-testing every proxy in every group (which woke the radio to ping the whole
+// node list every cycle). Calls fn("ok") on success and fn("") on failure/timeout
+// (the Kotlin watchdog treats non-"ok" as a failed cycle and resets connections).
+// fn is always called so the JNI callback global ref is released.
+func handleHealthProbe(fn func(value string)) {
+	runLock.Lock()
+	testUrl := currentTestURL
+	hasConfig := currentConfig != nil
+	runLock.Unlock()
+	if !hasConfig {
+		fn("")
+		return
+	}
+	go func() {
+		active := tunnel.Proxies()["GLOBAL"]
+		if active == nil {
+			fn("")
+			return
+		}
+		expectedStatus, _ := utils.NewUnsignedRanges[uint16]("")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		delay, err := active.URLTest(ctx, testUrl, expectedStatus)
+		if err != nil || delay == 0 {
+			fn("")
+			return
+		}
+		fn("ok")
 	}()
 }
 

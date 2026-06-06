@@ -176,9 +176,19 @@ class AppController {
       detectionState.markChecking();
       // Initialize foreground notification cache before starting
       initForegroundCache();
-      await globalState.handleStart([
+      final started = await globalState.handleStart([
         updateTraffic,
       ]);
+      if (!started) {
+        // Bring-up failed (VPN consent denied / establish failed): undo the
+        // optimistic "connected" UI instead of leaving a ticking-but-dead state
+        // that never self-heals.
+        await StatusBarManager.updateIcon(isConnected: false);
+        stopRunTimeTimer();
+        _ref.read(runTimeProvider.notifier).value = null;
+        addCheckIpNumDebounce();
+        return;
+      }
       startRunTimeTimer();
       // Android: the long-lived mihomo executor (DNS resolver, fake-ip pool,
       // providers) survives a plain stop→start — only setupConfig/ApplyConfig
@@ -955,13 +965,33 @@ class AppController {
   }
 
   Future<void> handleExit() async {
-    Future.delayed(commonDuration, system.exit);
+    // Bound the cleanup instead of pre-arming a 300ms hard-exit timer. On macOS the
+    // DNS/proxy teardown is several slow networksetup/route subprocesses that easily
+    // overrun 300ms, so the old timer fired mid-cleanup and exit(0) skipped the DNS
+    // restore / proxy stop / core shutdown — leaking 1.1.1.1, leaving a dead system
+    // proxy, and orphaning the root core. Mirror handleRestart: run cleanup under a
+    // generous deadline, each step isolated, then always exit.
     try {
-      await savePreferences();
-      await system.setMacOSDns(true);
-      await proxy?.stopProxy();
-      await clashCore.shutdown();
-      await clashService?.destroy();
+      await Future.any([
+        Future(() async {
+          try {
+            await savePreferences();
+          } catch (_) {}
+          try {
+            await system.setMacOSDns(true);
+          } catch (_) {}
+          try {
+            await proxy?.stopProxy();
+          } catch (_) {}
+          try {
+            await clashCore.shutdown();
+          } catch (_) {}
+          try {
+            await clashService?.destroy();
+          } catch (_) {}
+        }),
+        Future.delayed(const Duration(seconds: 8)),
+      ]);
     } finally {
       system.exit();
     }

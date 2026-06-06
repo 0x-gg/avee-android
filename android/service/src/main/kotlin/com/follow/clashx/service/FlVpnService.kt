@@ -295,8 +295,15 @@ class FlVpnService : VpnService(), IBaseService {
         val pfd = builder.establish() ?: error("VpnService.Builder.establish() returned null")
         val fd = pfd.detachFd()
         tunActive = true
+        // Ownership boundary: we own the fd until the native core is invoked; from
+        // Core.startTun onward the core/sing-tun owns it (and closes it on teardown
+        // or on its own failure paths). Reclaiming it again after handoff could
+        // double-close a number the core may have already reused, so only close it
+        // here if the core was never reached (loader.start threw before handoff).
+        var fdHandedToCore = false
         try {
             loader.start()
+            fdHandedToCore = true
 
             val started = com.follow.clashx.core.Core.startTun(
                 fd = fd,
@@ -326,7 +333,11 @@ class FlVpnService : VpnService(), IBaseService {
             // before reclaiming the fd, so no orphaned Go core / module survives.
             runCatching { loader.stop() }
             runCatching { com.follow.clashx.core.Core.stopTun() }
-            runCatching { android.os.ParcelFileDescriptor.adoptFd(fd).close() }
+            if (!fdHandedToCore) {
+                // Core never received the fd; reclaim it. Once handed off the core
+                // (and sing-tun) own and close it — see core/lib_android.go.
+                runCatching { android.os.ParcelFileDescriptor.adoptFd(fd).close() }
+            }
             throw e
         }
     }

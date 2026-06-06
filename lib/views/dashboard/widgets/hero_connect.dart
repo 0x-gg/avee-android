@@ -566,7 +566,12 @@ class _ServerPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = context.colorScheme;
-    final isConnected = ref.watch(runTimeProvider) != null;
+    // select(!=null): the hero card only needs the connected/disconnected boolean,
+    // so watching the raw runTime rebuilt the entire card (flags, traffic, server
+    // panel, buy buttons, announce) every second. The elapsed-time text lives in
+    // _ConnectButton, which intentionally keeps watching the value.
+    final isConnected =
+        ref.watch(runTimeProvider.select((value) => value != null));
     final delay = serverName.isNotEmpty
         ? ref.watch(getDelayProvider(proxyName: serverName, testUrl: testUrl))
         : null;

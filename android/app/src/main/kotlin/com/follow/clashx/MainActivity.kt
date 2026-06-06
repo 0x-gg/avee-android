@@ -1,8 +1,11 @@
 package com.follow.clashx
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.appcompat.app.AppCompatDelegate
 import com.follow.clashx.plugins.AppPlugin
@@ -66,7 +69,29 @@ class MainActivity : FlutterActivity() {
         GlobalState.flutterEngine = flutterEngine
 
         appPlugin.requestNotificationsPermission()
+        maybeRequestBatteryExemption()
         GlobalState.syncStatus()
+    }
+
+    // Prompt once (ever) to whitelist from battery optimization. No-op if already
+    // exempt, and gated by a persisted flag so a user who declines is never nagged
+    // again. This is the most effective survival lever on MIUI/Samsung, where the
+    // OEM force-stops the :remote process and START_STICKY does not bring it back.
+    private fun maybeRequestBatteryExemption() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        val pm = getSystemService(PowerManager::class.java) ?: return
+        if (pm.isIgnoringBatteryOptimizations(packageName)) return
+        val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("flutter.battery_opt_prompted", false)) return
+        prefs.edit().putBoolean("flutter.battery_opt_prompted", true).apply()
+        runCatching {
+            startActivity(
+                Intent(
+                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    Uri.parse("package:$packageName"),
+                ),
+            )
+        }
     }
 
     override fun onDestroy() {

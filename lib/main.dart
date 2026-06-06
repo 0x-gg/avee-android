@@ -54,19 +54,28 @@ void _wireAndroidTileListener() {
   unawaited(tile?.signalServiceReady());
 }
 
+/// Boot-safe tile/widget handler. The UI's TileManager is ALSO registered as a
+/// listener, and both fire for every native tile event — which previously ran
+/// every start/stop twice. To run exactly one handler, this listener defers to
+/// TileManager once the app is ready (it updates the UI run-state via
+/// updateStatus), and only handles events itself during the cold-start window
+/// before appController exists (TileManager.updateStatus would NPE there).
 class _MainTileListener with TileListener {
   @override
   void onStart() {
+    if (globalState.isAppControllerReady) return;
     unawaited(_handleStart());
   }
 
   @override
   void onStop() {
+    if (globalState.isAppControllerReady) return;
     unawaited(_handleStop());
   }
 
   @override
   void onChangeMode(String mode) {
+    if (globalState.isAppControllerReady) return;
     unawaited(_handleChangeMode(mode));
   }
 }

@@ -206,6 +206,13 @@ class ServicePlugin :
 
     private fun doStartService(options: VpnOptions, result: MethodChannel.Result) {
         launch {
+            if (options.enable) {
+                // Arm the late-SERVICE_DESTROYED guard at the real start moment so a
+                // stale DESTROYED broadcast (e.g. delivered after :app unfreezes)
+                // can't tear down this fresh tunnel. Covers in-app and tile-with-engine
+                // starts, which bypass GlobalState.triggerStart's own arming.
+                GlobalState.startRequestedAt = android.os.SystemClock.elapsedRealtime()
+            }
             val rt = Service.startService(options, GlobalState.runTime)
             GlobalState.runTime = rt
             if (rt == 0L) {

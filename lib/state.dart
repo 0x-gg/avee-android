@@ -87,6 +87,11 @@ class GlobalState {
 
   AppController get appController => _appController!;
 
+  /// Whether [appController] is safe to dereference. Used to route tile/widget
+  /// events to exactly one handler: the boot-safe [_MainTileListener] before the
+  /// app is ready, and the UI's TileManager once it is.
+  bool get isAppControllerReady => _appController != null;
+
   set appController(AppController appController) {
     _appController = appController;
     isInit = true;
@@ -175,11 +180,22 @@ class GlobalState {
     groupsUpdateTimer = null;
   }
 
-  Future<void> handleStart([UpdateTasks? tasks]) async {
+  Future<bool> handleStart([UpdateTasks? tasks]) async {
     startTime ??= DateTime.now();
     await clashCore.startListener();
-    await service?.startVpn();
+    final started = await service?.startVpn();
+    // started == false → the Android remote bring-up failed (establish() returned
+    // null / Core.startTun failed); the service emitted STOP and the tunnel is down.
+    // null → desktop (service is null), which is success. Roll back the optimistic
+    // state so the UI doesn't show a live tunnel that isn't there (it never self-heals).
+    if (started == false) {
+      startTime = null;
+      await clashCore.stopListener();
+      stopUpdateTasks();
+      return false;
+    }
     startUpdateTasks(tasks);
+    return true;
   }
 
   Future updateStartTime() async {
