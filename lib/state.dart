@@ -68,6 +68,16 @@ class GlobalState {
   // (proxy-groups[*].description). Shown as the subtitle of a nested group
   // card instead of its type (Fallback/URLTest/Selector).
   final groupDescriptions = ValueNotifier<Map<String, String>>({});
+  // Opt-in flag parsed from the GLOBAL proxy-group (`flclashx-override: true`).
+  // Only when this is set do we apply the curated-GLOBAL behaviour (global mode
+  // shows just GLOBAL, GLOBAL.all is curated, all groups are enumerated for rule
+  // mode). Without it everything behaves exactly as before.
+  final globalOverrideEnabled = ValueNotifier<bool>(false);
+  // Curated member list for the GLOBAL group, parsed from the profile YAML
+  // (the proxy-groups entry named GLOBAL). Populated only when the override flag
+  // above is set; updateGroups then filters and reorders the core's GLOBAL group
+  // to exactly these names, in this order.
+  final globalGroupOrder = ValueNotifier<List<String>>([]);
   final navigatorKey = GlobalKey<NavigatorState>();
   AppController? _appController;
   GlobalKey<CommonScaffoldState> homeScaffoldKey = GlobalKey();
@@ -381,6 +391,11 @@ class GlobalState {
     // Custom "description" field on proxy-groups — extracted here because
     // mihomo's /proxies API doesn't forward arbitrary YAML keys.
     final parsedGroupDescriptions = <String, String>{};
+    // Opt-in only: when the GLOBAL proxy-group (and only GLOBAL) carries
+    // `flclashx-override: true`, its `proxies` list is the curated set/order we
+    // show in global mode. Any other group's flag is ignored.
+    final parsedGlobalOrder = <String>[];
+    var parsedGlobalOverride = false;
     final rawGroups = rawConfig["proxy-groups"];
     if (rawGroups is List) {
       for (final g in rawGroups) {
@@ -391,9 +406,26 @@ class GlobalState {
         if (desc is String && desc.trim().isNotEmpty) {
           parsedGroupDescriptions[name] = desc.trim();
         }
+        if (name == GroupName.GLOBAL.name) {
+          final override = g["flclashx-override"];
+          parsedGlobalOverride = override == true ||
+              (override is String && override.trim().toLowerCase() == 'true');
+          if (parsedGlobalOverride) {
+            final proxies = g["proxies"];
+            if (proxies is List) {
+              for (final p in proxies) {
+                if (p is String && p.trim().isNotEmpty) {
+                  parsedGlobalOrder.add(p.trim());
+                }
+              }
+            }
+          }
+        }
       }
     }
     groupDescriptions.value = parsedGroupDescriptions;
+    globalGroupOrder.value = parsedGlobalOrder;
+    globalOverrideEnabled.value = parsedGlobalOverride;
     // external-controller: profile value always wins when present. The UI
     // toggle only acts as a fallback because the enum hardcodes 127.0.0.1:9090
     // and would otherwise silently override a subscription-provided endpoint

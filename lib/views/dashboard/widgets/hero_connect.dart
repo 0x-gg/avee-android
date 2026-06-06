@@ -167,6 +167,27 @@ class HeroConnect extends ConsumerWidget {
     // expiry. Unlimited + no expiry => hide it entirely.
     final hasSub = sub != null && (sub.total > 0 || sub.expire > 0);
 
+    // Buy/renew links carried by the profile. The buttons (under the traffic
+    // card) only appear when the matching condition is met:
+    //   buyplan    -> less than 3 days left (expired included), time-limited plans
+    //   buytraffic -> less than 10% of the limit remaining, capped plans
+    final buyPlanUrl = headers['flclashx-buyplan'];
+    final buyTrafficUrl = headers['flclashx-buytraffic'];
+    var showBuyPlan = false;
+    var showBuyTraffic = false;
+    if (sub != null) {
+      if (buyPlanUrl != null && buyPlanUrl.isNotEmpty && sub.expire > 0) {
+        showBuyPlan = DateTime.fromMillisecondsSinceEpoch(sub.expire * 1000)
+                .difference(DateTime.now()) <
+            const Duration(days: 3);
+      }
+      if (buyTrafficUrl != null && buyTrafficUrl.isNotEmpty && sub.total > 0) {
+        final used = sub.upload + sub.download;
+        showBuyTraffic = (sub.total - used) < sub.total * 0.1;
+      }
+    }
+    final showBuy = showBuyPlan || showBuyTraffic;
+
     final groups = ref.watch(currentGroupsStateProvider).value;
     var serverName = '';
     String? testUrl;
@@ -243,6 +264,15 @@ class HeroConnect extends ConsumerWidget {
                 const SizedBox(height: 18),
                 if (hasSub) ...[
                   _TrafficCard(sub: sub),
+                  const SizedBox(height: 12),
+                ],
+                if (showBuy) ...[
+                  _BuyButtons(
+                    showBuyPlan: showBuyPlan,
+                    showBuyTraffic: showBuyTraffic,
+                    buyPlanUrl: buyPlanUrl,
+                    buyTrafficUrl: buyTrafficUrl,
+                  ),
                   const SizedBox(height: 12),
                 ],
                 _ServerPanel(
@@ -405,6 +435,109 @@ class _TrafficCard extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Buy / renew buttons (shown under the traffic card)
+// ----------------------------------------------------------------------------
+class _BuyButtons extends StatelessWidget {
+  const _BuyButtons({
+    required this.showBuyPlan,
+    required this.showBuyTraffic,
+    required this.buyPlanUrl,
+    required this.buyTrafficUrl,
+  });
+
+  final bool showBuyPlan;
+  final bool showBuyTraffic;
+  final String? buyPlanUrl;
+  final String? buyTrafficUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final plan = _HeroBuyButton(
+      icon: Icons.autorenew_rounded,
+      label: 'Продлить подписку',
+      filled: true,
+      onTap: () => globalState.openUrl(buyPlanUrl!),
+    );
+    final traffic = _HeroBuyButton(
+      icon: Icons.add_rounded,
+      label: 'Докупить трафик',
+      filled: false,
+      onTap: () => globalState.openUrl(buyTrafficUrl!),
+    );
+
+    // Both triggers -> side by side, one each; a single trigger -> full width.
+    if (showBuyPlan && showBuyTraffic) {
+      return Row(
+        children: [
+          Expanded(child: plan),
+          const SizedBox(width: 10),
+          Expanded(child: traffic),
+        ],
+      );
+    }
+    if (showBuyPlan) return plan;
+    if (showBuyTraffic) return traffic;
+    return const SizedBox.shrink();
+  }
+}
+
+class _HeroBuyButton extends StatelessWidget {
+  const _HeroBuyButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.filled = true,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = context.colorScheme;
+    final bg = filled
+        ? colorScheme.primary
+        : colorScheme.surfaceContainerHigh.withValues(alpha: 0.6);
+    final fg = filled ? colorScheme.onPrimary : colorScheme.primary;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: double.infinity,
+        height: 48,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: bg,
+          border: filled
+              ? null
+              : Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 20, color: fg),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.textTheme.titleSmall
+                    ?.copyWith(color: fg, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -896,7 +1029,9 @@ class _AnnounceBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         color: colorScheme.secondaryContainer,
       ),
-      child: Text(
+      // EmojiText (not Text): renders flag/emoji runs with the Twemoji font so
+      // they show up — plain Text drops country flags entirely on Windows.
+      child: EmojiText(
         text,
         style: context.textTheme.bodyMedium?.copyWith(
           color: colorScheme.onSecondaryContainer,

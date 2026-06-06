@@ -55,9 +55,10 @@ class Vpn {
           ? '$displayName / $_cachedServerName'
           : displayName;
       commonPrint.log('[Vpn] pushNotification: title="$title" server="$_cachedServiceName" clashLib=${clashLib != null}');
+      // Leave the stop-button label to its localized default ("Остановить" / "Stop");
+      // the service/server name already lives in the notification title above.
       await clashLib?.updateNotificationParams(
         title: title,
-        server: _cachedServiceName,
       );
     } catch (e) {
       commonPrint.log('[Vpn] pushNotification FAILED: $e');

@@ -476,12 +476,10 @@ class _NewDashboardItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settingValue = ref.watch(
-      appSettingProvider.select((state) => state.newDashboard),
-    );
-    final headerValue = ref.watch(currentProfileProvider
-        .select((p) => p?.providerHeaders['flclashx-newboard'])) == 'true';
-    final enabled = settingValue ?? headerValue;
+    final header = ref.watch(currentProfileProvider
+        .select((p) => p?.providerHeaders['flclashx-newboard']));
+    final headerPinned = header == 'true' || header == 'false';
+    final enabled = ref.watch(newDashboardEnabledProvider);
     return ListItem.switchItem(
       leading: const Icon(Icons.dashboard_customize),
       horizontalTitleGap: 12,
@@ -493,11 +491,16 @@ class _NewDashboardItem extends ConsumerWidget {
       ),
       delegate: SwitchDelegate(
         value: enabled,
-        onChanged: (value) {
-          ref.read(appSettingProvider.notifier).updateState(
-                (state) => state.copyWith(newDashboard: value),
-              );
-        },
+        // When the active profile pins the board through the header, the toggle
+        // just reflects it and can't be changed; otherwise it's the user's
+        // manual switch.
+        onChanged: headerPinned
+            ? null
+            : (value) {
+                ref.read(appSettingProvider.notifier).updateState(
+                      (state) => state.copyWith(newDashboard: value),
+                    );
+              },
       ),
     );
   }

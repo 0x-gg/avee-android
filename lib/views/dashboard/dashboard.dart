@@ -76,10 +76,11 @@ class _DashboardViewState extends ConsumerState<DashboardView> with PageMixin {
             final headers = ref.watch(currentProfileProvider
                 .select((profile) => profile?.providerHeaders)) ?? {};
             final denyEditing = headers['flclashx-denywidgets'];
-            final heroOnly = headers['flclashx-newboard'];
-            final newDashboard = ref.watch(appSettingProvider.select((s) => s.newDashboard));
+            // Editing only applies to the old grid; hide it whenever the hero
+            // board is active (same decision the body makes).
+            final newDashboard = ref.watch(newDashboardEnabledProvider);
 
-            if (denyEditing == 'true' || heroOnly == 'true' || newDashboard == true) {
+            if (denyEditing == 'true' || newDashboard) {
               return const SizedBox.shrink();
             }
 
@@ -231,10 +232,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> with PageMixin {
           ),
         );
       }
-      final headerNewBoard = ref.watch(currentProfileProvider
-          .select((p) => p?.providerHeaders['flclashx-newboard'])) == 'true';
-      final settingNewDashboard = ref.watch(appSettingProvider.select((s) => s.newDashboard));
-      final newDashboard = settingNewDashboard ?? headerNewBoard;
+      final newDashboard = ref.watch(newDashboardEnabledProvider);
 
       if (!newDashboard) {
         return Expanded(

@@ -176,13 +176,118 @@ Usage:
 | `shadowstart` | Launch application minimized to tray             | ❌ Disabled  |
 |  `autostart`  | Automatically start proxy on application launch  | ❌ Disabled  |
 | `autoupdate`  | Automatically check for application updates      | ❌ Disabled  |
+|  `openlogs`   | Enable logging (the "Logs" tab and core log stream) | ❌ Disabled |
+|`closeconnections`| Drop active connections when switching proxy/mode | ❌ Disabled |
 
-**Client-side override:** Users can enable "Override provider settings" in Application Settings to apply their local configuration instead of subscription settings.
+> Note: `closeconnections` is enabled by default in the app itself, but when `flclashx-settings` is used the state is set explicitly — if you don't pass the token, the option will be disabled.
+
+**Client-side override:** Users can enable "Override provider settings" in Application Settings to apply their local configuration instead of subscription settings. The matching toggles in settings (including "Logs" and "Close connections") are editable only when "Override provider settings" is enabled.
 
 Usage:
 
 ```bash
-    flclashx-settings: minimize, autorun, shadowstart, autostart, autoupdate
+    flclashx-settings: minimize, autorun, shadowstart, autostart, autoupdate, openlogs, closeconnections
+```
+
+- flclashx-globalmode: When set to `false`, hides all proxy-mode controls from the client (tray, proxies page, mode-switch widgets).
+
+Usage:
+
+```bash
+    flclashx-globalmode: false
+```
+
+- flclashx-hex: Configures the app theme — primary color, scheme variant, and an optional "pure black" mode via `pureblack`. Variants: `tonalSpot`, `fidelity`, `monochrome`, `neutral`, `vibrant`, `expressive`, `content`, `rainbow`, `fruitSalad`.
+
+Usage:
+
+```bash
+    flclashx-hex: FF5733
+    flclashx-hex: FF5733:vibrant
+    flclashx-hex: FF5733:vibrant:pureblack
+```
+
+Parameters can also be used separately:
+
+```bash
+    flclashx-hex: FF5733
+    flclashx-hex: vibrant
+    flclashx-hex: pureblack
+```
+
+- flclashx-androidsecure: Forces `mixed-port: 0` on Android devices only, even when a port (e.g. 7890) is active in the config.
+
+Usage:
+
+```bash
+    flclashx-androidsecure: true
+```
+
+- flclashx-newboard: When `true`, enables the new home screen instead of the widget grid: a large logo and service name, a traffic/expiry card, an active-server panel (flag, IP, ping) with a fan of available locations, a connect button, and the bottom navigation. Widget editing is hidden in this mode. Users can enable the same look locally via the "New look" setting.
+
+Usage:
+
+```bash
+    flclashx-newboard: true
+```
+
+- flclashx-newdomain: Subscription domain migration. If the value differs from the current host of the profile link, on the next update the client automatically replaces the host in the subscription URL with the given one (path and query are preserved). Useful for moving the subscription page to a new domain without users reinstalling the profile.
+
+Usage:
+
+```bash
+    flclashx-newdomain: new.example.com
+```
+
+- flclashx-buyplan: Direct subscription purchase/renewal link. The "Renew subscription" button appears under the traffic card on the new dashboard (`flclashx-newboard`) only when less than 3 days remain until expiry (including already-expired subscriptions). Tapping it opens the given link.
+
+Usage:
+
+```bash
+    flclashx-buyplan: https://example.com/pay
+```
+
+- flclashx-buytraffic: Direct extra-traffic purchase link. The "Buy traffic" button appears under the traffic card on the new dashboard (`flclashx-newboard`) only when less than 10% of the traffic limit remains. When both triggers fire (`flclashx-buyplan` and `flclashx-buytraffic`), the buttons are shown in one row.
+
+Usage:
+
+```bash
+    flclashx-buytraffic: https://example.com/buy-traffic
+```
+
+### YAML keys in the config
+
+These keys are set directly in the subscription's YAML config (in the `proxy-groups` section), not in HTTP response headers.
+
+- flclashx-override (inside the GLOBAL group): Set inside the `GLOBAL` proxy-group. With `flclashx-override: true` the client uses this group's proxy list and order as a "curated GLOBAL": in Global mode the Proxies screen shows only the `GLOBAL` group with exactly these entries in this order, and the service groups (used by rule mode) are hidden. Without the flag the behavior is unchanged — `GLOBAL` is auto-built by the core from all groups.
+
+Usage:
+
+```yaml
+proxy-groups:
+  - name: GLOBAL
+    flclashx-override: true
+    type: select
+    proxies:
+      - 🎲 Any available
+      - 🔓 No VPN
+      - 🌍 Main VPN
+      - 🇩🇪 Germany
+      - 🇫🇮 Finland
+```
+
+- description (on any proxy-group): A custom subtitle for the group on the Proxies screen. By default the group's type (Selector/URLTest/Fallback…) or the currently selected node is shown under its name; setting `description` displays the given text instead. Handy for clearer labels on nested groups.
+
+Usage:
+
+```yaml
+proxy-groups:
+  - name: 🌍 Main VPN
+    type: select
+    description: Auto-pick the best location
+    proxies:
+      - 🇩🇪 Germany
+      - 🇫🇮 Finland
 ```
 
 ### Configuration Settings Override

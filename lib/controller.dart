@@ -180,6 +180,17 @@ class AppController {
         updateTraffic,
       ]);
       startRunTimeTimer();
+      // Android: the long-lived mihomo executor (DNS resolver, fake-ip pool,
+      // providers) survives a plain stop→start — only setupConfig/ApplyConfig
+      // rebuilds it. After a long session that state degrades, so a toggle
+      // reconnects onto a broken executor (tunnel "dies" after hours; off→on then
+      // drops instantly). Force a full re-setup on every start so a reconnect
+      // rebuilds the executor — the same thing the manual profile-switch workaround
+      // does. Desktop keeps the fast path (re-apply only when the profile changed).
+      if (Platform.isAndroid) {
+        applyProfileDebounce();
+        return;
+      }
       final currentLastModified =
           await _ref.read(currentProfileProvider)?.profileLastModified;
       if (currentLastModified == null || lastProfileModified == null) {
@@ -289,6 +300,8 @@ class AppController {
                 silentLaunch: effectiveSettings.contains('shadowstart'),
                 autoRun: effectiveSettings.contains('autostart'),
                 autoCheckUpdate: effectiveSettings.contains('autoupdate'),
+                openLogs: effectiveSettings.contains('openlogs'),
+                closeConnections: effectiveSettings.contains('closeconnections'),
               ));
     } catch (e) {
       // Silently ignore subscription settings errors
@@ -835,6 +848,39 @@ class AppController {
     }
   }
 
+  /// When the profile declares an explicit GLOBAL proxy-group, restrict the
+  /// core's auto-generated GLOBAL group to exactly those members, in the
+  /// declared order. Names not present in the core's GLOBAL are skipped; an
+  /// empty/absent override (or one that matches nothing) leaves groups as-is.
+  List<Group> _applyGlobalGroupOverride(List<Group> groups) {
+    final order = globalState.globalGroupOrder.value;
+    if (order.isEmpty) return groups;
+    final index = groups.indexWhere((g) => g.name == GroupName.GLOBAL.name);
+    if (index == -1) return groups;
+    final global = groups[index];
+    final byName = {for (final p in global.all) p.name: p};
+    final groupByName = {for (final g in groups) g.name: g};
+    final curated = <Proxy>[];
+    for (final name in order) {
+      final existing = byName[name];
+      if (existing != null) {
+        curated.add(existing);
+        continue;
+      }
+      // Name declared in GLOBAL but missing from the core's GLOBAL.all (e.g. a
+      // referenced group). Synthesize it from the full group list so the
+      // curated list stays complete; selection/now resolves through groups.
+      final group = groupByName[name];
+      if (group != null) {
+        curated.add(Proxy(name: group.name, type: group.type.value));
+      }
+    }
+    if (curated.isEmpty) return groups;
+    final result = List<Group>.from(groups);
+    result[index] = global.copyWith(all: curated);
+    return result;
+  }
+
   Future<void> updateGroups() async {
     try {
       final newGroups = await retry(
@@ -843,7 +889,8 @@ class AppController {
       );
 
       if (newGroups.isNotEmpty) {
-        _ref.read(groupsProvider.notifier).value = newGroups;
+        _ref.read(groupsProvider.notifier).value =
+            _applyGlobalGroupOverride(newGroups);
         _ref.read(versionProvider.notifier).value =
             _ref.read(versionProvider) + 1;
       } else {
@@ -1322,6 +1369,29 @@ class AppController {
       unawaited(
           globalState.showMessage(message: TextSpan(text: err.toString())));
     }
+  }
+
+  /// Download, validate and add a profile from [url] WITHOUT any navigation or
+  /// global loading overlay. Used by the TV phone-sync receive dialog so it can
+  /// keep its own UI alive and report the real apply result back to the phone.
+  /// Throws on failure (network / invalid config) so the caller can surface it.
+  Future<void> addProfileFromUrlForSync(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    final shouldSend = prefs.getBool('sendDeviceHeaders') ?? true;
+    final profile =
+        await Profile.normal(url: url).update(shouldSendHeaders: shouldSend);
+    _applyAllHeaderSettings(profile, isNewProfile: true);
+    final headers = profile.providerHeaders;
+    final showHwidLimit =
+        headers['x-hwid-max-devices-reached']?.toLowerCase() == 'true';
+    final announceText = headers['announce'];
+    if (showHwidLimit && announceText != null && announceText.isNotEmpty) {
+      _showHwidLimitNotice(announceText, headers['support-url']);
+    }
+    if (headers['x-hwid-not-supported']?.toLowerCase() == 'true') {
+      _showHwidNotSupportedNotice();
+    }
+    await addProfile(profile);
   }
 
   Future<Null> addProfileFormFile() async {

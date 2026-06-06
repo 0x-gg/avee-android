@@ -97,13 +97,24 @@ class ClashCore {
   Future<List<Group>> getProxiesGroups() async {
     final proxies = await clashInterface.getProxies();
     if (proxies.isEmpty) return [];
-    final groupNames = [
-      UsedProxy.GLOBAL.name,
-      ...(proxies[UsedProxy.GLOBAL.name]["all"] as List).where((e) {
-        final proxy = proxies[e] ?? {};
-        return GroupTypeExtension.valueList.contains(proxy['type']);
-      })
-    ];
+    bool isGroup(dynamic name) =>
+        GroupTypeExtension.valueList.contains((proxies[name] ?? {})['type']);
+    // Groups reachable through GLOBAL.all, keeping GLOBAL's own ordering.
+    final fromGlobal =
+        (((proxies[UsedProxy.GLOBAL.name] ?? {})["all"] ?? []) as List)
+            .where(isGroup)
+            .toList();
+    final groupNames = [UsedProxy.GLOBAL.name, ...fromGlobal];
+    // Only when GLOBAL opts in via `flclashx-override`: a curated GLOBAL lists
+    // just a subset, so the service groups used by rules (YouTube, Telegram, …)
+    // wouldn't otherwise surface. Enumerate them from the full proxy map so
+    // every defined group is available (the hidden flag still controls display).
+    if (globalState.globalOverrideEnabled.value) {
+      final seen = {UsedProxy.GLOBAL.name, ...fromGlobal};
+      groupNames.addAll(
+        proxies.keys.where((name) => !seen.contains(name) && isGroup(name)),
+      );
+    }
     final groupsRaw = groupNames.map((groupName) {
       final group = Map<String, dynamic>.from(proxies[groupName] as Map);
       group["all"] = ((group["all"] ?? []) as List)

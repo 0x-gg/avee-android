@@ -20,7 +20,15 @@ class Request {
         },
       ),
     );
-    _clashDio = Dio();
+    _clashDio = Dio(
+      BaseOptions(
+        // Only cap connection setup globally so a dead/blackholed exit node fails
+        // fast instead of hanging the IP check. Receive time is left unbounded
+        // here (large proxied downloads use this same client) and capped
+        // per-request in checkIp instead.
+        connectTimeout: const Duration(seconds: 5),
+      ),
+    );
     _clashDio.httpClientAdapter = IOHttpClientAdapter(createHttpClient: () {
       final client = HttpClient();
       client.findProxy = (uri) {
@@ -158,47 +166,51 @@ class Request {
     }
   }
 
-  // IPv4-only endpoints: each host resolves to an A record only, so the exit
-  // connection is forced over IPv4 and the reported IP is always v4 (never v6).
+  // Tried in order, first success wins. All return a dead-simple JSON with an
+  // IPv4 exit IP + country code:
+  //   ip.sb     — `api-ipv4` host is A-only, so the exit is forced over IPv4
+  //   ip-api.com — IPv4-only on the free tier
+  //   ipinfo.io — plain {ip, country}, used as a last-resort fallback
   final Map<String, IpInfo Function(Map<String, dynamic>)> _ipInfoSources = {
     "https://api-ipv4.ip.sb/geoip": IpInfo.fromIpSbJson,
     "http://ip-api.com/json/?fields=status,countryCode,query":
         IpInfo.fromIpApiComJson,
+    "https://ipinfo.io/json": IpInfo.fromIpInfoIoJson,
   };
 
+  /// Resolve the exit IP by trying each source **sequentially**, stopping at the
+  /// first success. A healthy primary therefore means exactly one request — not
+  /// a parallel race that fires every source through the tunnel at once. Each
+  /// source is bounded by a short receive timeout (plus the client-wide connect
+  /// timeout) so a slow/dead node falls through to the next instead of hanging.
   Future<Result<IpInfo?>> checkIp({CancelToken? cancelToken}) async {
-    var failureCount = 0;
-    final futures = _ipInfoSources.entries.map((source) async {
-      final completer = Completer<Result<IpInfo?>>();
-      final future = _clashDio.get<Map<String, dynamic>>(
-        source.key,
-        cancelToken: cancelToken,
-        options: Options(
-          responseType: ResponseType.json,
-        ),
-      );
-      future.then((res) {
+    for (final source in _ipInfoSources.entries) {
+      if (cancelToken?.isCancelled ?? false) {
+        return Result.error("cancelled");
+      }
+      try {
+        final res = await _clashDio.get<Map<String, dynamic>>(
+          source.key,
+          cancelToken: cancelToken,
+          options: Options(
+            responseType: ResponseType.json,
+            receiveTimeout: const Duration(seconds: 3),
+          ),
+        );
         if (res.statusCode == HttpStatus.ok && res.data != null) {
-          completer.complete(Result.success(source.value(res.data!)));
-        } else {
-          failureCount++;
-          if (failureCount == _ipInfoSources.length) {
-            completer.complete(Result.success(null));
-          }
+          return Result.success(source.value(res.data!));
         }
-      }).catchError((e) {
-        failureCount++;
-        if (e is DioException && e.type == DioExceptionType.cancel) {
-          completer.complete(Result.error("cancelled"));
-        } else if (failureCount == _ipInfoSources.length) {
-          completer.complete(Result.success(null));
+      } on DioException catch (e) {
+        if (e.type == DioExceptionType.cancel) {
+          return Result.error("cancelled");
         }
-      });
-      return completer.future;
-    });
-    final res = await Future.any(futures);
-    cancelToken?.cancel();
-    return res;
+        // connect/receive timeout or bad status — fall through to the next source
+      } catch (_) {
+        // unexpected shape / parse failure — try the next source
+      }
+    }
+    // Every source failed (offline, all timed out, or unparseable).
+    return Result.success(null);
   }
 
   Future<bool> pingHelper() async {

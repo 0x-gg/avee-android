@@ -52,7 +52,12 @@ GroupsState currentGroupsState(Ref ref) {
   return GroupsState(
     value: switch (mode) {
       Mode.direct => [],
-      Mode.global => groups.toList(),
+      // With `flclashx-override` on GLOBAL, global mode has a single selector —
+      // show only GLOBAL (service groups belong to rule mode). Otherwise keep
+      // the original behaviour: every group.
+      Mode.global => globalState.globalOverrideEnabled.value
+          ? groups.where((item) => item.name == GroupName.GLOBAL.name).toList()
+          : groups.toList(),
       Mode.rule => groups
           .where((item) => item.hidden == false)
           .where((element) => element.name != GroupName.GLOBAL.name)
@@ -475,6 +480,27 @@ bool globalModeEnabled(Ref ref) {
   return value?.toLowerCase() != 'false';
 }
 
+/// Single source of truth for whether the "new look" (hero) dashboard is shown.
+/// The `flclashx-newboard` profile header wins when present: `true` enables the
+/// board, `false` disables it. When the header is absent we leave the decision
+/// to the manual `newDashboard` setting. Because the header overrides the setting
+/// rather than being shadowed by it, a persisted legacy `false` no longer hides
+/// the board on profiles that ask for it.
+@riverpod
+bool newDashboardEnabled(Ref ref) {
+  final headerNewBoard = ref.watch(
+    currentProfileProvider
+        .select((p) => p?.providerHeaders['flclashx-newboard']),
+  );
+  final settingNewDashboard =
+      ref.watch(appSettingProvider.select((state) => state.newDashboard));
+  return switch (headerNewBoard) {
+    'true' => true,
+    'false' => false,
+    _ => settingNewDashboard ?? false,
+  };
+}
+
 @riverpod
 bool hasAnnounceData(Ref ref) {
   final profile = ref.watch(currentProfileProvider);
@@ -630,16 +656,8 @@ VM2<int, bool> checkIp(Ref ref) {
     ),
   );
   // The "new look" hero also shows the exit IP, so it needs the same re-check on
-  // proxy change. It is active when the setting is on, or (when unset) when the
-  // profile carries the `flclashx-newboard` header.
-  final settingNewDashboard =
-      ref.watch(appSettingProvider.select((state) => state.newDashboard));
-  final headerNewBoard = ref.watch(
-        currentProfileProvider
-            .select((p) => p?.providerHeaders['flclashx-newboard']),
-      ) ==
-      'true';
-  final newDashboard = settingNewDashboard ?? headerNewBoard;
+  // proxy change.
+  final newDashboard = ref.watch(newDashboardEnabledProvider);
   return VM2(
     a: checkIpNum,
     b: containsDetection || newDashboard,
