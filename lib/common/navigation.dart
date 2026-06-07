@@ -47,18 +47,7 @@ class Navigation {
         ),
       ),
       const NavigationItem(
-        icon: Icon(Icons.view_timeline),
-        label: PageLabel.requests,
-        view: RequestsView(
-          key: GlobalObjectKey(
-            PageLabel.requests,
-          ),
-        ),
-        description: "requestsDesc",
-        modes: [NavigationItemMode.desktop, NavigationItemMode.more],
-      ),
-      const NavigationItem(
-        icon: Icon(Icons.ballot),
+        icon: Icon(Icons.swap_horiz_rounded),
         label: PageLabel.connections,
         view: ConnectionsView(
           key: GlobalObjectKey(

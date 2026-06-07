@@ -195,7 +195,9 @@ class MessageLookup extends MessageLookupByLibrary {
       "Включение приведет к потере части функциональности, но обеспечит полную совместимость с Clash",
     ),
     "confirm": MessageLookupByLibrary.simpleMessage("Подтвердить"),
-    "connections": MessageLookupByLibrary.simpleMessage("Соединения"),
+    "connections": MessageLookupByLibrary.simpleMessage("Подключения"),
+    "connectionsActive": MessageLookupByLibrary.simpleMessage("Активные"),
+    "connectionsLog": MessageLookupByLibrary.simpleMessage("Журнал"),
     "connectionsDesc": MessageLookupByLibrary.simpleMessage(
       "Просмотр текущих данных о соединениях",
     ),

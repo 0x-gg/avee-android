@@ -6,6 +6,7 @@ import 'dart:isolate';
 import 'package:flclashx/clash/clash.dart';
 import 'package:flclashx/clash/interface.dart';
 import 'package:flclashx/common/common.dart';
+import 'package:flclashx/common/process_icon.dart';
 import 'package:flclashx/enum/enum.dart';
 import 'package:flclashx/models/models.dart';
 import 'package:flclashx/state.dart';
@@ -140,7 +141,18 @@ class ClashCore {
     final res = await clashInterface.getConnections();
     final connectionsData = json.decode(res) as Map;
     final connectionsRaw = connectionsData['connections'] as List? ?? [];
-    return connectionsRaw.map((e) => Connection.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+    return connectionsRaw.map((e) {
+      final map = Map<String, dynamic>.from(e as Map);
+      // Capture processPath (dropped by the Connection model) so desktop can show the
+      // originating app's exe icon.
+      final meta = map['metadata'];
+      final id = map['id']?.toString();
+      if (meta is Map && id != null) {
+        final pp = meta['processPath']?.toString() ?? '';
+        if (pp.isNotEmpty) connectionProcessPaths[id] = pp;
+      }
+      return Connection.fromJson(map);
+    }).toList();
   }
 
   void closeConnection(String id) {

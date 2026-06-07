@@ -57,6 +57,12 @@ class GlobalState {
   // over UI defaults. Empty string means disabled. Subscription value wins if
   // present, otherwise falls back to the UI toggle default.
   final effectiveExternalController = ValueNotifier<String>("");
+  // The active profile's external-controller secret (rawConfig["secret"]), used to
+  // build the zashboard backend URL. Empty when the profile sets none.
+  final effectiveSecret = ValueNotifier<String>("");
+  // The external-ui sub-path (e.g. "ui") the core serves the dashboard at; part of
+  // the zashboard URL. Empty when the profile sets none.
+  final effectiveExternalUi = ValueNotifier<String>("");
   // Effective values for fields that follow the overrideNetworkSettings gate
   // but don't round-trip through patchClashConfigProvider. UI reads these when
   // override is OFF so it shows what's actually applied (profile or fallback).
@@ -454,6 +460,9 @@ class GlobalState {
         : realPatchConfig.externalController.value;
     rawConfig["external-controller"] = effectiveExternalControllerValue;
     effectiveExternalController.value = effectiveExternalControllerValue;
+    effectiveSecret.value = (rawConfig["secret"] as String?)?.trim() ?? "";
+    effectiveExternalUi.value =
+        (rawConfig["external-ui"] as String?)?.trim() ?? "";
     if (rawConfig["external-ui"] == null || rawConfig["external-ui"] == "") {
       rawConfig["external-ui"] = "";
     }

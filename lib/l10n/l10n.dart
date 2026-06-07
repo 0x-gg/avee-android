@@ -1544,6 +1544,16 @@ class AppLocalizations {
     );
   }
 
+  /// `Active`
+  String get connectionsActive {
+    return Intl.message('Active', name: 'connectionsActive', desc: '', args: []);
+  }
+
+  /// `Log`
+  String get connectionsLog {
+    return Intl.message('Log', name: 'connectionsLog', desc: '', args: []);
+  }
+
   /// `Intranet IP`
   String get intranetIP {
     return Intl.message('Intranet IP', name: 'intranetIP', desc: '', args: []);

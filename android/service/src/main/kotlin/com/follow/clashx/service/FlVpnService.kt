@@ -208,6 +208,18 @@ class FlVpnService : VpnService(), IBaseService {
             State.runTime = SystemClock.uptimeMillis()
             SavedParams.setVpnActive(true)
             GlobalState.log("Always-on cold-start completed, runTime=${State.runTime}")
+            // Headless: no Flutter UI exists to drive setUiActive, and the core
+            // defaults uiActive=true. Left true, the health-check forwarder keeps
+            // every proxy provider's url-test warm — pinging the whole node list over
+            // the radio every interval, forever, screen-off. Drop to background
+            // cadence now; when a UI later attaches it raises uiActive (true) again.
+            runCatching {
+                val action =
+                    """{"id":"uia_${System.currentTimeMillis()}","method":"setUiActive","data":false}"""
+                Core.invokeAction(action, object : InvokeInterface {
+                    override fun onResult(result: String) {}
+                })
+            }
         }
     }
 

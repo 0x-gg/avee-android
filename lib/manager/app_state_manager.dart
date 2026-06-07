@@ -35,6 +35,16 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (Platform.isAndroid) {
+      // Assert foreground cadence as soon as the UI mounts. A headless cold-start
+      // leaves the core in background mode (uiActive=false, set by FlVpnService),
+      // and the initial 'resumed' is a state — not always a lifecycle *event* — on a
+      // fresh launch, so relying on didChangeAppLifecycleState alone could strand the
+      // UI in background cadence (no request forwarder, slow pings).
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        clashCore.setUiActive(true);
+      });
+    }
     ref.listenManual(layoutChangeProvider, (prev, next) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (prev != next) {
