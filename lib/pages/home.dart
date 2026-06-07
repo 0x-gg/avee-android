@@ -33,8 +33,12 @@ class HomePage extends StatelessWidget {
               navigationItems: navigationItems,
               currentIndex: currentIndex,
             );
-            final bottomNavigationBar =
-                viewMode == ViewMode.mobile ? const HeroNavBar() : null;
+            // Mobile bottom bar follows the dashboard style: the hero nav bar for
+            // the new look, the classic Material NavigationBar for the old one.
+            final newDashboard = ref.watch(newDashboardEnabledProvider);
+            final bottomNavigationBar = viewMode == ViewMode.mobile
+                ? (newDashboard ? const HeroNavBar() : navigationBar)
+                : null;
             final sideNavigationBar =
                 viewMode != ViewMode.mobile ? navigationBar : null;
             return CommonScaffold(
