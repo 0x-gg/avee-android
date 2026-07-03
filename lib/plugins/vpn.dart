@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:dropweb/clash/clash.dart';
 import 'package:dropweb/common/common.dart';
-import 'package:dropweb/enum/enum.dart';
 import 'package:dropweb/models/models.dart';
 import 'package:dropweb/state.dart';
 import 'package:flutter/foundation.dart';
@@ -55,9 +54,6 @@ class Vpn {
   String _cachedProfileName = "dropweb";
   String _cachedServiceName = "";
 
-  /// Cached routing mode for foreground notification (updated via updateMode)
-  Mode _cachedMode = Mode.rule;
-
   /// Update cached server name (called from UI when proxy changes)
   void updateServerName(String serverName) {
     _cachedServerName = serverName;
@@ -72,16 +68,8 @@ class Vpn {
     _cachedServiceName = serviceName;
   }
 
-  /// Update cached routing mode (called from UI when mode changes)
-  void updateMode(Mode mode) {
-    _cachedMode = mode;
-  }
-
   /// Get cached server name
   String get cachedServerName => _cachedServerName;
-
-  /// Get cached routing mode
-  Mode get cachedMode => _cachedMode;
 
   /// Get cached profile name
   String get cachedProfileName => _cachedProfileName;
@@ -101,19 +89,12 @@ class Vpn {
   }
 
   /// Default foreground params when running in UI mode.
-  /// Shows: title = "Mode \u2022 Server", content = traffic, server (subText) = empty.
+  /// Shows: title = selected server (else cached service name, else cached
+  /// profile name), content = traffic, server (subText) = empty.
   String _getDefaultForegroundParams() {
     try {
       final traffic = clashCore.getTraffic();
       final profile = globalState.config.currentProfile;
-
-      // Current routing mode (localized)
-      final mode = globalState.config.patchClashConfig.mode;
-      final modeLabel = switch (mode) {
-        Mode.rule => appLocalizations.rule,
-        Mode.global => appLocalizations.global,
-        Mode.direct => appLocalizations.direct,
-      };
 
       // Current proxy/server name
       String? proxyName;
@@ -131,8 +112,10 @@ class Vpn {
 
       final serverDisplay = (proxyName ?? "").trim();
       final title = serverDisplay.isNotEmpty
-          ? "$modeLabel \u2022 $serverDisplay"
-          : modeLabel;
+          ? serverDisplay
+          : (_cachedServiceName.isNotEmpty
+              ? _cachedServiceName
+              : _cachedProfileName);
 
       return json.encode({
         "title": title,

@@ -239,19 +239,12 @@ Future<void> _service(List<String> flags) async {
   );
 
   // Provide foreground notification params using data from globalState.config.
-  // Shows: title = "Mode • Server", content = "↑ speed ↓ speed", subText = "uptime • total".
+  // Shows: title = selected server (else service name, else "dropweb"),
+  // content = "↑ speed ↓ speed", subText = "uptime • total".
   vpn?.handleGetStartForegroundParams = () {
     try {
       final traffic = clashLibHandler.getTraffic();
       final profile = globalState.config.currentProfile;
-
-      // Current routing mode (synced from UI via IPC 'updateMode')
-      final mode = globalState.config.patchClashConfig.mode;
-      final modeLabel = switch (mode) {
-        Mode.rule => appLocalizations.rule,
-        Mode.global => appLocalizations.global,
-        Mode.direct => appLocalizations.direct,
-      };
 
       // Get server group name from header (may be base64-encoded)
       String? groupName = profile?.providerHeaders['dropweb-serverinfo'];
@@ -275,11 +268,12 @@ Future<void> _service(List<String> flags) async {
         serverName = selectedMap[groupName] ?? "";
       }
 
-      // Title: "Mode • Server"
+      // Title: selected server name, else provider service name, else "dropweb"
       final serverDisplay = serverName.trim();
+      final serviceName = profile?.serviceName.trim() ?? "";
       final title = serverDisplay.isNotEmpty
-          ? "$modeLabel \u2022 $serverDisplay"
-          : modeLabel;
+          ? serverDisplay
+          : (serviceName.isNotEmpty ? serviceName : "dropweb");
 
       // Content: "↑ speed  ↓ speed"
       final content =
@@ -310,9 +304,6 @@ Future<void> _service(List<String> flags) async {
       return json.encode({"title": "dropweb", "server": "", "content": ""});
     }
   };
-
-  // Initialize cached mode from config at service start
-  vpn?.updateMode(globalState.config.patchClashConfig.mode);
 
   commonPrint.log("[DART] Adding VPN listener");
   vpn?.addListener(
