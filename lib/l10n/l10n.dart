@@ -589,6 +589,11 @@ class AppLocalizations {
     return Intl.message('Confirm', name: 'confirm', desc: '', args: []);
   }
 
+  /// `OK`
+  String get ok {
+    return Intl.message('OK', name: 'ok', desc: '', args: []);
+  }
+
   /// `Update`
   String get update {
     return Intl.message('Update', name: 'update', desc: '', args: []);

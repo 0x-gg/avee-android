@@ -103,6 +103,8 @@ class AppUpdateService {
         message: TextSpan(
           text: appLocalizations.checkUpdateError,
         ),
+        cancelable: false,
+        confirmText: appLocalizations.ok,
       );
     }
   }

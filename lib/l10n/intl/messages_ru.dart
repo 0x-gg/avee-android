@@ -524,6 +524,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "nullTip": m5,
     "numberTip": m6,
+    "ok": MessageLookupByLibrary.simpleMessage("OK"),
     "onboardingAddHint": MessageLookupByLibrary.simpleMessage(
       "Нажмите, чтобы добавить подписку",
     ),

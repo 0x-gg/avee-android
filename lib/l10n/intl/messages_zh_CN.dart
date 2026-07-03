@@ -343,6 +343,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "nullScriptTip": MessageLookupByLibrary.simpleMessage("暂无脚本"),
     "nullTip": m5,
     "numberTip": m6,
+    "ok": MessageLookupByLibrary.simpleMessage("OK"),
     "onboardingAddHint": MessageLookupByLibrary.simpleMessage("点按以添加订阅"),
     "onboardingClipboardImport": MessageLookupByLibrary.simpleMessage(
       "从剪贴板粘贴订阅",

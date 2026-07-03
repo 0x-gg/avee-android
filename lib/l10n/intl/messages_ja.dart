@@ -399,6 +399,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "nullScriptTip": MessageLookupByLibrary.simpleMessage("スクリプトはありません"),
     "nullTip": m5,
     "numberTip": m6,
+    "ok": MessageLookupByLibrary.simpleMessage("OK"),
     "onboardingAddHint": MessageLookupByLibrary.simpleMessage(
       "タップしてサブスクリプションを追加",
     ),

@@ -319,6 +319,8 @@ class _UpdateItem extends ConsumerWidget {
         await globalState.showMessage(
           title: appLocalizations.checkUpdate,
           message: TextSpan(text: appLocalizations.checkUpdateError),
+          cancelable: false,
+          confirmText: appLocalizations.ok,
         );
       }
       return;

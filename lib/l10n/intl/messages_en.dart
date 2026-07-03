@@ -503,6 +503,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "nullScriptTip": MessageLookupByLibrary.simpleMessage("No scripts"),
     "nullTip": m5,
     "numberTip": m6,
+    "ok": MessageLookupByLibrary.simpleMessage("OK"),
     "onboardingAddHint": MessageLookupByLibrary.simpleMessage(
       "Tap to add your subscription",
     ),
