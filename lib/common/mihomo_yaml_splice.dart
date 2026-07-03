@@ -21,8 +21,7 @@ const mihomoBuiltinTargets = {'DIRECT', 'REJECT', 'REJECT-DROP', 'PASS'};
 /// proxy never points at `0.0.0.0`/loopback, a port ≤ 1, or the all-zero
 /// VLESS/VMess UUID. Dropping these keeps dead "countries" out of routing
 /// candidate sets before any liveness probe runs. Shared single source of truth
-/// for `work_mode_patch` (Smart/Country candidate filtering) and `hy2_overlay`
-/// (auto-select group resolution).
+/// for `work_mode_patch` (Smart/Country candidate filtering).
 bool isRoutableProxy(Map proxy) {
   final server = proxy['server']?.toString().trim() ?? '';
   if (server.isEmpty ||

@@ -14,7 +14,6 @@ export 'function.dart';
 export 'future.dart';
 export 'geodata.dart';
 export 'http.dart';
-export 'hy2_overlay.dart';
 export 'icons.dart';
 export 'iterable.dart';
 export 'keyboard.dart';
