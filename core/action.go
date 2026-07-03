@@ -114,7 +114,7 @@ func handleAction(action *Action, result ActionResult) {
 		path := action.Data.(string)
 		config, err := handleGetConfig(path)
 		if err != nil {
-			result.error(err)
+			result.error(err.Error())
 			return
 		}
 		result.success(config)

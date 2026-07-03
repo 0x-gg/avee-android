@@ -10,6 +10,7 @@ import (
 	"runtime/debug"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/metacubex/mihomo/adapter"
@@ -32,6 +33,7 @@ var (
 	isInit                = false
 	externalProviders     = map[string]cp.Provider{}
 	logSubscriber         observable.Subscription[log.Event]
+	logMux                sync.Mutex
 	proxyDescriptions     = map[string]string{} // Store serverDescription for each proxy
 )
 
@@ -157,9 +159,12 @@ func handleGetProxies() interface{} {
 }
 
 func handleChangeProxy(data string, fn func(string string)) {
-	runLock.Lock()
 	go func() {
-		defer recoverGo("handleChangeProxy")
+		// Lock inside the goroutine so the same goroutine that acquires runLock
+		// also releases it; recoverGoFn replies to Dart on panic (fn == "" means
+		// success, so a non-empty panic string is a valid error payload here).
+		runLock.Lock()
+		defer recoverGoFn("handleChangeProxy", fn)
 		defer runLock.Unlock()
 		var params = &ChangeProxyParams{}
 		err := json.Unmarshal([]byte(data), params)
@@ -230,8 +235,14 @@ func handleResetTraffic() {
 
 func handleAsyncTestDelay(paramsString string, fn func(string)) {
 	mBatch.Go(paramsString, func() (bool, error) {
-		defer recoverGo("handleAsyncTestDelay")
 		var params = &TestDelayParams{}
+		// Dart parses this reply as Delay.fromJson(json.decode(data)); a raw panic
+		// string would throw. Deliver a well-formed Delay{Value:-1} so the completer
+		// resolves to a normal "unreachable" result instead of hanging.
+		defer recoverGoFn("handleAsyncTestDelay", func(string) {
+			data, _ := json.Marshal(&Delay{Name: params.ProxyName, Value: -1})
+			fn(string(data))
+		})
 		err := json.Unmarshal([]byte(paramsString), params)
 		if err != nil {
 			fn("")
@@ -370,7 +381,7 @@ func handleGetExternalProvider(externalProviderName string) string {
 
 func handleUpdateGeoData(geoType string, geoName string, fn func(value string)) {
 	go func() {
-		defer recoverGo("handleUpdateGeoData")
+		defer recoverGoFn("handleUpdateGeoData", fn)
 		path := constant.Path.Resolve(geoName)
 		switch geoType {
 		case "MMDB":
@@ -404,7 +415,11 @@ func handleUpdateGeoData(geoType string, geoName string, fn func(value string)) 
 
 func handleUpdateExternalProvider(providerName string, fn func(value string)) {
 	go func() {
-		defer recoverGo("handleUpdateExternalProvider")
+		defer recoverGoFn("handleUpdateExternalProvider", fn)
+		// externalProviders is mutated under runLock elsewhere; hold it here too
+		// (mirrors handleSideLoadExternalProvider) to avoid a concurrent map read.
+		runLock.Lock()
+		defer runLock.Unlock()
 		externalProvider, exist := externalProviders[providerName]
 		if !exist {
 			fn("external provider is not exist")
@@ -421,7 +436,7 @@ func handleUpdateExternalProvider(providerName string, fn func(value string)) {
 
 func handleSideLoadExternalProvider(providerName string, data []byte, fn func(value string)) {
 	go func() {
-		defer recoverGo("handleSideLoadExternalProvider")
+		defer recoverGoFn("handleSideLoadExternalProvider", fn)
 		runLock.Lock()
 		defer runLock.Unlock()
 		externalProvider, exist := externalProviders[providerName]
@@ -439,14 +454,20 @@ func handleSideLoadExternalProvider(providerName string, data []byte, fn func(va
 }
 
 func handleStartLog() {
+	// logMux serializes start/stop so concurrent calls can't leak a subscription
+	// or double-unsubscribe. The goroutine ranges over its own captured handle
+	// (sub) instead of the global to avoid racing a concurrent handleStopLog.
+	logMux.Lock()
+	defer logMux.Unlock()
 	if logSubscriber != nil {
 		log.UnSubscribe(logSubscriber)
 		logSubscriber = nil
 	}
 	logSubscriber = log.Subscribe()
+	sub := logSubscriber
 	go func() {
 		defer recoverGo("handleStartLog")
-		for logData := range logSubscriber {
+		for logData := range sub {
 			if logData.LogLevel < log.Level() {
 				continue
 			}
@@ -460,6 +481,8 @@ func handleStartLog() {
 }
 
 func handleStopLog() {
+	logMux.Lock()
+	defer logMux.Unlock()
 	if logSubscriber != nil {
 		log.UnSubscribe(logSubscriber)
 		logSubscriber = nil
@@ -468,7 +491,9 @@ func handleStopLog() {
 
 func handleGetCountryCode(ip string, fn func(value string)) {
 	go func() {
-		defer recoverGo("handleGetCountryCode")
+		// Dart uses any non-empty reply verbatim as the country code, so a panic
+		// string would surface as a bogus code; reply "" (Dart maps it to null).
+		defer recoverGoFn("handleGetCountryCode", func(string) { fn("") })
 		runLock.Lock()
 		defer runLock.Unlock()
 		codes := mmdb.IPInstance().LookupCode(net.ParseIP(ip))
@@ -482,7 +507,9 @@ func handleGetCountryCode(ip string, fn func(value string)) {
 
 func handleGetMemory(fn func(value string)) {
 	go func() {
-		defer recoverGo("handleGetMemory")
+		// Dart does int.parse(value) on this reply, which throws on a panic
+		// string; reply "" (Dart maps an empty reply to 0).
+		defer recoverGoFn("handleGetMemory", func(string) { fn("") })
 		fn(strconv.FormatUint(statistic.DefaultManager.Memory(), 10))
 	}()
 }

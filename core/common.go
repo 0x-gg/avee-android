@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"runtime/debug"
 	"sync"
@@ -41,6 +42,16 @@ var (
 func recoverGo(name string) {
 	if r := recover(); r != nil {
 		log.Errorln("[panic] %s recovered: %v\n%s", name, r, debug.Stack())
+	}
+}
+
+// recoverGoFn is recoverGo for goroutines that owe the Dart bridge a reply:
+// on panic it still delivers an error payload so the Dart completer resolves
+// immediately instead of hanging until its invoke timeout.
+func recoverGoFn(name string, fn func(string)) {
+	if r := recover(); r != nil {
+		log.Errorln("[panic] %s recovered: %v\n%s", name, r, debug.Stack())
+		fn(fmt.Sprintf("panic: %s: %v", name, r))
 	}
 }
 
@@ -252,24 +263,47 @@ func updateConfig(params *UpdateParams) {
 	}
 
 	updateListeners()
+
+	// Same swallowed-tun-failure as setupConfig, but updateConfig is void with no
+	// Dart error return. The only tun status channel (TunMessage/onTun) resolves
+	// the start-transition ack and could complete an unrelated in-flight start, so
+	// a mid-session tun toggle failure is surfaced in the core log only; the hard
+	// error on the connect path is covered by setupConfig.
+	if params.Tun != nil && !features.Android && general.Tun.Enable && !listener.GetTunConf().Enable {
+		log.Errorln("[tun] listener failed to start after updateConfig (see above)")
+	}
 }
 
 func setupConfig(params *SetupParams) error {
 	runLock.Lock()
 	defer runLock.Unlock()
-	var err error
 	constant.DefaultTestURL = params.TestURL
 
-	extractProxyDescriptionsFromRaw(params.Config)
-
-	currentConfig, err = config.ParseRawConfig(params.Config)
+	currentRaw, err := config.ParseRawConfig(params.Config)
 	if err != nil {
-		currentConfig, _ = config.ParseRawConfig(config.DefaultRawConfig())
+		if currentConfig == nil {
+			// First setup of this process: fall back to an inert default so the
+			// bridge stays serviceable (nil currentConfig panics option getters).
+			currentConfig, _ = config.ParseRawConfig(config.DefaultRawConfig())
+			hub.ApplyConfig(currentConfig)
+		}
+		// Mid-session: keep the WORKING config/tunnel; report the parse error
+		// instead of tearing a live tunnel down with a bad YAML.
+		return err
 	}
+	currentConfig = currentRaw
+	extractProxyDescriptionsFromRaw(params.Config)
 	hub.ApplyConfig(currentConfig)
 	patchSelectGroup(params.SelectedMap)
 	updateListeners()
-	return err
+
+	// ReCreateTun swallows a tun start failure (logs it, then flips Enable=false)
+	// so setupConfig would otherwise report success with no tunnel. When tun was
+	// requested on desktop, confirm the listener actually came up.
+	if !features.Android && currentConfig.General.Tun.Enable && !listener.GetTunConf().Enable {
+		return errors.New("tun listener failed to start (see core log)")
+	}
+	return nil
 }
 
 func UnmarshalJson(data []byte, v any) error {
