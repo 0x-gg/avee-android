@@ -26,7 +26,7 @@ String workModeCountryGroupName(String flag) =>
 /// `selectedMap` wiring are applied elsewhere (the controller), NOT here.
 ///
 /// Semantics:
-///   * [WorkMode.standard] / [WorkMode.gaming] — no-op (returns a shallow copy).
+///   * [WorkMode.standard] — no-op (returns a shallow copy).
 ///   * [WorkMode.smart] — ensures an additive `Умный` group (`type: smart`,
 ///     `collectdata: false`) whose `proxies` are the LEAF nodes of the detected
 ///     primary router (see [_smartLeafNodes]); NEVER `include-all` (that would
@@ -52,7 +52,6 @@ Map<String, dynamic> applyWorkModePatch(
 }) {
   switch (workMode) {
     case WorkMode.standard:
-    case WorkMode.gaming:
       return Map<String, dynamic>.from(rawConfig);
     case WorkMode.smart:
       // Bind «Умный» ONLY into the primary router (the catch-all MATCH target,
@@ -388,7 +387,7 @@ List<String> _smartLeafNodes(
 ///      members).
 ///
 /// Because [applyWorkModePatch] is workMode-gated and runs per-setup, the
-/// Standard/Country/Gaming setups never carry the appended router member — so
+/// Standard/Country setups never carry the appended router member — so
 /// the routers' url-test never race `Умный` outside Smart mode. Every group
 /// NOT in [interceptGroups] is preserved by reference (deep-equal to the input).
 Map<String, dynamic> _injectSmartGroup(

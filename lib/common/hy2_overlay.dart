@@ -131,8 +131,8 @@ String? resolveHy2NodesHeader(Map<String, String> headers) =>
     headers[_hy2NodesHeader] ?? headers[_legacyHy2NodesHeader];
 
 /// The USER's own vless `uuid` — the per-user Hy2 password — or `null` when no
-/// such node exists. Transport-neutral: the all-modes overlay AND the gaming
-/// hook both authenticate Hy2 with it.
+/// such node exists. Transport-neutral: the all-modes overlay authenticates
+/// Hy2 with it.
 ///
 /// Reuses [interceptLeafNodes] (the "user's real nodes, SOS pool excluded"
 /// helper) to get the user's REAL leaf node names, then returns the `uuid` of

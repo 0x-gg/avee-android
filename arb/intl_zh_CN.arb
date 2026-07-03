@@ -500,8 +500,6 @@
   "workModeSmartDesc": "自动选择最佳服务器。",
   "workModeCountry": "国家",
   "workModeCountryDesc": "选择一个国家。",
-  "workModeGaming": "游戏",
-  "workModeGamingDesc": "游戏最低延迟。",
   "comingSoon": "即将推出",
   "smartAuto": "自动",
   "strictNode": "固定节点",

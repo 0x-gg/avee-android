@@ -938,10 +938,6 @@ class MessageLookup extends MessageLookupByLibrary {
     "workModeCountryDesc": MessageLookupByLibrary.simpleMessage(
       "Выберите страну.",
     ),
-    "workModeGaming": MessageLookupByLibrary.simpleMessage("Игровой"),
-    "workModeGamingDesc": MessageLookupByLibrary.simpleMessage(
-      "Минимальный пинг для игр.",
-    ),
     "workModeResetNotice": MessageLookupByLibrary.simpleMessage(
       "Режим сброшен на Стандарт: настройки недоступны после обновления подписки.",
     ),

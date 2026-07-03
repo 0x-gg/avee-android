@@ -719,8 +719,6 @@ class MessageLookup extends MessageLookupByLibrary {
     "whitelistMode": MessageLookupByLibrary.simpleMessage("ホワイトリストモード"),
     "workModeCountry": MessageLookupByLibrary.simpleMessage("国"),
     "workModeCountryDesc": MessageLookupByLibrary.simpleMessage("国を選択。"),
-    "workModeGaming": MessageLookupByLibrary.simpleMessage("ゲーミング"),
-    "workModeGamingDesc": MessageLookupByLibrary.simpleMessage("ゲーム向けの最低ピング。"),
     "workModeResetNotice": MessageLookupByLibrary.simpleMessage(
       "モードをスタンダードにリセットしました：更新後にこの設定は利用できません",
     ),

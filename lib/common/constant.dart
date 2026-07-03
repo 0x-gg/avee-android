@@ -56,11 +56,6 @@ const defaultExternalController = "127.0.0.1:9090";
 const maxMobileWidth = 600;
 const maxLaptopWidth = 840;
 const defaultTestUrl = "https://www.gstatic.com/generate_204";
-/// Subscription header that advertises the «Игровой» (gaming) mode descriptor.
-/// Its value must be an absolute URL pointing at the game rule-set descriptor;
-/// gaming mode is offered only when this header parses (see
-/// `lib/common/game_descriptor.dart` + `gamingModeAvailable` provider).
-const kGamingHeader = 'dropweb-game';
 
 /// Subscription header carrying the panel-pushed Hy2 node specs: a
 /// base64-wrapped UTF-8 JSON array (`base64:<…>`) of `{name, server, port,

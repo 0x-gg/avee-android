@@ -3914,21 +3914,6 @@ class AppLocalizations {
     );
   }
 
-  /// `Gaming`
-  String get workModeGaming {
-    return Intl.message('Gaming', name: 'workModeGaming', desc: '', args: []);
-  }
-
-  /// `Lowest ping for gaming.`
-  String get workModeGamingDesc {
-    return Intl.message(
-      'Lowest ping for gaming.',
-      name: 'workModeGamingDesc',
-      desc: '',
-      args: [],
-    );
-  }
-
   /// `soon`
   String get comingSoon {
     return Intl.message('soon', name: 'comingSoon', desc: '', args: []);

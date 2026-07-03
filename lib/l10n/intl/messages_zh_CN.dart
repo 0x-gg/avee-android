@@ -625,8 +625,6 @@ class MessageLookup extends MessageLookupByLibrary {
     "whitelistMode": MessageLookupByLibrary.simpleMessage("白名单模式"),
     "workModeCountry": MessageLookupByLibrary.simpleMessage("国家"),
     "workModeCountryDesc": MessageLookupByLibrary.simpleMessage("选择一个国家。"),
-    "workModeGaming": MessageLookupByLibrary.simpleMessage("游戏"),
-    "workModeGamingDesc": MessageLookupByLibrary.simpleMessage("游戏最低延迟。"),
     "workModeResetNotice": MessageLookupByLibrary.simpleMessage(
       "模式已重置为标准：更新后该设置不可用",
     ),

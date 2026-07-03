@@ -1853,7 +1853,6 @@ class AppController {
         }
         break;
       case WorkMode.standard:
-      case WorkMode.gaming:
         break;
     }
 

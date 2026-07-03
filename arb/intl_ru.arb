@@ -507,8 +507,6 @@
   "workModeSmartDesc": "Сам выбирает лучший.",
   "workModeCountry": "Страна",
   "workModeCountryDesc": "Выберите страну.",
-  "workModeGaming": "Игровой",
-  "workModeGamingDesc": "Минимальный пинг для игр.",
   "comingSoon": "скоро",
   "smartAuto": "Авто",
   "strictNode": "Строгая нода",

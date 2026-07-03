@@ -85,7 +85,6 @@ const _$WorkModeEnumMap = {
   WorkMode.standard: 'standard',
   WorkMode.smart: 'smart',
   WorkMode.country: 'country',
-  WorkMode.gaming: 'gaming',
 };
 
 _$OverrideDataImpl _$$OverrideDataImplFromJson(Map<String, dynamic> json) =>

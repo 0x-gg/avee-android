@@ -500,8 +500,6 @@
   "workModeSmartDesc": "最適なサーバーを自動選択。",
   "workModeCountry": "国",
   "workModeCountryDesc": "国を選択。",
-  "workModeGaming": "ゲーミング",
-  "workModeGamingDesc": "ゲーム向けの最低ピング。",
   "comingSoon": "近日公開",
   "smartAuto": "自動",
   "strictNode": "固定ノード",

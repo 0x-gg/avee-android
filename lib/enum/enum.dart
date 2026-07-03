@@ -89,7 +89,7 @@ extension UsedProxyExtension on UsedProxy {
 
 enum Mode { rule, global, direct }
 
-enum WorkMode { standard, smart, country, gaming }
+enum WorkMode { standard, smart, country }
 
 enum ViewMode { mobile, laptop, desktop }
 

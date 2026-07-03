@@ -907,10 +907,6 @@ class MessageLookup extends MessageLookupByLibrary {
     "workModeCountryDesc": MessageLookupByLibrary.simpleMessage(
       "Choose a country.",
     ),
-    "workModeGaming": MessageLookupByLibrary.simpleMessage("Gaming"),
-    "workModeGamingDesc": MessageLookupByLibrary.simpleMessage(
-      "Lowest ping for gaming.",
-    ),
     "workModeResetNotice": MessageLookupByLibrary.simpleMessage(
       "Mode reset to Standard: settings unavailable after subscription update.",
     ),
