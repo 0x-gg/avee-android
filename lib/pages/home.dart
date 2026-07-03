@@ -710,12 +710,12 @@ class _ConnectCircleState extends ConsumerState<_ConnectCircle>
                     boxShadow: [
                       perimeterGlow,
                       const BoxShadow(
-                        color: Color(0x99000000),
+                        color: Lumina.scrimHeavy,
                         blurRadius: 4,
                         offset: Offset(0, 1),
                       ),
                       const BoxShadow(
-                        color: Color(0x66000000),
+                        color: Lumina.scrimSoft,
                         blurRadius: 26,
                         spreadRadius: -6,
                         offset: Offset(0, 14),
@@ -825,7 +825,7 @@ class _ConnectGlassPainter extends CustomPainter {
       ..shader = const RadialGradient(
         center: Alignment(0, 0.25),
         radius: 0.8,
-        colors: [Lumina.lensBody, Color(0xFF080810)],
+        colors: [Lumina.lensBody, Lumina.lensDeep],
         stops: [0.55, 1.0],
       ).createShader(rect);
     canvas.drawCircle(center, r, bodyPaint);
@@ -892,9 +892,9 @@ class _ConnectGlassPainter extends CustomPainter {
       ..shader = SweepGradient(
         transform: const GradientRotation(-math.pi / 2),
         colors: [
-          const Color(0x00000000),
+          Colors.transparent,
           Colors.black.withValues(alpha: 0.75),
-          const Color(0x00000000),
+          Colors.transparent,
         ],
         stops: const [0.08, 0.5, 0.92],
       ).createShader(rect);

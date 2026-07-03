@@ -35,6 +35,12 @@ class Lumina {
   // Connect-lens glass body fill (dark, blue-tinted). Also the lerp base for
   // the dashboard inactive-icon tint and the metainfo accent ring.
   static const Color lensBody = Color(0xFF15151D);
+  // Connect-lens outer radial edge — near-black blue tint the body fades into.
+  static const Color lensDeep = Color(0xFF080810);
+  // Connect-lens contact shadow (tight, opaque) under the glass button.
+  static const Color scrimHeavy = Color(0x99000000);
+  // Connect-lens ambient drop shadow (soft, translucent) under the glass button.
+  static const Color scrimSoft = Color(0x66000000);
   // Status: VPN connected indicator (desktop title-bar / tray dot).
   static const Color statusConnected = Color(0xFF4CAF50);
   // Elevated-latency badge accent (amber); delays >= 600ms.
