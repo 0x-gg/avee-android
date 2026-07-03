@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -89,7 +90,19 @@ class _StartButtonState extends ConsumerState<StartButton>
     ConnectTrace.start();
     unawaited(App().performHapticFeedback(DropwebHapticCue.confirm));
     unawaited(App().playUiSound(DropwebSoundCue.powerOn));
+    unawaited(_maybeRequestNotificationPermission());
     unawaited(globalState.appController.updateStatus(true));
+  }
+
+  /// One-shot POST_NOTIFICATIONS ask on the FIRST successful connect (Android
+  /// 13+). Without it the foreground-service VPN notification (uptime/speed) is
+  /// invisible on fresh installs. Fire-and-forget so it never delays the tunnel;
+  /// the native side gates on SDK level + current grant.
+  Future<void> _maybeRequestNotificationPermission() async {
+    if (!Platform.isAndroid) return;
+    if (await notificationPermissionPrompt.isRequested()) return;
+    await notificationPermissionPrompt.markRequested();
+    await App().requestNotificationsPermission();
   }
 
   /// Returns true when the user has previously accepted the disclosure OR
@@ -101,6 +114,11 @@ class _StartButtonState extends ConsumerState<StartButton>
   /// write, we treat the attempt as cancelled so the dialog can re-prompt
   /// next time.
   Future<bool> _ensureVpnConsent() async {
+    // Flavor gating (Play-only disclosure) lives INSIDE vpnConsent.isAccepted()
+    // — the single source of truth shared with the controller's
+    // defense-in-depth check in updateStatus(true). Do NOT duplicate a
+    // kIsPlayBuild branch here: a dialog-only bypass leaves the controller
+    // refusing the start (the "VPN won't start on non-Play builds" bug).
     if (await vpnConsent.isAccepted()) return true;
     if (!mounted) return false;
     final accepted = await showVpnDisclosureDialog(context);

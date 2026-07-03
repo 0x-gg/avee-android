@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:dropweb/common/common.dart';
+import 'package:dropweb/enum/enum.dart';
 import 'package:dropweb/models/models.dart';
 import 'package:dropweb/state.dart';
 import 'package:flutter/cupertino.dart';
@@ -295,7 +296,17 @@ class Request {
     }
   }
 
-  Future<bool> pingHelper() async {
+  Future<bool> pingHelper() async =>
+      await pingHelperDetailed() == HelperPingResult.ok;
+
+  /// Probe the helper and distinguish "starting up" from "wrong helper".
+  /// The /ping body is the core SHA256 baked into the helper at build time
+  /// (env!("TOKEN") in services/helper/src/service/hub.rs). A token mismatch
+  /// is a definitive identity failure (stale helper after an app update, or a
+  /// foreign clash-lineage helper) — retrying cannot fix it. Network errors
+  /// mean the HTTP server is not (yet) bound, which is transient during
+  /// service start, so callers may poll on [HelperPingResult.unreachable].
+  Future<HelperPingResult> pingHelperDetailed() async {
     try {
       final response = await _dio
           .get(
@@ -310,11 +321,13 @@ class Request {
             ),
           );
       if (response.statusCode != HttpStatus.ok) {
-        return false;
+        return HelperPingResult.unreachable;
       }
-      return (response.data as String) == globalState.coreSHA256;
+      return (response.data as String) == globalState.coreSHA256
+          ? HelperPingResult.ok
+          : HelperPingResult.mismatch;
     } catch (_) {
-      return false;
+      return HelperPingResult.unreachable;
     }
   }
 

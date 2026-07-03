@@ -93,6 +93,9 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
       render?.resume();
       // Reconcile FAB with native state — QS tile / notification STOP don't notify us.
       unawaited(globalState.appController.syncRunStateFromNative());
+      // HWID device-limit recovery: the user likely just freed a slot in the
+      // panel cabinet (browser) — retry the flagged profile immediately.
+      globalState.appController.resumeHwidRecovery();
     } else {
       render?.resume();
     }

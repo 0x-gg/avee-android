@@ -7,6 +7,7 @@ import 'package:dropweb/clash/clash.dart';
 import 'package:dropweb/common/connect_trace.dart';
 import 'package:dropweb/common/error_mapper.dart';
 import 'package:dropweb/common/work_mode_patch.dart';
+import 'package:dropweb/services/hwid_recovery.dart';
 import 'package:dropweb/services/subscription_notification_service.dart';
 import 'package:dropweb/enum/enum.dart';
 import 'package:dropweb/plugins/app.dart';
@@ -115,6 +116,21 @@ class AppController {
   /// start always re-runs the full setup. Invalidated on profile switch and on
   /// any setup error.
   String? _lastSetupHash;
+
+  /// Bounded guard for core restarts issued from [_requestAdmin] (both the
+  /// post-authorize restart and the Windows realign self-heal). Every
+  /// restartCore() from _requestAdmin recurses via _initCore → applyProfile →
+  /// setupClashConfig → _requestAdmin, and loadingRun has no re-entrancy
+  /// guard — an unbounded success↔none alternation under a flapping helper
+  /// would recurse forever. So: every restart from here counts against ONE
+  /// shared cap, nothing inside the recursion ever resets it, and the counter
+  /// is reset only at non-recursive user-action entry points
+  /// ([updateStatus], [updateClashConfig], [handleChangeProfile]) so a later
+  /// user action always gets a fresh chance to realign (no permanent
+  /// per-session TUN-off).
+  int _coreRealignAttempts = 0;
+
+  static const _maxCoreRealignAttempts = 3;
 
   Timer? _profileUpdateTimer;
   bool _isExiting = false;
@@ -226,7 +242,12 @@ class AppController {
     final svc = profile.providerHeaders['dropweb-servicename'];
     if (svc != null && svc.isNotEmpty) {
       try {
-        final normalized = base64.normalize(svc);
+        // Mirror Profile.serviceName: branding headers may carry an optional
+        // `base64:` prefix before the base64 payload — strip it before decode,
+        // else base64.normalize chokes on the "base64:" text and we fall back
+        // to the raw (still-encoded) header.
+        final raw = svc.startsWith('base64:') ? svc.substring(7) : svc;
+        final normalized = base64.normalize(raw);
         serviceName = utf8.decode(base64.decode(normalized)).trim();
       } catch (_) {
         serviceName = svc.trim();
@@ -243,7 +264,11 @@ class AppController {
     if (groupName != null && groupName.isNotEmpty) {
       String decodedGroupName;
       try {
-        final normalized = base64.normalize(groupName);
+        // Mirror Profile.serviceName: strip the optional `base64:` prefix
+        // before normalize/decode.
+        final raw =
+            groupName.startsWith('base64:') ? groupName.substring(7) : groupName;
+        final normalized = base64.normalize(raw);
         decodedGroupName = utf8.decode(base64.decode(normalized)).trim();
       } catch (_) {
         decodedGroupName = groupName.trim();
@@ -255,11 +280,48 @@ class AppController {
 
   Future<void> restartCore() async {
     commonPrint.log("restart core");
+    // A restarted core process starts UNCONFIGURED. The content-hash gate in
+    // _setupClashConfig compares against the last SUCCESSFUL setup of the
+    // PREVIOUS process — with unchanged inputs it would "hash match" and skip
+    // the setup entirely, leaving the fresh core with no proxies/rules while
+    // the UI claims connected. A new process must never hit the cache.
+    _lastSetupHash = null;
     await clashService?.reStart();
     await _initCore();
     if (_ref.read(runTimeProvider.notifier).isStart) {
       await globalState.handleStart();
     }
+  }
+
+  /// Timestamp of the last automatic recovery from an unexpected desktop core
+  /// death. Bounds the self-heal to at most ONE auto-restart per
+  /// [_coreDeathRecoveryCooldown]: a crash-looping core must not be restarted
+  /// forever — once the budget is spent we fail HONEST (stopped state + a
+  /// visible error) instead of hammering a doomed core or lying "connected".
+  DateTime? _lastCoreDeathRecovery;
+  static const _coreDeathRecoveryCooldown = Duration(minutes: 5);
+
+  /// Wired to [ClashService.onUnexpectedCoreDeath] (desktop only). The core
+  /// process died or the bridge socket dropped without us initiating it.
+  Future<void> _handleUnexpectedCoreDeath(String reason) async {
+    commonPrint.log('[core-bridge] controller: core died — $reason');
+    final now = DateTime.now();
+    final last = _lastCoreDeathRecovery;
+    if (last != null && now.difference(last) < _coreDeathRecoveryCooldown) {
+      // Budget spent within the cooldown window: stop restarting. Present an
+      // honest stopped state and a user-visible error rather than a lying
+      // "connected" UI whose every request silently times out.
+      commonPrint.log(
+        '[core-bridge] within cooldown — failing honest (stopped)',
+      );
+      await updateStatus(false);
+      globalState.showNotifier(ErrorMapper.vpnStartFailed);
+      return;
+    }
+    _lastCoreDeathRecovery = now;
+    // One bounded self-heal: restartCore() clears _lastSetupHash and re-runs
+    // handleStart if the UI still shows started.
+    await restartCore();
   }
 
   /// Read-only reconcile of Dart VPN state with native runtime. Never toggles VPN.
@@ -278,6 +340,16 @@ class AppController {
 
     if (nativeIsRunning) {
       updateRunTime();
+      // The periodic ticker (runtime + speed) is armed only by
+      // handleStart -> startUpdateTasks. On an EXTERNAL start (QS tile /
+      // notification) the app isolate can be fresh, so globalState.tasks is
+      // empty and the dashboard would freeze at a static runtime and 0 B/s.
+      // Re-arm with the same task pair handleStart uses; startUpdateTasks is
+      // idempotent via its timer.isActive guard.
+      unawaited(globalState.startUpdateTasks([updateRunTime, updateTraffic]));
+      // Symmetry with the stop branch's updateIcon(false) — macOS-only no-op
+      // on Android, kept for parity with updateStatus(true)'s connected icon.
+      await StatusBarManager.updateIcon(isConnected: true);
     } else {
       // Native already stopped — tear down Dart bookkeeping without re-calling handleStop.
       clashCore.resetTraffic();
@@ -291,6 +363,8 @@ class AppController {
   }
 
   Future<void> updateStatus(bool isStart) async {
+    // Fresh user action — new core-restart budget for _requestAdmin.
+    _coreRealignAttempts = 0;
     if (isStart) {
       ConnectTrace.mark('updateStatus');
       // Central safety gate: every code path that turns the VPN on must
@@ -449,11 +523,7 @@ class AppController {
       _applyAllHeaderSettings(newProfile, isNewProfile: false);
     }
 
-    final showHwidLimit = headers['x-hwid-limit']?.toLowerCase() == 'true';
-    final announceText = headers['announce'];
-    if (showHwidLimit && announceText != null && announceText.isNotEmpty) {
-      _showHwidLimitNotice(announceText, headers['support-url']);
-    }
+    _handleHwidHeaders(newProfile);
 
     final finalProfile =
         await _revalidateWorkMode(newProfile.copyWith(isUpdating: false));
@@ -473,7 +543,67 @@ class AppController {
     }));
   }
 
-  void _showHwidLimitNotice(String encodedText, String? supportUrl) {
+  /// HWID device-limit recovery. Header-driven and provider-neutral: any
+  /// panel that flags `x-hwid-limit: true` gets the same treatment. The retry
+  /// callback re-runs [updateProfile] — the next successful fetch registers
+  /// this device, so recovery is "retry until the header clears" via three
+  /// channels: foreground poll, app-resume, and the dialog's manual button.
+  late final HwidRecoveryService _hwidRecovery = HwidRecoveryService(
+    retryProfileUpdate: _retryHwidProfile,
+  );
+
+  Future<void> _retryHwidProfile(String profileId) async {
+    final profile = _ref.read(profilesProvider).getProfile(profileId);
+    if (profile == null) {
+      // Profile deleted mid-episode — nothing left to recover.
+      _hwidRecovery.onRecovered(profileId);
+      return;
+    }
+    await updateProfile(profile);
+  }
+
+  /// Routes a subscription fetch's HWID verdict into the recovery episode.
+  /// Called from every path that parses provider headers (update + import).
+  void _handleHwidHeaders(Profile profile) {
+    final headers = profile.providerHeaders;
+    final limited = headers['x-hwid-limit']?.toLowerCase() == 'true';
+    if (!limited) {
+      if (_hwidRecovery.onRecovered(profile.id)) {
+        // The device slot freed up and this fetch registered us — celebrate
+        // instead of leaving the user guessing whether their cabinet dance
+        // worked.
+        globalState.showNotifier(appLocalizations.hwidRecovered);
+        unawaited(App().performHapticFeedback(DropwebHapticCue.confirm));
+      }
+      return;
+    }
+    final isNewEpisode = _hwidRecovery.onHwidLimit(profile.id);
+    final announceText = headers['announce'];
+    // Dialog ONCE per episode; while the poll keeps hitting the limit the
+    // retries stay silent (no dialog stacking).
+    if (isNewEpisode && announceText != null && announceText.isNotEmpty) {
+      _showHwidLimitNotice(
+        announceText,
+        supportUrl: headers['support-url'],
+        // Panel-supplied deep link straight to the device-management page
+        // (e.g. the cabinet's /devices). Provider-neutral: whatever URL the
+        // panel advertises, nothing is baked into the app.
+        deviceRemoveUrl: headers['dropweb-device-remove'],
+      );
+    }
+  }
+
+  /// App resumed — likely back from the panel cabinet. Give the flagged
+  /// profile an immediate retry instead of waiting out the poll interval.
+  void resumeHwidRecovery() {
+    _hwidRecovery.onAppResumed();
+  }
+
+  void _showHwidLimitNotice(
+    String encodedText, {
+    String? supportUrl,
+    String? deviceRemoveUrl,
+  }) {
     String? announceText;
     var textToDecode = encodedText;
 
@@ -491,26 +621,47 @@ class AppController {
     if (announceText.isNotEmpty) {
       final actions = <Widget>[];
 
-      if (supportUrl != null && supportUrl.isNotEmpty) {
+      if (deviceRemoveUrl != null && deviceRemoveUrl.isNotEmpty) {
+        // The panel gave us a deep link to the exact place the user frees a
+        // device slot — so the dialog is ONE decisive action, not a button
+        // buffet the user dismisses blindly. Coming back to the app fires the
+        // resume-retry, so the round trip closes itself (success notifier).
         actions.add(
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              globalState.openUrl(supportUrl);
+              // Direct launch: the button label IS the consent — the generic
+              // «внешняя ссылка?» confirm would be a second dialog between
+              // the user and the fix.
+              unawaited(globalState.openUrlDirect(deviceRemoveUrl));
             },
-            child: Text(appLocalizations.support),
+            child: Text(appLocalizations.hwidFreeSlot),
+          ),
+        );
+      } else {
+        // No device-management link advertised — fall back to support + close.
+        if (supportUrl != null && supportUrl.isNotEmpty) {
+          actions.add(
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Same rationale as the device-remove button: explicit tap =
+                // consent, no second confirm dialog.
+                unawaited(globalState.openUrlDirect(supportUrl));
+              },
+              child: Text(appLocalizations.support),
+            ),
+          );
+        }
+        actions.add(
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text(appLocalizations.confirm),
           ),
         );
       }
-
-      actions.add(
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: Text(appLocalizations.confirm),
-        ),
-      );
 
       globalState.showCommonDialog(
         child: CommonDialog(
@@ -616,6 +767,8 @@ class AppController {
   }
 
   Future<void> updateClashConfig() async {
+    // Fresh user action — new core-restart budget for _requestAdmin.
+    _coreRealignAttempts = 0;
     final commonScaffoldState = globalState.homeScaffoldKey.currentState;
     if (commonScaffoldState?.mounted != true) return;
     await commonScaffoldState?.loadingRun(() async {
@@ -644,9 +797,41 @@ class AppController {
       final code = await system.authorizeCore();
       switch (code) {
         case AuthorizeCode.success:
+          if (_coreRealignAttempts >= _maxCoreRealignAttempts) {
+            commonPrint.log(
+                "[helper] restart budget exhausted after authorize — degrading to TUN-off for this apply cycle");
+            enableTun = false;
+            break;
+          }
+          _coreRealignAttempts++;
           await restartCore();
           return Result.error("");
         case AuthorizeCode.none:
+          // Windows: AuthorizeCode.none only means "the helper service is up
+          // and verified" — it does NOT mean the LIVE core was spawned through
+          // it. On first launch / after an update / on the logon auto-start
+          // race the core was spawned directly (unprivileged) before the
+          // helper came up; pushing tun.enable=true at it silently fails
+          // (wintun needs privileges) and used to poison the session until an
+          // app restart. Realign: restart the core through the now-ready
+          // helper, sharing the same bounded restart budget as the success
+          // path so no authorize-outcome alternation can recurse forever.
+          if (Platform.isWindows &&
+              clashService?.coreStartedByHelper == false) {
+            if (_coreRealignAttempts >= _maxCoreRealignAttempts) {
+              // Budget exhausted — ship an honest proxy-only session instead
+              // of a fake TUN one. The next user action resets the budget.
+              commonPrint.log(
+                  "[helper] realign budget exhausted — degrading to TUN-off for this apply cycle");
+              enableTun = false;
+              break;
+            }
+            _coreRealignAttempts++;
+            commonPrint.log(
+                "[helper] core is unprivileged but helper is ready — realigning core via helper (attempt $_coreRealignAttempts/$_maxCoreRealignAttempts)");
+            await restartCore();
+            return Result.error("");
+          }
           break;
         case AuthorizeCode.error:
           enableTun = false;
@@ -762,6 +947,14 @@ class AppController {
     final params = await globalState.getSetupParams(
       pathConfig: realPatchConfig,
     );
+    // Invalidate BEFORE mutating the core. setupConfig can THROW (the
+    // fail-fast completeError path in handleResult for malformed payloads),
+    // not just return an error string — a throw here would skip the
+    // error-branch below and leave the PREVIOUS hash recorded, so every
+    // following apply would "hash match" and skip setup over a core in an
+    // unknown half-applied state. Null-first makes any non-success exit
+    // (error string, exception, process death mid-call) force a real re-setup.
+    _lastSetupHash = null;
     final message = await clashCore.setupConfig(params);
     lastProfileModified = await _ref.read(
       currentProfileProvider.select(
@@ -769,8 +962,6 @@ class AppController {
       ),
     );
     if (message.isNotEmpty) {
-      // Setup failed — do not record the hash, so the next attempt re-runs.
-      _lastSetupHash = null;
       throw message;
     }
     // Only record the hash after a successful core setup.
@@ -861,6 +1052,8 @@ class AppController {
   }
 
   void handleChangeProfile() {
+    // Fresh user action — new core-restart budget for _requestAdmin.
+    _coreRealignAttempts = 0;
     // Switching profiles changes the effective config independently of any
     // single hashed input, so force a full setup on the next run.
     _lastSetupHash = null;
@@ -1191,6 +1384,11 @@ class AppController {
       return true;
     };
     updateTray(true);
+    // Desktop core-death self-heal hook (no-op on Android where clashService is
+    // null). Injected here — the service must not import the controller.
+    clashService?.onUnexpectedCoreDeath = (reason) {
+      unawaited(_handleUnexpectedCoreDeath(reason));
+    };
     // Surface the app to the user IMMEDIATELY on launch — BEFORE the (possibly
     // slow or stalling) core handshake in _initCore() below. Previously the
     // window was shown only AFTER _initCore(), so a slow/stalled core left it
@@ -1398,7 +1596,15 @@ class AppController {
         () async {
           final prefs = await SharedPreferences.getInstance();
           final shouldSend = prefs.getBool('sendDeviceHeaders') ?? true;
-          return Profile.normal(url: normalizedUrl)
+          // Sponge-app naming: seed the label with the subscription host
+          // (e.g. `sub.example.com`) so the imported profile is identified by
+          // its SERVICE, not by the provider's content-disposition filename
+          // (account-noise like `user_468130024`). Branding headers
+          // (profile-title / dropweb-servicename) still win at display time
+          // (Profile.serviceName / MetainfoWidget.pickTitle), and update()
+          // keeps `label ?? disposition ?? id`, so a non-null label survives
+          // auto-updates while manual renames keep working.
+          return Profile.normal(url: normalizedUrl, label: uri.host)
               .update(shouldSendHeaders: shouldSend);
         },
         title: appLocalizations.addProfile,
@@ -1407,12 +1613,7 @@ class AppController {
       if (profile != null) {
         _applyAllHeaderSettings(profile, isNewProfile: true);
 
-        final headers = profile.providerHeaders;
-        final showHwidLimit = headers['x-hwid-limit']?.toLowerCase() == 'true';
-        final announceText = headers['announce'];
-        if (showHwidLimit && announceText != null && announceText.isNotEmpty) {
-          _showHwidLimitNotice(announceText, headers['support-url']);
-        }
+        _handleHwidHeaders(profile);
 
         await addProfile(profile);
         unawaited(App().playUiSound(DropwebSoundCue.importSuccess));

@@ -126,6 +126,12 @@ class ClashCore {
   Future<List<Group>> getProxiesGroups() async {
     final proxies = await clashInterface.getProxies();
     if (proxies.isEmpty) return [];
+    // A partially-initialised or malformed core can return a proxies map with
+    // no GLOBAL entry (or a GLOBAL without an `all` list). The unchecked casts
+    // below would then throw and blank the whole proxies UI; guard instead so
+    // the caller gets an empty list and can retry once the core is ready.
+    final global = proxies[UsedProxy.GLOBAL.name];
+    if (global is! Map || global['all'] is! List) return [];
     final groupNames = [
       UsedProxy.GLOBAL.name,
       ...(proxies[UsedProxy.GLOBAL.name]["all"] as List).where((e) {
@@ -219,8 +225,8 @@ class ClashCore {
   }) async =>
       clashInterface.updateExternalProvider(providerName);
 
-  Future<void> startListener() async {
-    await clashInterface.startListener();
+  Future<bool> startListener() async {
+    return await clashInterface.startListener();
   }
 
   Future<void> stopListener() async {

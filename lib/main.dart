@@ -59,6 +59,16 @@ Future<void> main() async {
     DartPluginRegistrant.ensureInitialized();
   }
 
+  if (system.isDesktop) {
+    // MUST run before the first `clashCore` access: instantiating ClashService
+    // has side effects (unix bridge-socket rebind, core spawn/restart via the
+    // Windows helper) that hijack or kill the RUNNING instance's core. The
+    // duplicate-launch process must die before touching any of that.
+    if (!await singleInstanceLock.acquire()) {
+      exit(0);
+    }
+  }
+
   final version = await system.version;
   await clashCore.preload();
   await globalState.initApp(version);
@@ -247,7 +257,12 @@ Future<void> _service(List<String> flags) async {
       String? groupName = profile?.providerHeaders['dropweb-serverinfo'];
       if (groupName != null && groupName.isNotEmpty) {
         try {
-          final normalized = base64.normalize(groupName);
+          // Mirror Profile.serviceName: strip the optional `base64:` prefix
+          // before normalize/decode, else normalize chokes on the prefix text
+          // and the (empty-catch) fallback keeps the raw encoded header.
+          final raw =
+              groupName.startsWith('base64:') ? groupName.substring(7) : groupName;
+          final normalized = base64.normalize(raw);
           groupName = utf8.decode(base64.decode(normalized));
         } catch (_) {}
         groupName = groupName?.trim();

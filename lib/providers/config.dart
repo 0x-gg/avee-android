@@ -161,10 +161,19 @@ class Profiles extends _$Profiles with AutoDisposeNotifierMixin {
 class CurrentProfileId extends _$CurrentProfileId
     with AutoDisposeNotifierMixin {
   @override
-  String? build() => globalState.config.currentProfileId;
+  String? build() {
+    // Seed from the mirror. Logged because this notifier is autoDispose: a
+    // dispose→rebuild cycle re-seeding a STALE mirror value is exactly the
+    // kind of state loss that manifests as "profile exists but no current
+    // profile" (blank dashboard card).
+    final seed = globalState.config.currentProfileId;
+    commonPrint.log('[curProfile] build/seed: $seed');
+    return seed;
+  }
 
   @override
   void onUpdate(String? value) {
+    commonPrint.log('[curProfile] onUpdate: $value');
     globalState.configRepository.syncSlice(
       (c) => c.copyWith(currentProfileId: value),
     );

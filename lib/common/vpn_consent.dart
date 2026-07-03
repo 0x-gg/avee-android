@@ -1,3 +1,4 @@
+import 'package:dropweb/common/constant.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persists whether the user has accepted the in-app VPN disclosure.
@@ -23,6 +24,15 @@ class VpnConsent {
   /// current version. Returns false when SharedPreferences cannot be reached
   /// (treated as "not yet accepted" so the dialog is shown).
   Future<bool> isAccepted() async {
+    // The in-app disclosure is a Google Play compliance artifact (VpnService
+    // prominent-disclosure mandate). Off-Play channels (sideload/site APK,
+    // desktop) are exempt by design: report "accepted" WITHOUT persisting a
+    // flag. This is the single source of truth, so BOTH gates — the
+    // StartButton dialog and the controller's defense-in-depth check in
+    // updateStatus(true) — agree; gating only the dialog while the controller
+    // still refused the start is exactly the bug that bricked VPN start on
+    // non-Play builds.
+    if (!kIsPlayBuild) return true;
     try {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getBool(storageKey) ?? false;

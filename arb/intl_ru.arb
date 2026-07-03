@@ -462,6 +462,7 @@
   "remainingSingular": "Остался",
   "remainingPlural": "Осталось",
   "qrNotFound": "QR-код не найден",
+  "cameraPermissionDenied": "Доступ к камере запрещён",
   "successTitle": "Успешно",
   "sentSuccessfullyMessage": "Отправлено успешно",
   "errorTitle": "Ошибка",
@@ -475,6 +476,8 @@
   "selectProfile": "Выбрать профиль",
   "sendToTv": "Отправить на ТВ",
   "support": "Поддержка",
+  "hwidFreeSlot": "Освободить лимит",
+  "hwidRecovered": "Устройство зарегистрировано\nПодписка обновлена",
   "personalCabinet": "Личный кабинет",
   "menu": "MENU",
   "close": "Закрыть",
@@ -521,6 +524,10 @@
   "alwaysOnVpnOpenFailed": "Не удалось открыть настройки VPN",
   "onboardingAddHint": "Нажмите, чтобы добавить подписку",
   "onboardingClipboardImport": "Вставить подписку из буфера",
+  "addNamedSubscription": "Добавить {host}",
   "onboardingClipboardImportDesc": "Обнаружена ссылка на подписку:",
-  "onboardingImported": "Подписка добавлена. Нажмите, чтобы подключиться"
+  "onboardingImported": "Подписка добавлена. Нажмите, чтобы подключиться",
+  "dashboardEmptyTitle": "Добавьте подписку",
+  "dashboardEmptyHint": "Вставьте ссылку или отсканируйте QR-код",
+  "importFromUrlHint": "https://… — ссылка подписки вашего провайдера"
 }

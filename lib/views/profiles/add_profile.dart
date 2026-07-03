@@ -21,16 +21,21 @@ class AddProfileView extends StatefulWidget {
 }
 
 class _AddProfileViewState extends State<AddProfileView> {
-  /// Subscription URL detected in the clipboard on sheet open, or null when
-  /// the clipboard held nothing importable. Drives the highlighted top entry.
+  /// Subscription URL detected in the clipboard when the sheet opened, or
+  /// null. A detected candidate renders the clipboard row as a NAMED one-tap
+  /// import — «Добавить sub.example.com» — so the user sees WHAT will be
+  /// imported before tapping (owner requirement: the service identity must be
+  /// visible up front, a blind "paste" row is not).
   String? _clipboardCandidate;
 
   @override
   void initState() {
     super.initState();
-    // Privacy: read the clipboard EXACTLY once, here, tied to the explicit
-    // "Add" intent — never at app launch/resume. Ties the Android-12 system
-    // clipboard toast to a user-authored action. See onboarding-brief §2.
+    // Owner decision (2026-07-03): read the clipboard ONCE at sheet open.
+    // This sheet only ever opens from an explicit add tap, so the read is
+    // tied to a user-authored intent — the Android 12+ clipboard toast is
+    // acceptable in this context, and the payoff is the named import row
+    // above. NEVER read at app launch/resume (that was the Wave 1 finding).
     unawaited(_checkClipboard());
   }
 
@@ -41,10 +46,20 @@ class _AddProfileViewState extends State<AddProfileView> {
       if (!mounted || candidate == null) return;
       setState(() => _clipboardCandidate = candidate);
     } catch (e) {
-      // Clipboard access can throw (permission/host exceptions) — treat as
-      // no-match; never surface into the UI.
-      commonPrint.log('[onboarding] clipboard read failed: $e');
+      // Clipboard access can throw (host/permission) — treat as no-match;
+      // the row degrades to the read-on-tap fallback.
+      commonPrint.log('[add-profile] clipboard read failed: $e');
     }
+  }
+
+  /// One-tap import of the candidate detected at sheet open.
+  void _handleCandidateImport() {
+    final candidate = _clipboardCandidate;
+    if (candidate == null) return;
+    // Close the sheet first; addProfileFromUrl drives the dashboard loading
+    // flow via the global navigator (not this sheet's context).
+    Navigator.pop(context);
+    unawaited(addProfileFromUrl(candidate));
   }
 
   Future<void> _handleReceiveFromPhone() async {
@@ -57,13 +72,31 @@ class _AddProfileViewState extends State<AddProfileView> {
     }
   }
 
-  void _handleClipboardImport() {
-    final candidate = _clipboardCandidate;
-    if (candidate == null) return;
-    // Close the sheet first; addProfileFormURL then drives the dashboard
-    // loading flow via the global navigator (not this sheet's context).
+  /// Fallback for the clipboard row when nothing was detected at sheet open:
+  /// re-reads on tap (the clipboard may have changed since). If the text is a
+  /// subscription URL, import it via the same path the other rows use; else
+  /// hand it to the URL dialog prefilled, so a near-miss (extra whitespace, a
+  /// wrapped/deep link, a page URL) is one edit away, not a dead end.
+  Future<void> _handlePasteFromClipboard() async {
+    String? text;
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      text = data?.text;
+    } catch (e) {
+      // Clipboard access can throw (host/permission) — treat as empty and fall
+      // through to the URL dialog; never surface a raw exception to the user.
+      commonPrint.log('[add-profile] clipboard read failed: $e');
+    }
+    if (!mounted) return;
+    final subscription = extractSubscriptionUrl(text);
+    // Close the sheet first: both downstream paths drive the dashboard via the
+    // global navigator, not this sheet's context (which is about to pop).
     Navigator.pop(context);
-    unawaited(addProfileFromUrl(candidate));
+    if (subscription != null) {
+      unawaited(addProfileFromUrl(subscription));
+    } else {
+      unawaited(showProfileUrlDialog(widget.context, initialText: text));
+    }
   }
 
   @override
@@ -71,17 +104,33 @@ class _AddProfileViewState extends State<AddProfileView> {
         future: system.isAndroidTV,
         builder: (context, snapshot) {
           final isTV = snapshot.data ?? false;
-          final candidate = _clipboardCandidate;
           return ListView(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(vertical: 8),
             children: [
-              if (candidate != null)
-                _ClipboardImportEntry(
-                  host: Uri.tryParse(candidate)?.host ?? '',
-                  onTap: _handleClipboardImport,
-                ),
+              // Clipboard row — ALWAYS present, a plain ListItem matching the
+              // QR/URL rows. With a candidate detected at sheet open it names
+              // the service («Добавить sub.example.com», one tap = import);
+              // without one it is a generic paste row that reads on tap. No
+              // subtitle: the title carries the whole intent.
+              Builder(builder: (context) {
+                final candidate = _clipboardCandidate;
+                final host =
+                    candidate != null ? Uri.tryParse(candidate)?.host : null;
+                return ListItem(
+                  leading: const HugeIcon(
+                      icon: HugeIcons.strokeRoundedClipboard, size: 24),
+                  title: Text(
+                    host != null && host.isNotEmpty
+                        ? appLocalizations.addNamedSubscription(host)
+                        : appLocalizations.onboardingClipboardImport,
+                  ),
+                  onTap: candidate != null
+                      ? _handleCandidateImport
+                      : _handlePasteFromClipboard,
+                );
+              }),
               if (isTV)
                 ListItem(
                   leading: const HugeIcon(
@@ -109,42 +158,6 @@ class _AddProfileViewState extends State<AddProfileView> {
       );
 }
 
-/// Highlighted "paste subscription from clipboard" entry promoted to the top
-/// of the Add sheet when a subscription URL is detected in the clipboard.
-/// Promoted via [Lumina.glass] + a primary-tinted leading icon so it reads as
-/// the recommended action — still the same [ListItem] atom as every other row.
-class _ClipboardImportEntry extends StatelessWidget {
-  const _ClipboardImportEntry({
-    required this.host,
-    required this.onTap,
-  });
-
-  final String host;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final desc = appLocalizations.onboardingClipboardImportDesc;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-      child: DecoratedBox(
-        decoration: Lumina.glass(radius: Lumina.radiusMd),
-        child: ListItem(
-          leading: HugeIcon(
-            icon: HugeIcons.strokeRoundedClipboard,
-            size: 24,
-            color: colorScheme.primary,
-          ),
-          title: Text(appLocalizations.onboardingClipboardImport),
-          subtitle: Text(host.isEmpty ? desc : '$desc $host'),
-          onTap: onTap,
-        ),
-      ),
-    );
-  }
-}
-
 Future<void> addProfileFromUrl(String url) async {
   await globalState.appController.addProfileFormURL(url);
 }
@@ -165,9 +178,12 @@ Future<void> scanProfileQrCode(BuildContext context) async {
   }
 }
 
-Future<void> showProfileUrlDialog(BuildContext context) async {
+Future<void> showProfileUrlDialog(
+  BuildContext context, {
+  String? initialText,
+}) async {
   final url = await globalState.showCommonDialog<String>(
-    child: const URLFormDialog(),
+    child: URLFormDialog(initialText: initialText),
   );
   if (url != null) {
     await addProfileFromUrl(url);
@@ -175,14 +191,32 @@ Future<void> showProfileUrlDialog(BuildContext context) async {
 }
 
 class URLFormDialog extends StatefulWidget {
-  const URLFormDialog({super.key});
+  const URLFormDialog({super.key, this.initialText});
+
+  /// Optional prefill for the URL field. The Add sheet's clipboard row hands
+  /// the raw clipboard text here when it is NOT a bare subscription URL, so a
+  /// near-miss (wrapped link, stray whitespace, a page URL) lands editable
+  /// instead of dead-ending. Null/empty → empty field (the normal path).
+  final String? initialText;
 
   @override
   State<URLFormDialog> createState() => _URLFormDialogState();
 }
 
 class _URLFormDialogState extends State<URLFormDialog> {
-  final urlController = TextEditingController();
+  late final TextEditingController urlController;
+
+  @override
+  void initState() {
+    super.initState();
+    urlController = TextEditingController(text: widget.initialText ?? '');
+  }
+
+  @override
+  void dispose() {
+    urlController.dispose();
+    super.dispose();
+  }
 
   void _handleSubmit() {
     final url = urlController.text.trim();
@@ -224,6 +258,10 @@ class _URLFormDialogState extends State<URLFormDialog> {
             decoration: InputDecoration(
               border: const OutlineInputBorder(),
               labelText: appLocalizations.url,
+              // Neutral shape-of-input hint (provider-agnostic): renders only
+              // while the field is empty, guiding a fresh user without naming
+              // or linking any provider. Prefilled clipboard text hides it.
+              hintText: appLocalizations.importFromUrlHint,
             ),
           ),
         ),

@@ -104,6 +104,14 @@ class GlobalState {
 
   /// Completes the pending TUN ack (no-op if none is in flight, e.g. a late
   /// TUN status arriving outside a start transition).
+  ///
+  /// Residual race (accepted): this completes whatever [_tunAck] is CURRENT and
+  /// carries no attempt token, because the native `onTun` payload
+  /// ({status, message}) originates in the Go core and can't cheaply carry one.
+  /// During a rapid stop->start, a late ack from the previous attempt can thus
+  /// complete the current attempt's completer. [handleStart] mitigates the
+  /// field-lifecycle half via an `identical()` guard; closing this fully would
+  /// require threading a token through Go/Kotlin (out of scope for this fix).
   void completeTunAck(String? error) {
     final ack = _tunAck;
     if (ack == null || ack.isCompleted) return;
@@ -266,8 +274,18 @@ class GlobalState {
     // would wrongly roll back a valid proxy-only start. Desktop and Android
     // proxy-only starts never block on the ack and behave exactly as before.
     final needsTunAck = Platform.isAndroid && config.vpnProps.enable;
+    // Capture THIS attempt's ack completer. completeTunAck() always completes
+    // whatever _tunAck is CURRENT, so during a rapid stop->start a late TUN
+    // status could land on the wrong attempt. Awaiting our own captured `myAck`
+    // (not `_tunAck!`) and clearing the shared field only when it still points
+    // at us (identical) stops a finishing attempt from nulling a newer one's
+    // completer. The residual cross-attempt completion is documented at
+    // completeTunAck — fully closing it needs a token through the native
+    // round-trip, which the Go/Kotlin payload can't carry cheaply.
+    Completer<String?>? myAck;
     if (needsTunAck) {
-      _tunAck = Completer<String?>();
+      myAck = Completer<String?>();
+      _tunAck = myAck;
       isConnecting.value = true;
     }
     try {
@@ -278,8 +296,24 @@ class GlobalState {
       if (!needsTunAck) {
         startTime ??= DateTime.now();
       }
-      await clashCore.startListener();
+      final listenerStarted = await clashCore.startListener();
       ConnectTrace.mark('startListener.done');
+      // Desktop only: the core is a separate process behind the socket
+      // bridge, and startListener carries a 10s invoke timeout that returns
+      // false when the core is wedged/dead (first-launch AV scans, a failed
+      // spawn). Ignoring it reported a successful connect with no core
+      // listening. Android keeps its existing semantics — the FFI call and
+      // the TUN-ack path below already own failure handling there.
+      if (system.isDesktop && !listenerStarted) {
+        startTime = null;
+        // Best-effort rollback for a listener the core may still bring up
+        // late (after our 10s timeout). Fire-and-forget on purpose:
+        // stopListener has no invoke timeout and sendMessage blocks on the
+        // bridge socket — awaiting it here would hang handleStart on exactly
+        // the wedged core this branch exists to escape.
+        unawaited(clashCore.stopListener());
+        return false;
+      }
       final started = await service?.startVpn();
       ConnectTrace.mark('startVpn.done');
       if (started == false) {
@@ -288,7 +322,7 @@ class GlobalState {
         return false;
       }
       if (needsTunAck) {
-        final ackError = await _tunAck!.future.timeout(
+        final ackError = await myAck!.future.timeout(
           const Duration(seconds: 15),
           onTimeout: () => 'tun start timeout',
         );
@@ -316,7 +350,11 @@ class GlobalState {
       startUpdateTasks(tasks);
       return true;
     } finally {
-      _tunAck = null;
+      // Only clear the shared field if it still refers to THIS attempt's ack —
+      // a newer attempt may already have installed its own completer.
+      if (identical(_tunAck, myAck)) {
+        _tunAck = null;
+      }
       isConnecting.value = false;
       _vpnTransitionInFlight = false;
     }
@@ -453,6 +491,24 @@ class GlobalState {
       return;
     }
     launchUrl(Uri.parse(url));
+  }
+
+  /// Opens [url] immediately, WITHOUT the external-link confirm dialog.
+  /// For flows where the user already made an explicit, clearly-labeled
+  /// choice (e.g. the HWID dialog's device-management deep link) a second
+  /// «внешняя ссылка?» prompt is pure friction. URL is provider-supplied —
+  /// guard the parse/launch instead of crashing on malformed header data.
+  Future<void> openUrlDirect(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      commonPrint.log('[openUrl] malformed url from provider header');
+      return;
+    }
+    try {
+      await launchUrl(uri);
+    } catch (e) {
+      commonPrint.log('[openUrl] launch failed: $e');
+    }
   }
 
   Future<void> migrateOldData(Config config) async {

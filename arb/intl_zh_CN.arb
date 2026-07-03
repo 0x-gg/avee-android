@@ -455,6 +455,7 @@
   "remainingSingular": "剩余",
   "remainingPlural": "剩余",
   "qrNotFound": "未找到二维码",
+  "cameraPermissionDenied": "相机权限被拒绝",
   "successTitle": "成功",
   "sentSuccessfullyMessage": "发送成功",
   "errorTitle": "错误",
@@ -468,6 +469,8 @@
   "selectProfile": "选择配置",
   "sendToTv": "发送到电视",
   "support": "支持",
+  "hwidFreeSlot": "释放设备位",
+  "hwidRecovered": "设备已注册\n订阅已更新",
   "personalCabinet": "个人中心",
   "menu": "菜单",
   "close": "关闭",
@@ -514,6 +517,10 @@
   "alwaysOnVpnOpenFailed": "无法打开系统设置",
   "onboardingAddHint": "点按以添加订阅",
   "onboardingClipboardImport": "从剪贴板粘贴订阅",
+  "addNamedSubscription": "添加 {host}",
   "onboardingClipboardImportDesc": "检测到订阅链接：",
-  "onboardingImported": "订阅已添加，点按以连接"
+  "onboardingImported": "订阅已添加，点按以连接",
+  "dashboardEmptyTitle": "添加订阅",
+  "dashboardEmptyHint": "粘贴链接或扫描二维码",
+  "importFromUrlHint": "https://… — 您的提供商的订阅链接"
 }

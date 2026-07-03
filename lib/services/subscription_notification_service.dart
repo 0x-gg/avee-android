@@ -37,13 +37,23 @@ class SubscriptionNotificationService {
 
     final expire = subscriptionInfo.expire;
     commonPrint.log('[SubscriptionNotification] expire timestamp: $expire');
-    if (expire == 0) {
-      commonPrint.log('[SubscriptionNotification] expire is 0, skipping');
+    // Guard non-positive expiry (0 = unset/no-expiry; negative = malformed):
+    // there is nothing to notify about, and `expire * 1000` on a negative value
+    // would fabricate a bogus past date.
+    if (expire <= 0) {
+      commonPrint.log('[SubscriptionNotification] expire <= 0, skipping');
       return;
     }
 
+    // Remnawave normally sends expiry as UNIX SECONDS, but some panels emit
+    // 13-digit MILLISECONDS. A value past this threshold can only be ms (in
+    // seconds it would be ~year 5138), so use it verbatim instead of `* 1000`
+    // — which would overflow far into the future and never fire a notification.
+    const millisThreshold = 100000000000; // 1e11: already-milliseconds cutoff
+    final expireMs = expire > millisThreshold ? expire : expire * 1000;
+
     // Calculate time until expiration
-    final expireDate = DateTime.fromMillisecondsSinceEpoch(expire * 1000);
+    final expireDate = DateTime.fromMillisecondsSinceEpoch(expireMs);
     final now = DateTime.now();
     final isExpired = expireDate.isBefore(now);
     final daysUntilExpire = expireDate.difference(now).inDays;

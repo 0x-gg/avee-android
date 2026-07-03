@@ -90,6 +90,22 @@ class App {
     }
   }
 
+  /// Fires the one-shot POST_NOTIFICATIONS prompt (Android 13+). The native
+  /// side gates on the SDK level + current grant, so this is a no-op below 13
+  /// or once granted. Returns false (never throws) when the native side is
+  /// absent/errors so the connect flow that drives this can't be broken.
+  Future<bool> requestNotificationsPermission() async {
+    try {
+      return await methodChannel
+              .invokeMethod<bool>("requestNotificationsPermission") ??
+          false;
+    } on PlatformException catch (_) {
+      return false;
+    } on MissingPluginException catch (_) {
+      return false;
+    }
+  }
+
   /// Android `PackageManager.canRequestPackageInstalls()` — whether the user has
   /// granted this app the "install unknown apps" permission. The in-app updater
   /// checks this before [installApk] and, when false, sends the user to

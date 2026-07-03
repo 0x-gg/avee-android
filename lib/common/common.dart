@@ -31,6 +31,7 @@ export 'mixin.dart';
 export 'navigation.dart';
 export 'navigator.dart';
 export 'network.dart';
+export 'notification_permission.dart';
 export 'num.dart';
 export 'package.dart';
 export 'path.dart';

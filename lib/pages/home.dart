@@ -226,6 +226,15 @@ class _HomePageViewState extends ConsumerState<_HomePageView> {
           return Stack(
             children: [
               page,
+              // First-run guidance under the lens. Kept mounted (opacity-driven,
+              // not an `if` gate) so it FADES out when the first profile lands
+              // instead of popping; `visible` mirrors the exact empty-state
+              // condition (`!hasProfiles`) that makes StartButton show the "+"
+              // add glyph. Painted before the button so the lens sits on top.
+              _MobileEmptyGuidanceOverlay(
+                buttonSize: connectSize,
+                visible: !hasProfiles,
+              ),
               _MobileConnectButtonOverlay(buttonSize: connectSize),
             ],
           );
@@ -317,6 +326,81 @@ class _MobileConnectButtonOverlay extends StatelessWidget {
           ),
         ),
       );
+}
+
+/// First-run guidance under the connect lens — a short headline + one-liner
+/// telling a fresh user WHAT the unlabeled "+" does. Shown ONLY in the empty
+/// state ([visible] == `!hasProfiles`, the same condition that flips the
+/// button glyph Power→Add). Anchored to [_mobileConnectAlignment] and shifted
+/// BELOW the button (button-relative offset, not a fixed screen fraction) so
+/// the lens footprint above never moves when the block appears/disappears —
+/// the same "anchor to the button, translate down" idiom as
+/// [_MobileIndicatorOverlay], which occupies this slot once a profile unlocks
+/// the Tools page. Opacity fades over the signature [Lumina] motion; wrapped
+/// in [IgnorePointer] so it is purely decorative and never steals a tap meant
+/// for the button. All copy is provider-neutral l10n; text uses textTheme +
+/// colorScheme only (no inline TextStyle, no hardcoded colors).
+class _MobileEmptyGuidanceOverlay extends StatelessWidget {
+  const _MobileEmptyGuidanceOverlay({
+    required this.buttonSize,
+    required this.visible,
+  });
+
+  final double buttonSize;
+  final bool visible;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+    final colorScheme = theme.colorScheme;
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Align(
+          alignment: _mobileConnectAlignment,
+          // ABOVE the lens, in the dead space the subscription card occupies
+          // once a profile exists — below-the-button placement collided with
+          // the MENU affordance and read as an afterthought. The offset is
+          // button-relative (half the lens + a fixed gap + half the ~2-line
+          // block) so the lens never moves when the block fades.
+          child: Transform.translate(
+            offset: Offset(0, -(buttonSize / 2 + 96)),
+            child: AnimatedOpacity(
+              opacity: visible ? 1.0 : 0.0,
+              duration: Lumina.luminaDuration,
+              curve: Lumina.luminaCurve,
+              child: ConstrainedBox(
+                // Cap the line length so the one-liner hint stays a one-liner
+                // on phones instead of wrapping with an orphan word.
+                constraints: const BoxConstraints(maxWidth: 320),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      appLocalizations.dashboardEmptyTitle,
+                      textAlign: TextAlign.center,
+                      style: textTheme.titleSmall?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      appLocalizations.dashboardEmptyHint,
+                      textAlign: TextAlign.center,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Tab/screen indicator overlay — page-independent. Rendered in an outer

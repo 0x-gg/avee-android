@@ -13,17 +13,27 @@ class SingleInstanceLock {
   static SingleInstanceLock? _instance;
   RandomAccessFile? _accessFile;
 
+  // Idempotency cache. `acquire()` is called twice by design (main()'s early
+  // desktop gate + window.init()); the second call must be a no-op that returns
+  // the SAME verdict without re-locking (re-`lock()`-ing an already-held file
+  // can throw on some platforms and would double-open the RandomAccessFile).
+  bool? _acquired;
+
   Future<bool> acquire() async {
+    if (_acquired != null) {
+      return _acquired!;
+    }
     try {
       final lockFilePath = await appPath.lockFilePath;
       final lockFile = File(lockFilePath);
       await lockFile.create();
       _accessFile = await lockFile.open(mode: FileMode.write);
       await _accessFile?.lock();
-      return true;
+      _acquired = true;
     } catch (_) {
-      return false;
+      _acquired = false;
     }
+    return _acquired!;
   }
 }
 

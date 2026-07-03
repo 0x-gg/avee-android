@@ -54,7 +54,11 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var scope: CoroutineScope
     private var lastStartForegroundParams: StartForegroundParams? = null
     private var timerJob: Job? = null
-    private val uidPageNameMap = mutableMapOf<Int, String>()
+    // resolverProcess() is invoked as a JNI callback from the Go core, which
+    // resolves per-connection process names from multiple concurrent goroutines.
+    // A plain HashMap corrupts / throws ConcurrentModificationException under
+    // that fan-in; ConcurrentHashMap gives lock-free reads and atomic writes.
+    private val uidPageNameMap = java.util.concurrent.ConcurrentHashMap<Int, String>()
     private val networks = mutableSetOf<Network>()
     private var screenReceiverRegistered: Boolean = false
     private var startRequested: Boolean = false
@@ -369,12 +373,15 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         if (nextUid == -1) {
             return ""
         }
-        if (!uidPageNameMap.containsKey(nextUid)) {
-            uidPageNameMap[nextUid] =
-                DropwebApplication.getAppContext().packageManager?.getPackagesForUid(nextUid)
-                    ?.firstOrNull() ?: ""
+        // Atomic compute-and-cache: the previous containsKey+put pair was a
+        // check-then-act race across concurrent resolver callbacks. minSdk 24
+        // guarantees ConcurrentHashMap.computeIfAbsent. The mapping lambda MUST
+        // NOT return null — ConcurrentHashMap forbids null values — so the
+        // `?: ""` fallback stays inside the lambda.
+        return uidPageNameMap.computeIfAbsent(nextUid) {
+            DropwebApplication.getAppContext().packageManager?.getPackagesForUid(nextUid)
+                ?.firstOrNull() ?: ""
         }
-        return uidPageNameMap[nextUid] ?: ""
     }
 
     fun handleStop() {

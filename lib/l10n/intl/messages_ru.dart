@@ -20,26 +20,28 @@ typedef String MessageIfAbsent(String messageStr, List<dynamic> args);
 class MessageLookup extends MessageLookupByLibrary {
   String get localeName => 'ru';
 
-  static String m0(label) =>
+  static String m0(host) => "Добавить ${host}";
+
+  static String m1(label) =>
       "Вы уверены, что хотите удалить выбранные ${label}?";
 
-  static String m1(label) => "Вы уверены, что хотите удалить текущий ${label}?";
+  static String m2(label) => "Вы уверены, что хотите удалить текущий ${label}?";
 
-  static String m2(label) => "${label} не может быть пустым";
+  static String m3(label) => "${label} не может быть пустым";
 
-  static String m3(label) => "Текущий ${label} уже существует";
+  static String m4(label) => "Текущий ${label} уже существует";
 
-  static String m4(label) => "Сейчас ${label} нет";
+  static String m5(label) => "Сейчас ${label} нет";
 
-  static String m5(label) => "${label} должно быть числом";
+  static String m6(label) => "${label} должно быть числом";
 
-  static String m6(label) => "${label} должен быть числом от 1024 до 49151";
+  static String m7(label) => "${label} должен быть числом от 1024 до 49151";
 
-  static String m7(count) => "Выбрано ${count} элементов";
+  static String m8(count) => "Выбрано ${count} элементов";
 
-  static String m8(days) => "Ваша подписка истекает через ${days} дн.";
+  static String m9(days) => "Ваша подписка истекает через ${days} дн.";
 
-  static String m9(label) => "${label} должен быть URL";
+  static String m10(label) => "${label} должен быть URL";
 
   final messages = _notInlinedMessages(_notInlinedMessages);
   static Map<String, Function> _notInlinedMessages(_) => <String, Function>{
@@ -68,6 +70,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "addFromPhoneTitle": MessageLookupByLibrary.simpleMessage(
       "Добавить с телефона",
     ),
+    "addNamedSubscription": m0,
     "addProfile": MessageLookupByLibrary.simpleMessage("Добавить профиль"),
     "addRule": MessageLookupByLibrary.simpleMessage("Добавить правило"),
     "addSubscription": MessageLookupByLibrary.simpleMessage(
@@ -161,6 +164,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "cacheCorrupt": MessageLookupByLibrary.simpleMessage(
       "Кэш повреждён. Очистить его?",
     ),
+    "cameraPermissionDenied": MessageLookupByLibrary.simpleMessage(
+      "Доступ к камере запрещён",
+    ),
     "cancel": MessageLookupByLibrary.simpleMessage("Отмена"),
     "cancelFilterSystemApp": MessageLookupByLibrary.simpleMessage(
       "Отменить фильтрацию системных приложений",
@@ -224,6 +230,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "cut": MessageLookupByLibrary.simpleMessage("Вырезать"),
     "dark": MessageLookupByLibrary.simpleMessage("Темный"),
     "dashboard": MessageLookupByLibrary.simpleMessage("Главная"),
+    "dashboardEmptyHint": MessageLookupByLibrary.simpleMessage(
+      "Вставьте ссылку или отсканируйте QR-код",
+    ),
+    "dashboardEmptyTitle": MessageLookupByLibrary.simpleMessage(
+      "Добавьте подписку",
+    ),
     "day": MessageLookupByLibrary.simpleMessage("день"),
     "days": MessageLookupByLibrary.simpleMessage("дней"),
     "daysGenitive": MessageLookupByLibrary.simpleMessage("дня"),
@@ -240,8 +252,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "delay": MessageLookupByLibrary.simpleMessage("Задержка"),
     "delaySort": MessageLookupByLibrary.simpleMessage("Сортировка по задержке"),
     "delete": MessageLookupByLibrary.simpleMessage("Удалить"),
-    "deleteMultipTip": m0,
-    "deleteTip": m1,
+    "deleteMultipTip": m1,
+    "deleteTip": m2,
     "desc": MessageLookupByLibrary.simpleMessage(
       "Dropweb — простой и быстрый VPN-клиент с открытым исходным кодом, без рекламы.",
     ),
@@ -276,7 +288,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "domain": MessageLookupByLibrary.simpleMessage("Домен"),
     "download": MessageLookupByLibrary.simpleMessage("Загрузка"),
     "edit": MessageLookupByLibrary.simpleMessage("Редактировать"),
-    "emptyTip": m2,
+    "emptyTip": m3,
     "en": MessageLookupByLibrary.simpleMessage("Английский"),
     "enableOverride": MessageLookupByLibrary.simpleMessage(
       "Включить переопределение",
@@ -287,7 +299,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "excludeDesc": MessageLookupByLibrary.simpleMessage(
       "Скрывать приложение из списка последних задач в фоновом режиме",
     ),
-    "existsTip": m3,
+    "existsTip": m4,
     "exit": MessageLookupByLibrary.simpleMessage("Выход"),
     "expand": MessageLookupByLibrary.simpleMessage("Стандартный"),
     "expirationTime": MessageLookupByLibrary.simpleMessage("Время истечения"),
@@ -373,6 +385,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "hours": MessageLookupByLibrary.simpleMessage("Часов"),
     "hoursGenitive": MessageLookupByLibrary.simpleMessage("часов"),
     "hoursPlural": MessageLookupByLibrary.simpleMessage("часа"),
+    "hwidFreeSlot": MessageLookupByLibrary.simpleMessage("Освободить лимит"),
+    "hwidRecovered": MessageLookupByLibrary.simpleMessage(
+      "Устройство зарегистрировано\nПодписка обновлена",
+    ),
     "iHaveKey": MessageLookupByLibrary.simpleMessage("Да, есть ключ"),
     "iNeedSubscription": MessageLookupByLibrary.simpleMessage(
       "Нет, войти в кабинет",
@@ -385,6 +401,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "import": MessageLookupByLibrary.simpleMessage("Импорт"),
     "importFile": MessageLookupByLibrary.simpleMessage("Импорт из файла"),
     "importFromURL": MessageLookupByLibrary.simpleMessage("Импорт из URL"),
+    "importFromUrlHint": MessageLookupByLibrary.simpleMessage(
+      "https://… — ссылка подписки вашего провайдера",
+    ),
     "importUrl": MessageLookupByLibrary.simpleMessage("Импорт по URL"),
     "infiniteTime": MessageLookupByLibrary.simpleMessage(
       "Долгосрочное действие",
@@ -503,8 +522,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "nullScriptTip": MessageLookupByLibrary.simpleMessage(
       "Скрипты отсутствуют",
     ),
-    "nullTip": m4,
-    "numberTip": m5,
+    "nullTip": m5,
+    "numberTip": m6,
     "onboardingAddHint": MessageLookupByLibrary.simpleMessage(
       "Нажмите, чтобы добавить подписку",
     ),
@@ -595,7 +614,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "portConflictTip": MessageLookupByLibrary.simpleMessage(
       "Введите другой порт",
     ),
-    "portTip": m6,
+    "portTip": m7,
     "preferH3Desc": MessageLookupByLibrary.simpleMessage(
       "Использовать HTTP/3 для DOH (если доступно)",
     ),
@@ -727,7 +746,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "selectAll": MessageLookupByLibrary.simpleMessage("Выбрать все"),
     "selectProfile": MessageLookupByLibrary.simpleMessage("Выбрать профиль"),
     "selected": MessageLookupByLibrary.simpleMessage("Выбрано"),
-    "selectedCountTitle": m7,
+    "selectedCountTitle": m8,
     "sendToTv": MessageLookupByLibrary.simpleMessage("Отправить на ТВ"),
     "sendToTvTitle": MessageLookupByLibrary.simpleMessage("Отправить на ТВ"),
     "sentSuccessfullyMessage": MessageLookupByLibrary.simpleMessage(
@@ -784,7 +803,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "subscriptionExpired": MessageLookupByLibrary.simpleMessage(
       "Ваша подписка истекла",
     ),
-    "subscriptionExpiresInDays": m8,
+    "subscriptionExpiresInDays": m9,
     "subscriptionExpiresSoon": MessageLookupByLibrary.simpleMessage(
       "Подписка скоро истекает",
     ),
@@ -885,7 +904,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "upload": MessageLookupByLibrary.simpleMessage("Отправка"),
     "url": MessageLookupByLibrary.simpleMessage("URL"),
     "urlDesc": MessageLookupByLibrary.simpleMessage("Загрузить профиль по URL"),
-    "urlTip": m9,
+    "urlTip": m10,
     "useHosts": MessageLookupByLibrary.simpleMessage("Использовать hosts"),
     "useSystemHosts": MessageLookupByLibrary.simpleMessage(
       "Использовать системные hosts",

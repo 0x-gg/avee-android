@@ -462,6 +462,7 @@
   "remainingSingular": "Remaining",
   "remainingPlural": "Remaining",
   "qrNotFound": "QR code not found",
+  "cameraPermissionDenied": "Camera permission denied",
   "successTitle": "Success",
   "sentSuccessfullyMessage": "Sent successfully",
   "errorTitle": "Error",
@@ -475,6 +476,8 @@
   "selectProfile": "Select Profile",
   "sendToTv": "Send to TV",
   "support": "Support",
+  "hwidFreeSlot": "Free up a device slot",
+  "hwidRecovered": "Device registered\nSubscription updated",
   "personalCabinet": "Personal cabinet",
   "menu": "MENU",
   "close": "Close",
@@ -521,6 +524,10 @@
   "alwaysOnVpnOpenFailed": "Couldn't open VPN settings",
   "onboardingAddHint": "Tap to add your subscription",
   "onboardingClipboardImport": "Paste subscription from clipboard",
+  "addNamedSubscription": "Add {host}",
   "onboardingClipboardImportDesc": "Subscription link detected:",
-  "onboardingImported": "Subscription added. Tap to connect"
+  "onboardingImported": "Subscription added. Tap to connect",
+  "dashboardEmptyTitle": "Add a subscription",
+  "dashboardEmptyHint": "Paste a link or scan a QR code",
+  "importFromUrlHint": "https://… — your provider's subscription link"
 }

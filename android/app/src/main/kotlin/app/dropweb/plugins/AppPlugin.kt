@@ -297,6 +297,14 @@ class AppPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware 
                 result.success(openVpnSettings())
             }
 
+            // Exposed here (not only ServicePlugin.init) because the request
+            // must be hosted by the ATTACHED activity; the init call runs in
+            // the service engine where activityRef is null and silently no-ops.
+            "requestNotificationsPermission" -> {
+                requestNotificationsPermission()
+                result.success(true)
+            }
+
             else -> {
                 result.notImplemented()
             }

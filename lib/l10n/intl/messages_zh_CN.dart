@@ -20,25 +20,27 @@ typedef String MessageIfAbsent(String messageStr, List<dynamic> args);
 class MessageLookup extends MessageLookupByLibrary {
   String get localeName => 'zh_CN';
 
-  static String m0(label) => "确定删除选中的${label}吗？";
+  static String m0(host) => "添加 ${host}";
 
-  static String m1(label) => "确定删除当前${label}吗？";
+  static String m1(label) => "确定删除选中的${label}吗？";
 
-  static String m2(label) => "${label}不能为空";
+  static String m2(label) => "确定删除当前${label}吗？";
 
-  static String m3(label) => "${label}当前已存在";
+  static String m3(label) => "${label}不能为空";
 
-  static String m4(label) => "暂无${label}";
+  static String m4(label) => "${label}当前已存在";
 
-  static String m5(label) => "${label}必须为数字";
+  static String m5(label) => "暂无${label}";
 
-  static String m6(label) => "${label} 必须在 1024 到 49151 之间";
+  static String m6(label) => "${label}必须为数字";
 
-  static String m7(count) => "已选择 ${count} 项";
+  static String m7(label) => "${label} 必须在 1024 到 49151 之间";
 
-  static String m8(days) => "您的订阅将在${days}天后到期";
+  static String m8(count) => "已选择 ${count} 项";
 
-  static String m9(label) => "${label}必须为URL";
+  static String m9(days) => "您的订阅将在${days}天后到期";
+
+  static String m10(label) => "${label}必须为URL";
 
   final messages = _notInlinedMessages(_notInlinedMessages);
   static Map<String, Function> _notInlinedMessages(_) => <String, Function>{
@@ -61,6 +63,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "add": MessageLookupByLibrary.simpleMessage("添加"),
     "addFromPhoneSubtitle": MessageLookupByLibrary.simpleMessage("用手机扫描二维码"),
     "addFromPhoneTitle": MessageLookupByLibrary.simpleMessage("从手机添加"),
+    "addNamedSubscription": m0,
     "addProfile": MessageLookupByLibrary.simpleMessage("添加配置"),
     "addRule": MessageLookupByLibrary.simpleMessage("添加规则"),
     "addSubscription": MessageLookupByLibrary.simpleMessage("添加订阅"),
@@ -108,6 +111,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "bypassDomain": MessageLookupByLibrary.simpleMessage("排除域名"),
     "bypassDomainDesc": MessageLookupByLibrary.simpleMessage("仅在系统代理启用时生效"),
     "cacheCorrupt": MessageLookupByLibrary.simpleMessage("缓存已损坏，是否清空？"),
+    "cameraPermissionDenied": MessageLookupByLibrary.simpleMessage("相机权限被拒绝"),
     "cancel": MessageLookupByLibrary.simpleMessage("取消"),
     "cancelFilterSystemApp": MessageLookupByLibrary.simpleMessage("取消过滤系统应用"),
     "cancelSelectAll": MessageLookupByLibrary.simpleMessage("取消全选"),
@@ -157,6 +161,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "cut": MessageLookupByLibrary.simpleMessage("剪切"),
     "dark": MessageLookupByLibrary.simpleMessage("深色"),
     "dashboard": MessageLookupByLibrary.simpleMessage("仪表盘"),
+    "dashboardEmptyHint": MessageLookupByLibrary.simpleMessage("粘贴链接或扫描二维码"),
+    "dashboardEmptyTitle": MessageLookupByLibrary.simpleMessage("添加订阅"),
     "day": MessageLookupByLibrary.simpleMessage("天"),
     "days": MessageLookupByLibrary.simpleMessage("天"),
     "daysGenitive": MessageLookupByLibrary.simpleMessage("天"),
@@ -167,8 +173,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "delay": MessageLookupByLibrary.simpleMessage("延迟"),
     "delaySort": MessageLookupByLibrary.simpleMessage("按延迟排序"),
     "delete": MessageLookupByLibrary.simpleMessage("删除"),
-    "deleteMultipTip": m0,
-    "deleteTip": m1,
+    "deleteMultipTip": m1,
+    "deleteTip": m2,
     "desc": MessageLookupByLibrary.simpleMessage("Dropweb — 简洁高速的加速器。开源，无广告。"),
     "detectionTip": MessageLookupByLibrary.simpleMessage("依赖第三方api，仅供参考"),
     "developerMode": MessageLookupByLibrary.simpleMessage("开发者模式"),
@@ -187,14 +193,14 @@ class MessageLookup extends MessageLookupByLibrary {
     "domain": MessageLookupByLibrary.simpleMessage("域名"),
     "download": MessageLookupByLibrary.simpleMessage("下载"),
     "edit": MessageLookupByLibrary.simpleMessage("编辑"),
-    "emptyTip": m2,
+    "emptyTip": m3,
     "en": MessageLookupByLibrary.simpleMessage("英语"),
     "enableOverride": MessageLookupByLibrary.simpleMessage("启用覆写"),
     "entries": MessageLookupByLibrary.simpleMessage("个条目"),
     "errorTitle": MessageLookupByLibrary.simpleMessage("错误"),
     "exclude": MessageLookupByLibrary.simpleMessage("从最近任务中隐藏"),
     "excludeDesc": MessageLookupByLibrary.simpleMessage("应用在后台时,从最近任务中隐藏应用"),
-    "existsTip": m3,
+    "existsTip": m4,
     "exit": MessageLookupByLibrary.simpleMessage("退出"),
     "expand": MessageLookupByLibrary.simpleMessage("标准"),
     "expirationTime": MessageLookupByLibrary.simpleMessage("到期时间"),
@@ -246,6 +252,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "hours": MessageLookupByLibrary.simpleMessage("小时"),
     "hoursGenitive": MessageLookupByLibrary.simpleMessage("小时"),
     "hoursPlural": MessageLookupByLibrary.simpleMessage("小时"),
+    "hwidFreeSlot": MessageLookupByLibrary.simpleMessage("释放设备位"),
+    "hwidRecovered": MessageLookupByLibrary.simpleMessage("设备已注册\n订阅已更新"),
     "iHaveKey": MessageLookupByLibrary.simpleMessage("是的，我有密钥"),
     "iNeedSubscription": MessageLookupByLibrary.simpleMessage("没有，登录柜台"),
     "icon": MessageLookupByLibrary.simpleMessage("图片"),
@@ -254,6 +262,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "import": MessageLookupByLibrary.simpleMessage("导入"),
     "importFile": MessageLookupByLibrary.simpleMessage("通过文件导入"),
     "importFromURL": MessageLookupByLibrary.simpleMessage("从URL导入"),
+    "importFromUrlHint": MessageLookupByLibrary.simpleMessage(
+      "https://… — 您的提供商的订阅链接",
+    ),
     "importUrl": MessageLookupByLibrary.simpleMessage("通过URL导入"),
     "infiniteTime": MessageLookupByLibrary.simpleMessage("长期有效"),
     "init": MessageLookupByLibrary.simpleMessage("初始化"),
@@ -330,8 +341,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "notSelectedTip": MessageLookupByLibrary.simpleMessage("当前代理组无法选中"),
     "nullProfileDesc": MessageLookupByLibrary.simpleMessage("没有配置文件,请先添加配置文件"),
     "nullScriptTip": MessageLookupByLibrary.simpleMessage("暂无脚本"),
-    "nullTip": m4,
-    "numberTip": m5,
+    "nullTip": m5,
+    "numberTip": m6,
     "onboardingAddHint": MessageLookupByLibrary.simpleMessage("点按以添加订阅"),
     "onboardingClipboardImport": MessageLookupByLibrary.simpleMessage(
       "从剪贴板粘贴订阅",
@@ -388,7 +399,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "port": MessageLookupByLibrary.simpleMessage("端口"),
     "portConflictTip": MessageLookupByLibrary.simpleMessage("请输入不同的端口"),
-    "portTip": m6,
+    "portTip": m7,
     "preferH3Desc": MessageLookupByLibrary.simpleMessage("优先使用DOH的http/3"),
     "presetAmber": MessageLookupByLibrary.simpleMessage("琥珀"),
     "presetAmethyst": MessageLookupByLibrary.simpleMessage("紫晶"),
@@ -488,7 +499,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "selectAll": MessageLookupByLibrary.simpleMessage("全选"),
     "selectProfile": MessageLookupByLibrary.simpleMessage("选择配置"),
     "selected": MessageLookupByLibrary.simpleMessage("已选择"),
-    "selectedCountTitle": m7,
+    "selectedCountTitle": m8,
     "sendToTv": MessageLookupByLibrary.simpleMessage("发送到电视"),
     "sendToTvTitle": MessageLookupByLibrary.simpleMessage("发送到电视"),
     "sentSuccessfullyMessage": MessageLookupByLibrary.simpleMessage("发送成功"),
@@ -531,7 +542,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "subscription": MessageLookupByLibrary.simpleMessage("订阅"),
     "subscriptionEternal": MessageLookupByLibrary.simpleMessage("永久订阅"),
     "subscriptionExpired": MessageLookupByLibrary.simpleMessage("您的订阅已过期"),
-    "subscriptionExpiresInDays": m8,
+    "subscriptionExpiresInDays": m9,
     "subscriptionExpiresSoon": MessageLookupByLibrary.simpleMessage("订阅即将到期"),
     "subscriptionExpiresToday": MessageLookupByLibrary.simpleMessage(
       "您的订阅今天到期",
@@ -592,7 +603,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "upload": MessageLookupByLibrary.simpleMessage("上传"),
     "url": MessageLookupByLibrary.simpleMessage("URL"),
     "urlDesc": MessageLookupByLibrary.simpleMessage("通过URL获取配置文件"),
-    "urlTip": m9,
+    "urlTip": m10,
     "useHosts": MessageLookupByLibrary.simpleMessage("使用Hosts"),
     "useSystemHosts": MessageLookupByLibrary.simpleMessage("使用系统Hosts"),
     "value": MessageLookupByLibrary.simpleMessage("值"),

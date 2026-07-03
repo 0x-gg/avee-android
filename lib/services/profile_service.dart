@@ -38,14 +38,23 @@ class ProfileService {
   final WidgetRef _ref;
 
   Future<void> addProfile(Profile profile) async {
+    commonPrint.log('[profile] addProfile ${profile.id}');
     _ref.read(profilesProvider.notifier).setProfile(profile);
     // Always select the freshly added profile so importing a config switches
     // to it (previously it only auto-selected when no profile existed yet).
     _ref.read(currentProfileIdProvider.notifier).value = profile.id;
+    commonPrint.log(
+      '[profile] addProfile done: current=${_ref.read(currentProfileIdProvider)} '
+      'mirror=${globalState.config.currentProfileId}',
+    );
     globalState.appController.applyProfileDebounce(silence: true);
   }
 
   Future<void> deleteProfile(String id) async {
+    commonPrint.log(
+      '[profile] deleteProfile $id '
+      '(current=${globalState.config.currentProfileId})',
+    );
     _ref.read(profilesProvider.notifier).deleteProfileById(id);
     globalState.appController.clearEffect(id);
     if (globalState.config.currentProfileId == id) {

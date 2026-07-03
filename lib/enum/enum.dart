@@ -292,6 +292,20 @@ enum WindowsHelperServiceStatus {
   running,
 }
 
+/// Result of probing the Windows helper's /ping endpoint.
+/// [ok] — helper answered with OUR core SHA256 (healthy, usable).
+/// [mismatch] — helper answered but with a FOREIGN/stale core hash (e.g. an
+/// old helper binary left running after an app update, or another
+/// clash-lineage app's helper). Waiting will never fix this — callers must
+/// bail immediately and go through the reinstall path.
+/// [unreachable] — connection refused/timeout/non-200: the service may simply
+/// still be starting (SCM start + HTTP bind), so callers MAY retry briefly.
+enum HelperPingResult {
+  ok,
+  mismatch,
+  unreachable,
+}
+
 enum FunctionTag {
   updateClashConfig,
   setupClashConfig,

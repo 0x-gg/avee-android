@@ -262,6 +262,48 @@ class Windows {
     await _killProcess(helperPort);
   }
 
+  /// Poll the helper until it verifiably answers /ping with OUR core hash.
+  /// Replaces the old fixed 300/500ms sleeps after `sc start`, which raced
+  /// SCM service startup + the helper's HTTP bind and made the caller fall
+  /// back to an unprivileged core spawn on first launch. A token [mismatch]
+  /// aborts immediately — waiting cannot turn a stale/foreign helper into
+  /// ours, and burning the full timeout there would stall every core restart.
+  Future<bool> waitHelperReady(
+    Duration timeout, {
+    bool tolerateMismatch = false,
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (true) {
+      final result = await request.pingHelperDetailed();
+      switch (result) {
+        case HelperPingResult.ok:
+          return true;
+        case HelperPingResult.mismatch:
+          if (!tolerateMismatch) {
+            commonPrint.log(
+                "[helper] ping answered with a foreign core hash — not our helper, not waiting");
+            return false;
+          }
+          // Post-install poll: we JUST issued sc create/start for OUR binary —
+          // a foreign hash here is the old helper mid-replacement still
+          // answering. Keep polling until the deadline for the new one.
+          if (DateTime.now().isAfter(deadline)) {
+            commonPrint.log(
+                "[helper] still answering with a foreign core hash after ${timeout.inMilliseconds}ms");
+            return false;
+          }
+          await Future.delayed(const Duration(milliseconds: 300));
+        case HelperPingResult.unreachable:
+          if (DateTime.now().isAfter(deadline)) {
+            commonPrint.log(
+                "[helper] not ready within ${timeout.inMilliseconds}ms");
+            return false;
+          }
+          await Future.delayed(const Duration(milliseconds: 300));
+      }
+    }
+  }
+
   Future<WindowsHelperServiceStatus> checkService() async {
     // final qcResult = await Process.run('sc', ['qc', appHelperService]);
     // final qcOutput = qcResult.stdout.toString();
@@ -296,9 +338,25 @@ class Windows {
       "/c",
       if (status == WindowsHelperServiceStatus.presence) ...[
         "sc",
+        "stop",
+        appHelperService,
+        "&",
+        "sc",
         "delete",
         appHelperService,
-        "&&",
+        "&",
+        // `sc delete` is async: SCM only *marks* the service for deletion and
+        // an immediate `sc create` races it (error 1072, "marked for
+        // deletion"), which would skip `&& sc start` and doom the poll below.
+        // Give SCM a moment to settle. `ping -n 2 127.0.0.1` ≈ 1s sleep that,
+        // unlike `timeout /t`, works without interactive console stdin.
+        "ping",
+        "-n",
+        "2",
+        "127.0.0.1",
+        ">",
+        "nul",
+        "&",
       ],
       "sc",
       "create",
@@ -312,12 +370,17 @@ class Windows {
     ].join(" ");
 
     final res = runas("cmd.exe", command);
-
-    await Future.delayed(
-      const Duration(milliseconds: 300),
-    );
-
-    return res;
+    if (!res) {
+      // UAC denied or ShellExecute failed — no point polling.
+      return false;
+    }
+    // runas() returns as soon as the elevated cmd is LAUNCHED — sc create,
+    // sc start, the SCM state transition and the helper's HTTP bind all
+    // happen after it. The old fixed 300ms sleep lost that race on nearly
+    // every first launch, so the follow-up restartCore() spawned an
+    // unprivileged core and TUN silently died until an app restart. Poll for
+    // verified readiness instead; 15s bounds slow disks/AV scanning.
+    return waitHelperReady(const Duration(seconds: 15), tolerateMismatch: true);
   }
 
   /// Try to start an existing service without UAC.
@@ -338,11 +401,10 @@ class Windows {
     final result = await Process.run('sc', ['start', appHelperService]);
 
     if (result.exitCode == 0) {
-      // Wait for service to fully start
-      await Future.delayed(const Duration(milliseconds: 500));
-      // Verify it's actually running and responding
-      final newStatus = await checkService();
-      return newStatus == WindowsHelperServiceStatus.running;
+      // `sc start` returns before the service reports RUNNING and before the
+      // helper binds its HTTP port — poll for verified readiness instead of
+      // the old fixed 500ms sleep.
+      return waitHelperReady(const Duration(seconds: 8));
     }
 
     return false;

@@ -69,6 +69,35 @@ class _ScanPageState extends State<ScanPage> {
     }
   }
 
+  Widget _buildScannerError(
+    BuildContext context,
+    MobileScannerException error,
+  ) {
+    // Replaces the plugin's hardcoded English default ("Camera permission
+    // denied.") with a localized string so the scanner isn't a lone English
+    // pane inside an otherwise Russian UI. Non-permission codes keep the
+    // plugin's own message (rare edge cases, not the audit finding).
+    final message = error.errorCode == MobileScannerErrorCode.permissionDenied
+        ? appLocalizations.cameraPermissionDenied
+        : error.errorCode.message;
+    return ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Theme.of(context)
+                .textTheme
+                .bodyLarge
+                ?.copyWith(color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _scannerController.dispose();
@@ -94,6 +123,7 @@ class _ScanPageState extends State<ScanPage> {
             controller: _scannerController,
             scanWindow: scanWindow,
             onDetect: _handleBarcode,
+            errorBuilder: _buildScannerError,
           ),
           CustomPaint(
             painter: ScannerOverlay(scanWindow: scanWindow),

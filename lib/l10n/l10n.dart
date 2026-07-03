@@ -3524,6 +3524,16 @@ class AppLocalizations {
     );
   }
 
+  /// `Camera permission denied`
+  String get cameraPermissionDenied {
+    return Intl.message(
+      'Camera permission denied',
+      name: 'cameraPermissionDenied',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Success`
   String get successTitle {
     return Intl.message('Success', name: 'successTitle', desc: '', args: []);
@@ -3627,6 +3637,26 @@ class AppLocalizations {
   /// `Support`
   String get support {
     return Intl.message('Support', name: 'support', desc: '', args: []);
+  }
+
+  /// `Free up a device slot`
+  String get hwidFreeSlot {
+    return Intl.message(
+      'Free up a device slot',
+      name: 'hwidFreeSlot',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Device registered\nSubscription updated`
+  String get hwidRecovered {
+    return Intl.message(
+      'Device registered\nSubscription updated',
+      name: 'hwidRecovered',
+      desc: '',
+      args: [],
+    );
   }
 
   /// `Personal cabinet`
@@ -4024,6 +4054,16 @@ class AppLocalizations {
     );
   }
 
+  /// `Add {host}`
+  String addNamedSubscription(Object host) {
+    return Intl.message(
+      'Add $host',
+      name: 'addNamedSubscription',
+      desc: '',
+      args: [host],
+    );
+  }
+
   /// `Subscription link detected:`
   String get onboardingClipboardImportDesc {
     return Intl.message(
@@ -4039,6 +4079,36 @@ class AppLocalizations {
     return Intl.message(
       'Subscription added. Tap to connect',
       name: 'onboardingImported',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Add a subscription`
+  String get dashboardEmptyTitle {
+    return Intl.message(
+      'Add a subscription',
+      name: 'dashboardEmptyTitle',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Paste a link or scan a QR code`
+  String get dashboardEmptyHint {
+    return Intl.message(
+      'Paste a link or scan a QR code',
+      name: 'dashboardEmptyHint',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `https://… — your provider's subscription link`
+  String get importFromUrlHint {
+    return Intl.message(
+      'https://… — your provider\'s subscription link',
+      name: 'importFromUrlHint',
       desc: '',
       args: [],
     );

@@ -28,13 +28,27 @@ class ClashLib extends ClashHandlerInterface with AndroidClashInterface {
   static ClashLib? _instance;
   Completer<bool> _canSendCompleter = Completer();
   SendPort? sendPort;
-  final receiverPort = ReceivePort();
+  // A ReceivePort is single-subscription: a second listen() on the same port
+  // throws StateError. reStart() must be able to re-arm the bridge, so the port
+  // is a re-creatable nullable field rather than a `final` created once.
+  ReceivePort? _receiverPort;
 
   @override
   Future<bool> preload() => _canSendCompleter.future;
 
   Future<void> _initService() async {
     await service?.destroy();
+    _listenPort();
+    await service?.init();
+  }
+
+  /// (Re)creates the single-subscription [ReceivePort] and attaches the bridge
+  /// listener. Any previous port is closed first so re-entry (reStart) never
+  /// listens twice on one port — which would throw StateError.
+  void _listenPort() {
+    _receiverPort?.close();
+    final receiverPort = ReceivePort();
+    _receiverPort = receiverPort;
     _registerMainPort(receiverPort.sendPort);
     receiverPort.listen((message) {
       if (message is SendPort) {
@@ -55,7 +69,6 @@ class ClashLib extends ClashHandlerInterface with AndroidClashInterface {
         );
       }
     });
-    await service?.init();
   }
 
   void _registerMainPort(SendPort sendPort) {

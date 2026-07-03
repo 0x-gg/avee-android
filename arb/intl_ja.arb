@@ -455,6 +455,7 @@
   "remainingSingular": "残り",
   "remainingPlural": "残り",
   "qrNotFound": "QRコードが見つかりません",
+  "cameraPermissionDenied": "カメラの使用が許可されていません",
   "successTitle": "成功",
   "sentSuccessfullyMessage": "送信しました",
   "errorTitle": "エラー",
@@ -468,6 +469,8 @@
   "selectProfile": "プロファイルを選択",
   "sendToTv": "TVに送信",
   "support": "サポート",
+  "hwidFreeSlot": "デバイス枠を空ける",
+  "hwidRecovered": "デバイスを登録しました\nサブスクリプションを更新しました",
   "personalCabinet": "マイページ",
   "menu": "メニュー",
   "close": "閉じる",
@@ -514,6 +517,10 @@
   "alwaysOnVpnOpenFailed": "VPN設定を開けませんでした",
   "onboardingAddHint": "タップしてサブスクリプションを追加",
   "onboardingClipboardImport": "クリップボードから貼り付け",
+  "addNamedSubscription": "{host} を追加",
   "onboardingClipboardImportDesc": "サブスクリプションのリンクを検出:",
-  "onboardingImported": "サブスクリプションを追加しました。タップして接続"
+  "onboardingImported": "サブスクリプションを追加しました。タップして接続",
+  "dashboardEmptyTitle": "サブスクリプションを追加",
+  "dashboardEmptyHint": "リンクを貼り付けるか、QRコードをスキャンしてください",
+  "importFromUrlHint": "https://… — プロバイダーのサブスクリプションリンク"
 }

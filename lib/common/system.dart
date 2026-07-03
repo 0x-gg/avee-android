@@ -152,7 +152,11 @@ class System {
     final deviceLine = output
         .split('\n')
         .firstWhere((s) => s.contains('interface:'), orElse: () => "");
-    final lineSplits = deviceLine.trim().split(' ');
+    // `route -n get default` pads the "interface: enX" line with variable
+    // whitespace (tabs/multiple spaces) depending on macOS version — split on
+    // any run of whitespace so a two-space gap doesn't yield empty tokens and
+    // fail the length check.
+    final lineSplits = deviceLine.trim().split(RegExp(r'\s+'));
     if (lineSplits.length != 2) {
       return null;
     }
@@ -286,7 +290,7 @@ class System {
     if (nextDns == null) {
       return;
     }
-    await Process.run(
+    final result = await Process.run(
       'networksetup',
       [
         '-setdnsservers',
@@ -296,9 +300,21 @@ class System {
       ],
     );
     if (restore) {
-      // Clean state after a successful restore: drop the persisted origin so the
-      // next inject reads fresh live DNS rather than a stale recovery value.
-      await _clearPersistedOriginDns();
+      // Only drop the persisted origin when the restore ACTUALLY succeeded.
+      // Clearing it on a failed `networksetup` would delete the sole record of
+      // the user's real DNS, permanently stranding the system on injected
+      // 1.1.1.1. On failure keep the backup so the next launch's unclean-exit
+      // recovery path can retry the restore.
+      if (result.exitCode == 0) {
+        // Clean state after a successful restore: drop the persisted origin so
+        // the next inject reads fresh live DNS rather than a stale recovery
+        // value.
+        await _clearPersistedOriginDns();
+      } else {
+        commonPrint.log(
+          '[dns] restore failed (exit=${result.exitCode}), keeping persisted origin',
+        );
+      }
     }
   }
 
