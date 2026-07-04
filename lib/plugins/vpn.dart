@@ -78,8 +78,9 @@ class Vpn {
   String get cachedServiceName => _cachedServiceName;
 
   /// Default foreground params when running in UI mode.
-  /// Shows: title = selected server (else cached service name, else cached
-  /// profile name), content = traffic speed, server (subText) = empty.
+  /// Shows: title = panel profile title (else selected server, else cached
+  /// service name, else cached profile name), content = traffic speed,
+  /// server (subText) = empty.
   Future<String> _getDefaultForegroundParams() async {
     try {
       // UI-mode traffic read goes through the bridge invoke and is async —
@@ -101,12 +102,23 @@ class Vpn {
         commonPrint.log('[vpn] failed to resolve selected proxy name: $e');
       }
 
+      // Title: panel profile title (Remnawave `profile-title`, the big
+      // dashboard subscription-card title — may be `base64:`-prefixed), else
+      // selected server name, else cached service name, else cached profile
+      // name. Same preference order as the _service-mode handler in main.dart.
+      final rawProfileTitle = profile?.providerHeaders['profile-title'];
+      final profileTitle =
+          (rawProfileTitle == null || rawProfileTitle.isEmpty)
+              ? ""
+              : decodeMaybeBase64(rawProfileTitle).trim();
       final serverDisplay = (proxyName ?? "").trim();
-      final title = serverDisplay.isNotEmpty
-          ? serverDisplay
-          : (_cachedServiceName.isNotEmpty
-              ? _cachedServiceName
-              : _cachedProfileName);
+      final title = profileTitle.isNotEmpty
+          ? profileTitle
+          : (serverDisplay.isNotEmpty
+              ? serverDisplay
+              : (_cachedServiceName.isNotEmpty
+                  ? _cachedServiceName
+                  : _cachedProfileName));
 
       return json.encode({
         "title": title,

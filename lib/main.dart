@@ -261,12 +261,21 @@ Future<void> _service(List<String> flags) async {
         serverName = selectedMap[groupName] ?? "";
       }
 
-      // Title: selected server name, else provider service name, else "dropweb"
+      // Title: panel profile title (Remnawave `profile-title`, the big
+      // dashboard subscription-card title — may be `base64:`-prefixed), else
+      // selected server name, else provider service name, else "dropweb".
+      final rawProfileTitle = profile?.providerHeaders['profile-title'];
+      final profileTitle =
+          (rawProfileTitle == null || rawProfileTitle.isEmpty)
+              ? ""
+              : decodeMaybeBase64(rawProfileTitle).trim();
       final serverDisplay = serverName.trim();
       final serviceName = profile?.serviceName.trim() ?? "";
-      final title = serverDisplay.isNotEmpty
-          ? serverDisplay
-          : (serviceName.isNotEmpty ? serviceName : "dropweb");
+      final title = profileTitle.isNotEmpty
+          ? profileTitle
+          : (serverDisplay.isNotEmpty
+              ? serverDisplay
+              : (serviceName.isNotEmpty ? serviceName : "dropweb"));
 
       // Content: "↑ speed  ↓ speed"
       final content =
