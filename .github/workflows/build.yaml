@@ -207,15 +207,25 @@ jobs:
             preTag=$(git tag --sort=-creatordate | grep -v "^${{ github.ref_name }}$" | head -1)
           fi
 
-          # Append compact changelog (subject lines only)
+          # Append compact changelog — USER-FACING only. This same list feeds
+          # the in-app update sheet (manifest `notes`), so raw git subjects must
+          # never leak. Keep feat/fix/perf, strip conventional-commit
+          # "type(scope): " prefixes, drop internal noise (docs/chore/refactor/
+          # test/ci/build/style), dedupe, capitalize, cap at 15.
           echo "" >> release.md
-          echo "## Коммиты" >> release.md
+          echo "## Что нового" >> release.md
           echo "" >> release.md
           if [ -n "$preTag" ]; then
-            git log --pretty=format:"- %s" "$preTag..${{ github.ref_name }}" >> release.md
+            changelog_range="$preTag..${{ github.ref_name }}"
           else
-            git log --pretty=format:"- %s" "${{ github.ref_name }}" -20 >> release.md
+            changelog_range="${{ github.ref_name }}"
           fi
+          git log --pretty=format:"%s" "$changelog_range" \
+            | grep -E '^(feat|fix|perf)(\([^)]+\))?!?:' \
+            | sed -E 's/^(feat|fix|perf)(\([^)]+\))?!?:[[:space:]]*//' \
+            | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' \
+            | awk 'NF && !seen[$0]++ { print "- " toupper(substr($0,1,1)) substr($0,2) }' \
+            | head -15 >> release.md
           echo "" >> release.md
 
       - name: Generate sha256
@@ -284,31 +294,18 @@ jobs:
           aws s3 cp update.json "$B/update.json" $ep --content-type application/json --cache-control no-cache
           echo "Published v$version binaries + manifest to YC (dropweb-downloads)."
 
-      - name: Prepare commit list for notification
-        id: prepare_commits
-        run: |
-          # Extract first 10 commits from release.md (without the template footer)
-          commits=$(head -n 20 release.md | grep "^- " | head -n 10)
-          # Escape special characters for JSON
-          commits_escaped=$(echo "$commits" | jq -Rs .)
-          echo "commits=$commits_escaped" >> $GITHUB_OUTPUT
-
-      # TG notifications disabled pending rebrand of notify_telegram.py
-      # (currently posts as "FlClashX Stable/PreRelease Version" — stale fork
-      # copy). Re-enable after script is rebranded + channel IDs audited.
-      # To re-enable: set `if: success()`.
-      - name: Send Telegram notifications
+      # Rich Message release post (Bot API 10.1). Stable tags post to
+      # TELEGRAM_CHAT_IDS; pre-release tags post to TELEGRAM_PRERELEASE_CHAT_IDS
+      # (unset = pre posts are skipped). The script reads commits from the
+      # "## Коммиты" section of release.md generated above and falls back to a
+      # legacy sendMessage if the rich endpoint rejects the payload.
+      - name: Post release to Telegram
         continue-on-error: true
-        if: false
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHANNEL_ID_1: ${{ secrets.TELEGRAM_CHANNEL_ID_1 }}
-          TELEGRAM_CHANNEL_ID_2: ${{ secrets.TELEGRAM_CHANNEL_ID_2 }}
-          TELEGRAM_CHANNEL_ID_3: ${{ secrets.TELEGRAM_CHANNEL_ID_3 }}
+          TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
+          TELEGRAM_PRERELEASE_CHAT_IDS: ${{ secrets.TELEGRAM_PRERELEASE_CHAT_IDS }}
           VERSION: ${{ github.ref_name }}
-          COMMITS: ${{ fromJSON(steps.prepare_commits.outputs.commits) }}
           RELEASE_URL: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
           IS_STABLE: ${{ env.IS_STABLE }}
-        run: |
-          python3 -m pip install requests --quiet
-          python3 .github/scripts/notify_telegram.py
+        run: python3 .github/scripts/notify_telegram.py --release-md release.md
