@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import app.dropweb.GlobalState
 import app.dropweb.models.VpnOptions
@@ -63,6 +64,7 @@ class DropwebService : Service(), BaseServiceInterface {
     }
 
     override fun onDestroy() {
+        Log.d("DropwebService", "onDestroy: runState=${GlobalState.runState.value}")
         stop()
         super.onDestroy()
     }

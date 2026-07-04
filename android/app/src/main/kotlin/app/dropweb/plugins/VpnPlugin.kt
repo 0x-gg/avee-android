@@ -385,6 +385,10 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     }
 
     fun handleStop() {
+        Log.d(
+            "VpnPlugin",
+            "handleStop: runState=${GlobalState.runState.value} caller=${Throwable().stackTrace.getOrNull(1)}"
+        )
         startRequested = false
         GlobalState.runLock.withLock {
             if (GlobalState.runState.value == RunState.STOP) return

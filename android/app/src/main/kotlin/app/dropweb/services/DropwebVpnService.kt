@@ -165,6 +165,7 @@ class DropwebVpnService : VpnService(), BaseServiceInterface {
     // mutates main-thread-only LiveData. We do NOT call super.onRevoke(): its bare
     // stopSelf would race the async core teardown that this path already performs.
     override fun onRevoke() {
+        Log.d("DropwebVpnService", "onRevoke: runState=${GlobalState.runState.value}")
         CoroutineScope(Dispatchers.Main).launch {
             GlobalState.handleStop()
         }
@@ -224,6 +225,7 @@ class DropwebVpnService : VpnService(), BaseServiceInterface {
     }
 
     override fun onDestroy() {
+        Log.d("DropwebVpnService", "onDestroy: runState=${GlobalState.runState.value}")
         // A system-initiated kill must tear down the Go core and reconcile runState;
         // idempotent (early-returns when already STOP) for the normal stop path.
         VpnPlugin.handleStop()
