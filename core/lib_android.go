@@ -149,6 +149,9 @@ func handleStartTun(fd int, callback unsafe.Pointer) {
 	now := time.Now()
 	runTime = &now
 
+	// fd <= 0 is the documented proxy-only marker: Kotlin always calls startTun,
+	// runTime doubles as the session-start marker there. Real tun failures below
+	// MUST clear runTime or the UI adopts a dead "running" state on next sync.
 	if fd <= 0 {
 		if fd < 0 {
 			log.Errorln("startTUN error: invalid fd %d", fd)
@@ -172,6 +175,7 @@ func handleStartTun(fd int, callback unsafe.Pointer) {
 		if err != nil {
 			log.Errorln("startTUN error: %v", err)
 		}
+		runTime = nil
 		removeTunHook()
 		if tunHandler != nil {
 			releaseObject(tunHandler.callback)
