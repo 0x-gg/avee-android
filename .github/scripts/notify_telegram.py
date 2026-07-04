@@ -139,6 +139,54 @@ def platform_urls(version: str, is_stable: bool) -> list[tuple[str, str, str, st
     return [(e, name, label, f"{base}/{art}") for e, name, label, art in PLATFORMS]
 
 
+def load_release_notes(tag: str) -> tuple[str, list[tuple[str, str]]]:
+    """Hand-written Russian notes for the post body, if the release ships them.
+
+    .github/release_notes/<tag>.md format:
+        optional intro text before the first section
+        ## ⬇️ Заголовок секции
+        проза секции...
+    Returns (intro, [(header, prose)]); ("", []) when the file is absent —
+    callers then fall back to the auto-generated commit list.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "..", "release_notes", f"{tag}.md")
+    try:
+        text = open(path, encoding="utf-8").read()
+    except OSError:
+        return "", []
+    intro, sections, header, buf = "", [], "", []
+    def flush():
+        nonlocal intro
+        body = "\n".join(buf).strip()
+        if header:
+            sections.append((header, body))
+        elif body:
+            intro = body
+    for line in text.splitlines():
+        if line.startswith("## "):
+            flush()
+            header, buf = line[3:].strip(), []
+        else:
+            buf.append(line)
+    flush()
+    return intro, sections
+
+
+def render_notes_sections(sections: list[tuple[str, str]], rich: bool) -> list[str]:
+    """Section headers start with a pack emoji when possible: '⬇️ Заголовок'."""
+    out = []
+    for header, prose in sections:
+        emoji = next((c for c in PACK if header.startswith(c)), "")
+        title = header[len(emoji):].strip() if emoji else header
+        lead = f"{ce(emoji)} " if emoji else ""
+        if rich:
+            out.append(f"<h4>{lead}{esc(title)}</h4><p>{esc(prose)}</p>")
+        else:
+            out.append(f"{lead}<b>{esc(title)}</b>\n{esc(prose)}")
+    return out
+
+
 def resolve_banner(tag: str) -> str:
     """Attention banner: env override, else the README hero from the repo.
     Prefer the tag ref (immutable); fall back to main for tags that predate it."""
@@ -170,12 +218,15 @@ def intro_html(version: str, is_stable: bool) -> tuple[str, str]:
 
 
 def build_rich_html(version: str, is_stable: bool, commits: list[str],
-                    release_url: str, banner_url: str = "") -> str:
+                    release_url: str, banner_url: str = "",
+                    notes: tuple[str, list[tuple[str, str]]] = ("", [])) -> str:
     head, intro = intro_html(version, is_stable)
+    notes_intro, notes_sections = notes
     parts = []
     if banner_url:
         parts.append(f'<img src="{html.escape(banner_url)}"/>')
-    parts += [f"<h2>{head}</h2>", f"<p>{intro}</p>"]
+    parts += [f"<h2>{head}</h2>", f"<p>{esc(notes_intro) if notes_intro else intro}</p>"]
+    parts += render_notes_sections(notes_sections, rich=True)
 
     sections = classify(commits)
     total = sum(len(items) for _, _, items in sections)
@@ -185,9 +236,10 @@ def build_rich_html(version: str, is_stable: bool, commits: list[str],
             "<ul>" + "".join(f"<li>{i}</li>" for i in items) + "</ul>"
             for emoji, title, items in sections
         )
+        summary = ("Полный список" if notes_sections else "Что нового") + \
+            f" — {total} изменений"
         parts.append(
-            f"<details><summary>{ce('🧠')} Что нового — {total} изменений</summary>"
-            f"{body}</details>"
+            f"<details><summary>{ce('🧠')} {summary}</summary>{body}</details>"
         )
 
     rows = "".join(
@@ -213,9 +265,14 @@ def build_rich_html(version: str, is_stable: bool, commits: list[str],
 
 
 def build_legacy_html(version: str, is_stable: bool, commits: list[str],
-                      release_url: str) -> str:
+                      release_url: str,
+                      notes: tuple[str, list[tuple[str, str]]] = ("", [])) -> str:
     """Fallback: brand-style plain post with an expandable quote."""
     head, intro = intro_html(version, is_stable)
+    notes_intro, notes_sections = notes
+    if notes_intro:
+        intro = esc(notes_intro)
+    body_sections = render_notes_sections(notes_sections, rich=False)
     quote = ""
     sections = classify(commits)
     if sections:
@@ -231,7 +288,8 @@ def build_legacy_html(version: str, is_stable: bool, commits: list[str],
     ) + f'\n{ce("📄")} <a href="{html.escape(release_url)}">GitHub Release</a>' \
         f'\n{ce("💚")} <a href="https://dropweb.org">dropweb.org</a>'
 
-    post = "\n\n".join(p for p in (f"<b>{head}</b>", intro, quote, downloads) if p)
+    post = "\n\n".join(
+        p for p in [f"<b>{head}</b>", intro, *body_sections, quote, downloads] if p)
     if rendered_len(post) > LEGACY_LIMIT:
         post = "\n\n".join((f"<b>{head}</b>", intro, downloads))
     return post
@@ -298,8 +356,11 @@ def main() -> int:
 
     commits = parse_commits(release_md)
     banner = resolve_banner(tag)
-    rich = build_rich_html(version, is_stable, commits, release_url, banner)
-    legacy = build_legacy_html(version, is_stable, commits, release_url)
+    notes = load_release_notes(tag)
+    if notes[1]:
+        print(f"using hand-written release notes ({len(notes[1])} sections)")
+    rich = build_rich_html(version, is_stable, commits, release_url, banner, notes)
+    legacy = build_legacy_html(version, is_stable, commits, release_url, notes)
     # Branded buttons: animated pack emoji via icon_custom_emoji_id. Works in
     # groups/supergroups (bot owner has Premium); channels need a Fragment
     # username on the bot — the iconless keyboard below is the safe retry.
