@@ -59,7 +59,10 @@ class System {
   }
 
   Future<bool> checkIsAdmin() async {
-    final corePath = appPath.corePath.replaceAll(' ', r'\\ ');
+    // Process.run passes args directly to exec (no shell) — the core path must
+    // NOT be shell-escaped, or a path containing spaces gets literal backslashes
+    // baked in and `stat` fails on the mangled path.
+    final corePath = appPath.corePath;
     if (Platform.isWindows) {
       final result = await windows?.checkService();
       return result == WindowsHelperServiceStatus.running;
