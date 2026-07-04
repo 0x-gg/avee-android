@@ -84,7 +84,12 @@ class _ToolboxViewState extends ConsumerState<ToolsView> {
         items: [
           const _LocaleItem(),
           const _ThemeItem(),
-          if (Platform.isAndroid) const AlwaysOnVpnItem(),
+          // "Always-on VPN" is a system-settings shortcut most users never
+          // need and can mis-toggle into a confusing state; gated behind the
+          // developer-mode unlock (5 taps on the Settings title), same as
+          // _ConfigItem / _SettingItem / _AccessItem below.
+          if (Platform.isAndroid && enableDeveloperMode)
+            const AlwaysOnVpnItem(),
           // Hotkey Management entry was removed for the Play readiness
           // wave together with the runtime global-hotkey registration
           // (see `Application._buildPlatformState`). The `HotKeyView`
