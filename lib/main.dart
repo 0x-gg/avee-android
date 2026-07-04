@@ -327,11 +327,52 @@ Future<void> _service(List<String> flags) async {
     commonPrint.log("[DART] Not quickStart, calling _handleMainIpc");
     _handleMainIpc(clashLibHandler);
   } else {
-    // App was not in memory - VPN will be started via pending action triggered by signalServiceReady()
-    // The onStart callback in tile listener will handle the actual VPN startup
+    // App was not in memory - VPN starts via the pending action from the tile.
+    // No main isolate exists yet, so the full IPC (_handleMainIpc) is deferred:
+    // we register a one-shot control port so a LATER main isolate (user opens
+    // the app onto the tile-started VPN) can request the first handshake and we
+    // build the bridge lazily. The old world instead destroyed+recreated this
+    // engine on app open (tearing the live tunnel, bug 1a/1b); with the destroy
+    // now refused while START, that path would hang the splash forever waiting
+    // on a handshake that never comes (bug 1c-splash).
     commonPrint.log(
-        "[DART] QuickStart mode - VPN will be started via pending action from tile service");
+        "[DART] QuickStart mode - registering lazy rehandshake bridge for a later main isolate");
+    _registerQuickStartRehandshakeBridge(clashLibHandler);
   }
+}
+
+/// Bridges a tile-born (quickStart) service isolate to a main isolate that
+/// appears LATER, when the user opens the app onto an already-running VPN.
+///
+/// In quickStart mode [_handleMainIpc] is never called at boot (no main isolate
+/// to talk to), so this isolate would otherwise expose no [serviceIsolate]
+/// control port — the opening main isolate's `_tryRehandshake` would find
+/// nothing, fall back to destroy+init (refused while the VPN is live), and then
+/// wait forever on its handshake completer (splash hang).
+///
+/// Instead we register a one-shot control port. The opening main isolate
+/// registers its own port ([ClashLib._listenPort]) BEFORE sending `rehandshake`,
+/// so [_handleMainIpc]'s `mainIsolate` lookup succeeds and its initial SendPort
+/// handshake send IS the rehandshake reply that unblocks the main isolate. After
+/// that first handshake, [_handleMainIpc] re-registers its OWN control port for
+/// every subsequent rehandshake (swipe→reopen), so this one-shot port is closed.
+void _registerQuickStartRehandshakeBridge(ClashLibHandler clashLibHandler) {
+  final controlPort = ReceivePort();
+  IsolateNameServer.removePortNameMapping(serviceIsolate);
+  IsolateNameServer.registerPortWithName(controlPort.sendPort, serviceIsolate);
+  var bridged = false;
+  controlPort.listen((msg) {
+    if (msg is Map && msg['action'] == 'rehandshake' && !bridged) {
+      bridged = true;
+      // Builds the full IPC now. attachMessagePort inside re-points core
+      // messages from the tile listener to the main-isolate forwarder — the
+      // same topology as normal in-memory mode, which is exactly what we want.
+      // _handleMainIpc also removePortNameMapping(serviceIsolate) + registers
+      // its own control port, so closing this one-shot port afterwards is safe.
+      _handleMainIpc(clashLibHandler);
+      controlPort.close();
+    }
+  });
 }
 
 /// Mutable holder for the main-isolate [SendPort] this service isolate targets.
