@@ -246,19 +246,12 @@ Future<void> _service(List<String> flags) async {
       final traffic = clashLibHandler.getTraffic();
       final profile = globalState.config.currentProfile;
 
-      // Get server group name from header (may be base64-encoded)
+      // Get server group name from header (may be base64-encoded, optionally
+      // `base64:`-prefixed). decodeMaybeBase64 returns the raw value on any
+      // decode failure, matching the previous empty-catch fallback.
       String? groupName = profile?.providerHeaders['dropweb-serverinfo'];
       if (groupName != null && groupName.isNotEmpty) {
-        try {
-          // Mirror Profile.serviceName: strip the optional `base64:` prefix
-          // before normalize/decode, else normalize chokes on the prefix text
-          // and the (empty-catch) fallback keeps the raw encoded header.
-          final raw =
-              groupName.startsWith('base64:') ? groupName.substring(7) : groupName;
-          final normalized = base64.normalize(raw);
-          groupName = utf8.decode(base64.decode(normalized));
-        } catch (_) {}
-        groupName = groupName?.trim();
+        groupName = decodeMaybeBase64(groupName).trim();
       }
 
       // Get selected proxy name from selectedMap

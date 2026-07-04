@@ -85,21 +85,11 @@ class ConnectService {
 
     final profileName = profile.label ?? profile.id;
 
-    // Decode service name from header
+    // Decode service name from header (may be `base64:`-prefixed base64).
     String serviceName = "";
     final svc = profile.providerHeaders['dropweb-servicename'];
     if (svc != null && svc.isNotEmpty) {
-      try {
-        // Mirror Profile.serviceName: branding headers may carry an optional
-        // `base64:` prefix before the base64 payload — strip it before decode,
-        // else base64.normalize chokes on the "base64:" text and we fall back
-        // to the raw (still-encoded) header.
-        final raw = svc.startsWith('base64:') ? svc.substring(7) : svc;
-        final normalized = base64.normalize(raw);
-        serviceName = utf8.decode(base64.decode(normalized)).trim();
-      } catch (_) {
-        serviceName = svc.trim();
-      }
+      serviceName = decodeMaybeBase64(svc).trim();
     }
 
     vpn?.updateProfileInfo(
@@ -108,19 +98,9 @@ class ConnectService {
     );
 
     // Get current server name from selectedMap
-    String? groupName = profile.providerHeaders['dropweb-serverinfo'];
+    final groupName = profile.providerHeaders['dropweb-serverinfo'];
     if (groupName != null && groupName.isNotEmpty) {
-      String decodedGroupName;
-      try {
-        // Mirror Profile.serviceName: strip the optional `base64:` prefix
-        // before normalize/decode.
-        final raw =
-            groupName.startsWith('base64:') ? groupName.substring(7) : groupName;
-        final normalized = base64.normalize(raw);
-        decodedGroupName = utf8.decode(base64.decode(normalized)).trim();
-      } catch (_) {
-        decodedGroupName = groupName.trim();
-      }
+      final decodedGroupName = decodeMaybeBase64(groupName).trim();
       final serverName = profile.selectedMap[decodedGroupName] ?? "";
       vpn?.updateServerName(serverName);
     }

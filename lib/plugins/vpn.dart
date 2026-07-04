@@ -29,7 +29,7 @@ class Vpn {
             return await handleGetStartForegroundParams!();
           }
           // Default handler for UI mode - get current proxy name from core
-          return _getDefaultForegroundParams();
+          return await _getDefaultForegroundParams();
         case "status":
           return clashLibHandler?.getRunTime() != null;
         default:
@@ -77,31 +77,22 @@ class Vpn {
   /// Get cached service name
   String get cachedServiceName => _cachedServiceName;
 
-  /// Decode base64 string if needed
-  String? _decodeBase64IfNeeded(String? value) {
-    if (value == null || value.isEmpty) return value;
-    try {
-      final normalized = base64.normalize(value);
-      return utf8.decode(base64.decode(normalized));
-    } catch (e) {
-      return value;
-    }
-  }
-
   /// Default foreground params when running in UI mode.
   /// Shows: title = selected server (else cached service name, else cached
-  /// profile name), content = traffic, server (subText) = empty.
-  String _getDefaultForegroundParams() {
+  /// profile name), content = traffic speed, server (subText) = empty.
+  Future<String> _getDefaultForegroundParams() async {
     try {
-      final traffic = clashCore.getTraffic();
+      // UI-mode traffic read goes through the bridge invoke and is async —
+      // it MUST be awaited, else the notification renders a Future instance.
+      final traffic = await clashCore.getTraffic();
       final profile = globalState.config.currentProfile;
 
       // Current proxy/server name
       String? proxyName;
       try {
-        final serverInfoGroupName = _decodeBase64IfNeeded(
-          profile?.providerHeaders['dropweb-serverinfo'],
-        );
+        final header = profile?.providerHeaders['dropweb-serverinfo'];
+        final serverInfoGroupName =
+            header == null ? null : decodeMaybeBase64(header);
         if (serverInfoGroupName != null && serverInfoGroupName.isNotEmpty) {
           proxyName = globalState.appController
               .getSelectedProxyName(serverInfoGroupName);
@@ -120,7 +111,8 @@ class Vpn {
       return json.encode({
         "title": title,
         "server": "",
-        "content": "$traffic",
+        "content":
+            "\u2191 ${traffic.up.show}/s  \u2193 ${traffic.down.show}/s",
       });
     } catch (e) {
       return json.encode({

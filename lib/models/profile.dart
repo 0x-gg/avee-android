@@ -183,15 +183,7 @@ extension ProfileExtension on Profile {
   String get serviceName {
     String? decode(String? value) {
       if (value == null || value.isEmpty) return null;
-      var text = value;
-      if (text.startsWith('base64:')) {
-        text = text.substring(7);
-      }
-      try {
-        return utf8.decode(base64.decode(base64.normalize(text)));
-      } catch (_) {
-        return value;
-      }
+      return decodeMaybeBase64(value);
     }
 
     for (final candidate in [
