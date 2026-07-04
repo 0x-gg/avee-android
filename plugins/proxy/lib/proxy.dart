@@ -258,7 +258,10 @@ class Proxy extends ProxyPlatform {
     final res = await Process.run(
         "/usr/sbin/networksetup", ["-listallnetworkservices"]);
     final lines = res.stdout.toString().split("\n");
-    lines.removeWhere((element) => element.contains("*"));
+    // Drop the "An asterisk (*) denotes..." header AND the trailing empty entry
+    // that `split("\n")` yields — an empty service name makes every downstream
+    // `networksetup -set...proxy` call fail.
+    lines.removeWhere((l) => l.contains("*") || l.trim().isEmpty);
     return lines;
   }
 }
