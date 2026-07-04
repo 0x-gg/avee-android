@@ -215,6 +215,12 @@ abstract class ClashHandlerInterface with ClashInterface {
   FutureOr<String> validateConfig(String data) => invoke<String>(
         method: ActionMethod.validateConfig,
         data: data,
+        // The empty string means "valid" by contract with the Go core (it
+        // returns the error text or ""). A timed-out validate must therefore
+        // surface as an error, not "" — otherwise callers treat a dead core
+        // as "config valid" and save/apply an unvalidated config. Fail closed.
+        onTimeout: () =>
+            "error: core did not answer (timeout) — config not validated",
       );
 
   @override
@@ -267,6 +273,10 @@ abstract class ClashHandlerInterface with ClashInterface {
   FutureOr<String> changeProxy(ChangeProxyParams changeProxyParams) => invoke<String>(
       method: ActionMethod.changeProxy,
       data: json.encode(changeProxyParams),
+      // A timed-out changeProxy must surface as an error, not the empty string
+      // (which callers read as "proxy changed" success). Fail closed so a dead
+      // core does not fake a successful proxy switch.
+      onTimeout: () => "error: core did not answer (timeout)",
     );
 
   @override
