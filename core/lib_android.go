@@ -101,6 +101,37 @@ var (
 	tunHandler *TunHandler
 )
 
+type tunOp struct {
+	start    bool
+	fd       int
+	callback unsafe.Pointer
+}
+
+// tunOps serializes start/stop so a fast disconnect->connect can't let a stop
+// goroutine finish AFTER an in-flight start and tear down the fresh tunnel.
+// One worker drains in FIFO order; the buffer keeps the JNI-facing exports
+// non-blocking.
+var tunOps = make(chan tunOp, 16)
+
+// init starts the single tun worker. It only ranges over a buffered channel and
+// depends on nothing from other init() functions, so package-init ordering is
+// irrelevant; the buffer absorbs any op enqueued before the goroutine is
+// scheduled.
+func init() {
+	go func() {
+		for op := range tunOps {
+			func() {
+				defer recoverGo("tunWorker")
+				if op.start {
+					handleStartTun(op.fd, op.callback)
+				} else {
+					handleStopTun()
+				}
+			}()
+		}
+	}()
+}
+
 func handleStopTun() {
 	tunLock.Lock()
 	defer tunLock.Unlock()
@@ -268,10 +299,7 @@ func quickStart(initParamsChar *C.char, paramsChar *C.char, stateParamsChar *C.c
 
 //export startTUN
 func startTUN(fd C.int, callback unsafe.Pointer) bool {
-	go func() {
-		defer recoverGo("startTUN")
-		handleStartTun(int(fd), callback)
-	}()
+	tunOps <- tunOp{start: true, fd: int(fd), callback: callback}
 	return true
 }
 
@@ -282,10 +310,7 @@ func getRunTime() *C.char {
 
 //export stopTun
 func stopTun() {
-	go func() {
-		defer recoverGo("stopTun")
-		handleStopTun()
-	}()
+	tunOps <- tunOp{start: false}
 }
 
 //export getCurrentProfileName
