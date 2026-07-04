@@ -296,8 +296,8 @@ jobs:
 
       # Rich Message release post (Bot API 10.1). Stable tags post to
       # TELEGRAM_CHAT_IDS; pre-release tags post to TELEGRAM_PRERELEASE_CHAT_IDS
-      # (unset = pre posts are skipped). The script reads commits from the
-      # "## Коммиты" section of release.md generated above and falls back to a
+      # (unset = pre posts are skipped). The script reads the curated
+      # "## Что нового" section of release.md generated above and falls back to a
       # legacy sendMessage if the rich endpoint rejects the payload.
       - name: Post release to Telegram
         continue-on-error: true
