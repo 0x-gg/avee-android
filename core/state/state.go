@@ -1,6 +1,9 @@
 package state
 
-import "net/netip"
+import (
+	"net/netip"
+	"sync"
+)
 
 var DefaultIpv4Address = "172.19.0.1/30"
 var DefaultDnsAddress = "172.19.0.2"
@@ -41,13 +44,40 @@ type State struct {
 	BypassDomain        []string             `json:"bypass-domain"`
 }
 
-var CurrentState = &State{
-	OnlyStatisticsProxy: false,
-	CurrentProfileName:  "",
+// stateMu guards the CurrentState pointer only. The State value it points to is
+// never mutated in place after publication; SetCurrentState swaps the whole
+// pointer under the write lock, and readers take ONE snapshot via
+// GetCurrentState() so concurrent traffic/tun readers can't race the swap.
+var (
+	stateMu      sync.RWMutex
+	CurrentState = &State{
+		OnlyStatisticsProxy: false,
+		CurrentProfileName:  "",
+	}
+)
+
+// GetCurrentState returns the current shared state pointer under a read lock.
+// Callers must snapshot once per operation and read fields off the returned
+// pointer, not re-call for each field.
+func GetCurrentState() *State {
+	stateMu.RLock()
+	defer stateMu.RUnlock()
+	return CurrentState
+}
+
+// SetCurrentState atomically publishes a new shared state pointer under the
+// write lock. A nil argument is ignored to preserve the never-nil invariant.
+func SetCurrentState(next *State) {
+	if next == nil {
+		return
+	}
+	stateMu.Lock()
+	defer stateMu.Unlock()
+	CurrentState = next
 }
 
 func GetIpv6Address() string {
-	if CurrentState.VpnProps.Ipv6 {
+	if GetCurrentState().VpnProps.Ipv6 {
 		return DefaultIpv6Address
 	} else {
 		return ""

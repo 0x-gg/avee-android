@@ -10,6 +10,8 @@ import (
 	bridge "core/dart-bridge"
 	"encoding/json"
 	"unsafe"
+
+	"github.com/metacubex/mihomo/log"
 )
 
 var messagePort int64 = -1
@@ -54,7 +56,10 @@ func invokeAction(paramsChar *C.char, port C.longlong) {
 	var action = &Action{}
 	err := json.Unmarshal([]byte(params), action)
 	if err != nil {
-		bridge.SendToPort(i, err.Error())
+		// The Dart listener json.decodes every port message; posting a raw error
+		// string crashes it. The action id is unknown on a parse failure, so no
+		// completer could be resolved anyway -- log and drop.
+		log.Errorln("invokeAction: invalid params: %v", err)
 		return
 	}
 	result := ActionResult{

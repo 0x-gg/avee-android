@@ -227,16 +227,17 @@ func removeTunHook() {
 func handleGetAndroidVpnOptions() string {
 	tunLock.Lock()
 	defer tunLock.Unlock()
+	s := state.GetCurrentState()
 	options := state.AndroidVpnOptions{
-		Enable:           state.CurrentState.VpnProps.Enable,
+		Enable:           s.VpnProps.Enable,
 		Port:             currentConfig.General.MixedPort,
 		Ipv4Address:      state.DefaultIpv4Address,
 		Ipv6Address:      state.GetIpv6Address(),
-		AccessControl:    state.CurrentState.VpnProps.AccessControl,
-		SystemProxy:      state.CurrentState.VpnProps.SystemProxy,
-		AllowBypass:      state.CurrentState.VpnProps.AllowBypass,
+		AccessControl:    s.VpnProps.AccessControl,
+		SystemProxy:      s.VpnProps.SystemProxy,
+		AllowBypass:      s.VpnProps.AllowBypass,
 		RouteAddress:     currentConfig.General.Tun.RouteAddress,
-		BypassDomain:     state.CurrentState.BypassDomain,
+		BypassDomain:     s.BypassDomain,
 		DnsServerAddress: state.GetDnsServerAddress(),
 	}
 	data, err := json.Marshal(options)
@@ -257,10 +258,11 @@ func handleUpdateDns(value string) {
 }
 
 func handleGetCurrentProfileName() string {
-	if state.CurrentState == nil {
+	s := state.GetCurrentState()
+	if s == nil {
 		return ""
 	}
-	return state.CurrentState.CurrentProfileName
+	return s.CurrentProfileName
 }
 
 func nextHandle(action *Action, result ActionResult) bool {
@@ -296,7 +298,7 @@ func quickStart(initParamsChar *C.char, paramsChar *C.char, stateParamsChar *C.c
 			bridge.SendToPort(i, "init error")
 			return
 		}
-		handleSetState(stateParams)
+		_ = handleSetState(stateParams)
 		bridge.SendToPort(i, handleSetupConfig(bytes))
 	}()
 }
@@ -330,7 +332,7 @@ func getAndroidVpnOptions() *C.char {
 //export setState
 func setState(s *C.char) {
 	paramsString := C.GoString(s)
-	handleSetState(paramsString)
+	_ = handleSetState(paramsString)
 }
 
 //export updateDns

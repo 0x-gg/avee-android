@@ -191,7 +191,10 @@ func handleAction(action *Action, result ActionResult) {
 		return
 	case setStateMethod:
 		data := action.Data.(string)
-		handleSetState(data)
+		if err := handleSetState(data); err != nil {
+			result.error("invalid state params")
+			return
+		}
 		result.success(true)
 	case crashMethod:
 		result.success(true)
