@@ -1186,6 +1186,17 @@ class AppController {
   Future<void> _initStatus() async {
     if (Platform.isAndroid) {
       await globalState.updateStartTime();
+      if (globalState.isStart == true) {
+        // Native core is already running (QS-tile start, or the service engine
+        // survived an app reopen). ADOPT that state read-only — a full
+        // updateStatus(true) → handleStart would re-establish the tunnel
+        // (killing the user's live TCP sessions) or, at runState==START, hit
+        // the 15s tun-ack timeout and tear a healthy VPN down (bug 1c).
+        // syncRunStateFromNative arms the runtime/traffic tickers and the
+        // connected icon without ever toggling the VPN.
+        await syncRunStateFromNative();
+        return;
+      }
     }
     final status = globalState.isStart == true
         ? true
