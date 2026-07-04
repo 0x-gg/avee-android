@@ -1,3 +1,325 @@
+## v0.8.5
+
+- docs: update README screenshots (hub, menu, select)
+
+## v0.8.4-pre.6
+
+- feat(settings): gate always-on VPN entry behind developer mode
+
+- fix(vpn): drop stale core connections when underlying network changes
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+## v0.8.4-pre.5
+
+- feat(notification): show panel profile title in foreground notification
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- chore(services): drop unused dart:convert import after b64 helper migration
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- refactor(ui): move stray hardcoded colors into lumina tokens
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- fix(vpn): await traffic + unified b64 decode in default foreground params
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- feat(common): shared decodeMaybeBase64 helper
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- fix(macos): drop empty service names from networksetup list
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- fix(desktop): stop mangling core path with spaces in checkIsAdmin
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- fix(vpn): make tile-born service isolate reattachable by a later main isolate
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- fix(android): syncStatus must not downgrade a live runState to STOP
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- fix(vpn): adopt already-running native state on startup instead of reconnecting
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- fix(vpn): reattach to live service isolate instead of destroying it on app reopen
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- fix(bridge): invoke timeout returns explicit error for validateConfig/changeProxy
+
+- chore(android): log vpn runState transitions
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- fix(core): validate + lock setState; stop posting raw errors to dart port
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- fix(core): clear runTime on real tun start failure
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- fix(core): serialize tun start/stop through a single worker (fixes stop-after-start race)
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- fix(theme): apply provider header settings only for the active profile
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+## v0.8.4-pre.4
+
+- refactor(home): split connect circle, overlays and nav bar into widget files
+
+- refactor(home): tokenize hardcoded colors via Lumina
+
+- refactor(subscription): split screen into per-section widget files
+
+- refactor(controller): extract ConnectService behind facade
+
+- fix(notification): drop internal routing-mode label from foreground notification
+
+- fix(update): single OK button on "already latest" dialog
+
+- docs(headers): drop dropweb-xnodes/game section — native Remnawave Hysteria
+
+- refactor(hy2)!: drop dropweb-xnodes overlay — native Remnawave Hysteria
+
+- refactor(modes)!: remove Gaming work mode
+
+- Remnawave now serves Hysteria2 natively in the subscription YAML; the
+- per-game Hy2 injection mode is superseded by Country mode (Mode.global)
+- where the user picks the Hy2 node directly. Persisted 'gaming' profiles
+- fall back to standard via unknownEnumValue.
+
+## v0.8.4-pre.3
+
+- feat: premium first-run + desktop/Android hardening + HWID recovery
+
+- Bug batch (desktop + Android):
+- - main.dart/lock.dart: desktop single-instance gate before first core access;
+-   idempotent lock acquire (cached, retains file handle)
+- - clash/service.dart + controller.dart: core-death detection with a bounded
+-   self-heal (one restart per 5-min cooldown, else honest stopped state)
+- - common/system.dart: DNS restore clears the persisted origin only on exit 0
+- - manager/tray_manager.dart: tray popup close guarded by PID ownership
+- - clash/core.dart: null-guard GLOBAL proxy group; base64 prefix strip
+- - clash/lib.dart: re-creatable ReceivePort (defuses reStart StateError)
+- - state.dart: tun-ack cross-attempt identical guard
+- - android VpnPlugin.kt: uidPageNameMap -> ConcurrentHashMap + computeIfAbsent
+- - controller.dart: start update tasks on external (QS-tile) run sync
+
+- Premium first-run (provider-neutral):
+- - vpn_consent.dart: VpnService disclosure gated to Play build (kIsPlayBuild);
+-   sideload channels skip straight to the system flow
+- - add_profile.dart: clipboard read only on explicit tap; named one-tap import
+-   row ("Добавить <host>") when a subscription URL is detected on open
+- - app.dart/AppPlugin.kt/notification_permission.dart: contextual one-shot
+-   POST_NOTIFICATIONS ask on first connect (Android 13+)
+- - pages/home.dart: empty-state guidance above the connect lens
+- - controller.dart: seed profile label from the subscription host, not the
+-   provider's content-disposition filename
+- - pages/scan.dart: localize the camera-permission-denied string (+arb/l10n)
+
+- HWID device-limit recovery (header-driven):
+- - services/hwid_recovery.dart: per-profile episode machine — dialog once,
+-   foreground poll (30s / 10min tick budget) + app-resume retry
+- - controller.dart: route x-hwid-limit headers into the episode; single
+-   decisive "Освободить лимит" action opens the panel's dropweb-device-remove
+-   deep link; two-line success notifier on recovery
+- - state.dart: openUrlDirect (no external-link confirm for explicit actions)
+- - app_state_manager.dart: retry the flagged profile on app resume
+
+- Reliability + diagnostics:
+- - models/profile.dart: cap the optional disconeko SOS fetch at 2s with a
+-   15-min per-URL negative cache — an unreachable endpoint no longer taxes
+-   every import/update
+- - providers/config.dart + services/profile_service.dart: instrumentation for
+-   currentProfileId writes (diagnosing an intermittent blank-dashboard state)
+
+- Includes the prior Windows helper-race fix (idempotent lock + realign
+- self-heal). All copy via l10n (en/ru/ja/zh_CN, regenerated).
+
+- fix(core): harden Go bridge — tun-fail surfacing, panic replies, config safety
+
+- - common.go: setupConfig returns an error when Tun.Enable was requested but
+-   the listener reports disabled (!Android), so a failed tun start surfaces
+-   instead of a silent half-up state; a ParseRawConfig failure now keeps the
+-   live config mid-session instead of replacing it with an inert default;
+-   recoverGoFn delivers a panic payload to the reply callback so the Dart
+-   completer resolves instead of hanging
+- - hub.go: recoverGoFn wraps the 7 reply-owing goroutines with Dart-safe panic
+-   payloads; runLock acquired INSIDE handleChangeProxy/handleUpdateExternal-
+-   Provider goroutines; a dedicated mutex guards logSubscriber start/stop
+- - action.go: getConfig passes err.Error() (String) to result.error
+- - lib_android.go: return after the quickStart init-error send
+
+- feat(ui): dashboard MENU label instead of swipe-up arrow
+
+- Replace the bottom swipe-up arrow handle with a "MENU" text label (accent,
+- letter-spaced) that opens the same card menu. `menu` string bumped
+- Menu/Меню → MENU in both locales (+ regenerated l10n).
+
+- fix(core): fail-fast on malformed getConfig payload — no 2-min UI hang
+
+- A core error payload is `dynamic` (can be a Map/JSON body), but `Result.error`
+- requires a String; the cast threw inside `toResult` and escaped into
+- `handleResult`, leaving the caller's completer hanging until its invoke timeout
+- (getConfig = 2 min → frozen UI spinner).
+
+- - core.dart: stringify a non-String error body in ActionResult.toResult
+- - interface.dart: complete the completer with the error on dispatch failure
+-   (fail-fast) + log the raw payload (code/dataType/data) for diagnosis; type
+-   getConfig's empty default as Map<String, dynamic> to avoid a cast throw
+
+- feat(hy2): build nodes from dropweb-xnodes header specs
+
+- Absorb the panel-pushed rich node descriptor (base64 JSON: name + server +
+- port + alpn) and build the hysteria2 proxy verbatim, instead of hardcoded
+- params + a synthetic "🎮 <domain>" name. Drops kHy2Port/kHy2Alpn/
+- kHy2SkipCertVerify/kHy2ProxyPrefix.
+
+- - hy2_overlay: Hy2NodeSpec + parseHy2NodeSpecs (base64 JSON); buildHy2Proxy(spec);
+-   injectHy2Overlay(specs); shared applyHy2Overlay + extractUserVlessUuid
+- - gaming: injectGamingProxies builds from the same specs; drop GameHysteriaTemplate
+- - state.dart: build path + gaming use the shared overlay
+- - subscription: «Страна» picker mirrors the overlay so Hy2 nodes appear under
+-   their country flag
+- - drop dead parseGameNodeDomains / kGamingNodesHeader
+- - docs: document the dropweb-xnodes header contract
+
+- feat(hy2): wire header-gated Hy2 overlay into config build (all modes)
+
+- Run the overlay before the work-mode patch on every setup: no-op without the
+- header/uuid, otherwise it lands Hy2 in the auto-select group so url-test picks
+- it when alive and falls back to Reality (TCP) when UDP/443 is blocked. Gaming
+- dedups the same '🎮 <domain>' proxy by name; applyWorkModePatch only appends
+- groups, so injecting first is safe across standard/smart/country.
+
+- feat(hy2): pure header-gated Hysteria2 overlay module
+
+- Additive, idempotent overlay that injects hysteria2 proxies (pool domains from
+- the new dropweb-xnodes header, legacy dropweb-game-nodes fallback; password =
+- the user's vless uuid) into top-level proxies and binds them into the EXISTING
+- auto-select group — resolved name-agnostically from the MATCH router via the
+- shared detectPrimaryRouter. Deploy-matching protocol consts (443 / [h3] /
+- skip-cert-verify:false). No Flutter / no I-O; exported via the common barrel.
+
+- refactor(mihomo): extract shared isRoutableProxy helper
+
+- Hoist the structural sentinel filter out of work_mode_patch's private
+- _isRoutableProxy into a public isRoutableProxy in mihomo_yaml_splice, so the
+- Hy2 overlay's auto-select resolver and Smart/Country candidate filtering share
+- one source of truth instead of duplicating the predicate.
+
+## v0.8.4-pre.2
+
+- fix(release): pubspec version 0.8.4 (drop -pre suffix; RPM/packagers reject hyphen, pre lives in git tag)
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+## v0.8.4-pre.1
+
+- Merge origin/main (0.8.3 in-app auto-update) into dev — gaming + bump 0.8.4-pre.1
+
+- Brings the released v0.8.3 sideloaded-Android in-app auto-update line into dev, which carries the uncommitted «Игровой» (gaming) work-mode. dev was 6 behind / 0 ahead before the 3 gaming commits; this is a real 3-way merge (not a fast-forward).
+
+- Only one real conflict — lib/common/constant.dart — and it was purely additive: both sides insert consts after defaultTestUrl. Resolved as a union, no deletions: kept BOTH the gaming headers (kGamingHeader, kGamingNodesHeader) AND main's auto-update block (kIsPlayBuild, kUpdateManifestUrl, kGithubApkAssetByPlatform, kUpdateCacheDirName, kUpdateCheckInterval). pubspec.yaml auto-merged to main's version then bumped to 0.8.4-pre.1+2026062613 (build number > main's 2026062612 for a monotonic versionCode). common.dart needed no resolution (main never touched it; dev's gaming barrel exports are preserved). All other files (request/controller/config/services/views/l10n/arb/android/ci) took main's auto-update changes cleanly.
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- feat(gaming): surface «Игровой» mode card
+
+- Surfaces the gaming work-mode as a selectable card in the modes list, shown ONLY when gamingModeAvailableProvider is true (the subscription advertises a valid dropweb-game header).
+
+- Unlike country, it has no deep screen / chevron / badge — its nodes and rules come from the panel, so tapping just applies WorkMode.gaming. Because the build path is fail-safe (silently falls back to standard routing if gaming can't apply), header-present == card-shown needs no extra gate. Uses the existing workModeGaming/workModeGamingDesc l10n + a game-controller glyph.
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- feat(gaming): availability gate + build-path wiring
+
+- Wires the gaming core into state without surfacing it yet: a provider gate decides when gaming is offered, and the config build path applies it fail-safe.
+
+- providers/state.dart: gamingModeAvailableProvider — true only when the current profile's kGamingHeader parses to a valid descriptor URL (via gamingDescriptorUrl); state.g.dart regenerates its provider binding. state.dart: GlobalState dispatches WorkMode.gaming to the new _applyGamingMode hook, which loads the pinned descriptor, injects the Hy2 node pool + gaming group, applies rules, and sets on-disk rule-provider paths (_setGamingRuleProviderPaths).
+
+- Fail-safe by construction: every unavailable path (missing/unpinned URL, descriptor fetch failure, no node domains/uuid, any thrown error) logs a reason and returns rawConfig unchanged — gaming must NEVER break config build for the user.
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- feat(gaming): descriptor model + pure inject/rules core
+
+- The «Игровой» (gaming) work-mode foundation, all panel-driven and side-effect-free so the build path can stay fail-safe. No UI or provider wiring yet (follow-ups).
+
+- game_descriptor.dart: Freezed GameDescriptor model (proxies/groups/rules/rule-providers) parsed from the pinned game.yml; game_descriptor.g.dart/.freezed.dart its generated codecs. gaming_patch.dart: pure functions — injectGamingProxies, applyGamingPatch, parseGameNodeDomains, extractGamingUuid — that fold the descriptor into a raw config without touching disk or network. game_descriptor_loader.dart: loadGameDescriptor + gamingDescriptorUrl + isPinnedGamingHost (host-pin guard) for fetching/validating the descriptor URL.
+
+- constant.dart: two subscription-header consts — kGamingHeader ('dropweb-game', advertises the descriptor URL) and kGamingNodesHeader ('dropweb-game-nodes', the Hy2 node pool). common.dart: barrel exports for the three new modules (kept alphabetical). build.yaml: route lib/common/ generated .g.dart/.freezed.dart beside source (no generated/ subdir) so the descriptor codegen lands next to its source.
+
+- Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
+
+- Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
+
+- Update changelog
+
+- Merge origin/main (FUNDING.yml + changelog) into the 0.8.3 line
+
+- Update changelog
+
+- Update FUNDING.yml
+- Create FUNDING.yml
+
 ## v0.8.3
 
 - feat(update): in-app auto-update for sideloaded Android
