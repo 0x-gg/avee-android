@@ -359,6 +359,10 @@ def main() -> int:
     notes = load_release_notes(tag)
     if notes[1]:
         print(f"using hand-written release notes ({len(notes[1])} sections)")
+    elif is_stable:
+        print(f"::warning::no .github/release_notes/{tag}.md — the TG post falls "
+              "back to the raw commit list. Next time write the notes before tagging "
+              "(see .github/release_notes/TEMPLATE.md).")
     rich = build_rich_html(version, is_stable, commits, release_url, banner, notes)
     legacy = build_legacy_html(version, is_stable, commits, release_url, notes)
     # Branded buttons: animated pack emoji via icon_custom_emoji_id. Works in
