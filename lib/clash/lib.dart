@@ -36,10 +36,49 @@ class ClashLib extends ClashHandlerInterface with AndroidClashInterface {
   @override
   Future<bool> preload() => _canSendCompleter.future;
 
+  /// How long [_tryRehandshake] waits for the live service isolate to answer a
+  /// re-handshake before falling back to destroy+init. Bounded so a zombie
+  /// isolate (registered port but dead listener) can never hang app startup.
+  static const _rehandshakeTimeout = Duration(seconds: 2);
+
   Future<void> _initService() async {
-    await service?.destroy();
+    // Arm the bridge listener FIRST so the mainIsolate port is registered before
+    // we ask the service isolate to re-handshake to it.
     _listenPort();
-    await service?.init();
+    final revived = await _tryRehandshake();
+    if (!revived) {
+      // No live service isolate answered (cold start, or a dead/zombie isolate)
+      // — take the original destroy+recreate path.
+      await service?.destroy();
+      await service?.init();
+    }
+  }
+
+  /// Reattach to an ALREADY-RUNNING service isolate instead of destroying and
+  /// recreating it. Destroying the service engine tears down the live VPN
+  /// tunnel (bug 1a/1b): on app reopen the process is still alive with a healthy
+  /// core, so we ask that isolate — via its control port registered under
+  /// [serviceIsolate] — to repeat the SendPort handshake toward this freshly
+  /// created main isolate.
+  ///
+  /// Returns true only when the service isolate answers and re-sends its
+  /// SendPort within [_rehandshakeTimeout]. MUST NEVER throw and MUST NEVER wait
+  /// longer than the timeout: any missing port, send error, or timeout returns
+  /// false so [_initService] degrades to the old destroy+init path.
+  Future<bool> _tryRehandshake() async {
+    try {
+      final servicePort = IsolateNameServer.lookupPortByName(serviceIsolate);
+      if (servicePort == null) {
+        return false;
+      }
+      servicePort.send({'action': 'rehandshake'});
+      // _listenPort()'s handler completes _canSendCompleter when the service
+      // isolate re-sends its SendPort.
+      await _canSendCompleter.future.timeout(_rehandshakeTimeout);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// (Re)creates the single-subscription [ReceivePort] and attaches the bridge

@@ -334,11 +334,26 @@ Future<void> _service(List<String> flags) async {
   }
 }
 
+/// Mutable holder for the main-isolate [SendPort] this service isolate targets.
+///
+/// The main isolate can be destroyed and recreated while this service isolate
+/// (and the live VPN core it hosts) stays alive — e.g. the user swipes the app
+/// from recents and reopens it. Instead of destroying the service engine (which
+/// tears the tunnel, bug 1a/1b), the fresh main isolate re-looks-up this
+/// isolate's control port and asks for a re-handshake; we then repoint this
+/// holder at the NEW main SendPort so every in-flight IPC send follows the live
+/// isolate rather than a dead port.
+class _SendPortHolder {
+  _SendPortHolder(this.value);
+  SendPort value;
+}
+
 void _handleMainIpc(ClashLibHandler clashLibHandler) {
-  final sendPort = IsolateNameServer.lookupPortByName(mainIsolate);
-  if (sendPort == null) {
+  final initialSendPort = IsolateNameServer.lookupPortByName(mainIsolate);
+  if (initialSendPort == null) {
     return;
   }
+  final sendPortHolder = _SendPortHolder(initialSendPort);
   final serviceReceiverPort = ReceivePort();
   serviceReceiverPort.listen((message) async {
     // Handle special IPC messages for foreground notification updates
@@ -359,7 +374,7 @@ void _handleMainIpc(ClashLibHandler clashLibHandler) {
                 .toList(),
           );
         }
-        sendPort.send({'success': true});
+        sendPortHolder.value.send({'success': true});
         return;
       }
       if (action == 'updateMode') {
@@ -372,19 +387,37 @@ void _handleMainIpc(ClashLibHandler clashLibHandler) {
           patchClashConfig:
               globalState.config.patchClashConfig.copyWith(mode: mode),
         );
-        sendPort.send({'success': true});
+        sendPortHolder.value.send({'success': true});
         return;
       }
     }
     final res = await clashLibHandler.invokeAction(message);
-    sendPort.send(res);
+    sendPortHolder.value.send(res);
   });
-  sendPort.send(serviceReceiverPort.sendPort);
+  sendPortHolder.value.send(serviceReceiverPort.sendPort);
   final messageReceiverPort = ReceivePort();
   clashLibHandler.attachMessagePort(
     messageReceiverPort.sendPort.nativePort,
   );
-  messageReceiverPort.listen(sendPort.send);
+  // Route native messages through the holder (not a captured tear-off) so a
+  // post-rehandshake repoint is honored.
+  messageReceiverPort.listen((msg) => sendPortHolder.value.send(msg));
+
+  // Register a control port so a freshly (re)started main isolate can trigger a
+  // re-handshake — reattaching to this live service isolate — instead of the
+  // old destroy-service-engine path that tore the VPN tunnel (bug 1a/1b).
+  final controlPort = ReceivePort();
+  IsolateNameServer.removePortNameMapping(serviceIsolate);
+  IsolateNameServer.registerPortWithName(controlPort.sendPort, serviceIsolate);
+  controlPort.listen((msg) {
+    if (msg is Map && msg['action'] == 'rehandshake') {
+      final fresh = IsolateNameServer.lookupPortByName(mainIsolate);
+      if (fresh != null) {
+        sendPortHolder.value = fresh;
+        fresh.send(serviceReceiverPort.sendPort); // repeat SendPort handshake
+      }
+    }
+  });
 }
 
 @immutable

@@ -147,6 +147,15 @@ object GlobalState {
     }
 
     fun destroyServiceEngine() {
+        // Belt-and-braces guard for bug 1a: never destroy the service engine
+        // while the VPN is live. The primary fix reattaches the Dart bridge to
+        // the running service isolate (re-handshake) instead of destroying it;
+        // this refuses the destroy even if some path still requests it, so the
+        // engine hosting the live tunnel/core survives an app reopen.
+        if (runState.value == RunState.START) {
+            Log.w("GlobalState", "destroyServiceEngine refused: runState=START (VPN live)")
+            return
+        }
         runLock.withLock {
             serviceEngine?.destroy()
             serviceEngine = null
