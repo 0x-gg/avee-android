@@ -45,15 +45,25 @@ object GlobalState {
     fun syncStatus() {
         CoroutineScope(Dispatchers.Default).launch {
             // runState is the synchronous source of truth for the tile; this Dart
-            // round-trip is enrichment only and must not clobber it. Bail when the
-            // status is indeterminate (no service engine after process recreation →
-            // VPNPlugin null, or null reply) and never overwrite an in-flight PENDING.
-            // After process death the Go core (same process) is dead, so runState's
-            // STOP already reflects reality.
+            // round-trip is enrichment only and must never clobber a live START.
+            // Bail when the status is indeterminate (no service engine → VPNPlugin
+            // null, or null reply) and never overwrite an in-flight PENDING.
+            //
+            // START is set/cleared ONLY by handleStart/handleStop/onRevoke. We do
+            // NOT downgrade START -> STOP from here: with the service engine now
+            // surviving an app reopen, the "status" round-trip may be answered by
+            // the MAIN isolate (the "vpn" channel is last-wins), which cannot see
+            // the core session and always replies false. Honoring that false used
+            // to clobber a live START, turning handleStop() into a no-op (its STOP
+            // idempotency gate) so the user could not disconnect. runState is
+            // in-memory, so process death already resets it to STOP — an upgrade to
+            // START from a truthful service-isolate reply is the only useful action.
             val status = getCurrentVPNPlugin()?.getStatus() ?: return@launch
             withContext(Dispatchers.Main) {
                 if (runState.value == RunState.PENDING) return@withContext
-                runState.value = if (status) RunState.START else RunState.STOP
+                if (status) {
+                    runState.value = RunState.START
+                }
             }
         }
     }
