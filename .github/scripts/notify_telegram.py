@@ -336,13 +336,19 @@ def main() -> int:
         head, sep, tail = chat.rpartition(":")
         if sep and tail.isdigit():
             target = {"chat_id": head, "message_thread_id": int(tail)}
+        # Channels SILENTLY strip icon_custom_emoji_id (Fragment-only there),
+        # which would leave buttons without any emoji at all — so channels get
+        # the plain keyboard (unicode emoji in text) from the start.
+        ok, body = api_call(token, "getChat", {"chat_id": target["chat_id"]})
+        is_channel = ok and body.get("result", {}).get("type") == "channel"
+        kb = keyboard_plain if is_channel else keyboard
         attempts = [
             ("sendRichMessage", {
                 **target,
                 "rich_message": {"html": rich, "skip_entity_detection": True},
-                "reply_markup": keyboard,
+                "reply_markup": kb,
             }),
-            # channels without a Fragment bot username reject emoji-icon buttons
+            # groups may still reject emoji-icon buttons (no owner Premium)
             ("sendRichMessage", {
                 **target,
                 "rich_message": {"html": rich, "skip_entity_detection": True},
