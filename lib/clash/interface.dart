@@ -191,7 +191,6 @@ abstract class ClashHandlerInterface with ClashInterface {
     );
 
   @override
-  @override
   Future<bool> shutdown() => invoke<bool>(
       method: ActionMethod.shutdown,
       timeout: const Duration(seconds: 1),

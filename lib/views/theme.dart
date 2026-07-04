@@ -965,7 +965,11 @@ class _PaletteDialog extends StatefulWidget {
 }
 
 class _PaletteDialogState extends State<_PaletteDialog> {
-  late Color _color = widget.initialColor ?? const Color(0xFF22C55E);
+  // Fallback accent for the palette picker when no initial color is supplied.
+  // Uses the existing Lumina.glowSecondary token (identical ARGB 0xFF22C55E) to
+  // keep hex out of view code with zero visual change. NOTE: intentionally NOT
+  // `defaultPrimaryColor` (0xFF29FF76) — that would alter the picker's default.
+  late Color _color = widget.initialColor ?? Lumina.glowSecondary;
 
   int _toArgb(Color c) =>
       0xFF000000 | (c.toARGB32() & 0x00FFFFFF);

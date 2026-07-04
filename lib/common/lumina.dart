@@ -41,10 +41,19 @@ class Lumina {
   static const Color scrimHeavy = Color(0x99000000);
   // Connect-lens ambient drop shadow (soft, translucent) under the glass button.
   static const Color scrimSoft = Color(0x66000000);
+  // Connect-lens glyph rim highlight — the pure-white top of the conic Fresnel
+  // sweep on the power glyph and the glyph body base the ShaderMask tints.
+  static const Color lensHighlight = Color(0xFFFFFFFF);
+  // Connect-lens glyph outline/glow — pure-black base blurred UNDER the power
+  // glyph (SVG can't take a shadow), tinted by its own alpha at the call site.
+  static const Color lensShadow = Color(0xFF000000);
   // Status: VPN connected indicator (desktop title-bar / tray dot).
   static const Color statusConnected = Color(0xFF4CAF50);
   // Elevated-latency badge accent (amber); delays >= 600ms.
   static const Color latencyWarn = Color(0xFFC57F0A);
+  // Faint inset shadow tint painted 0.5px behind the segmented-tab thumb to lift
+  // it off the track (drawn as a flat Paint fill, not a BoxShadow).
+  static const Color shadowFaint = Color(0x0A000000);
 
   // Shadows
   static const List<BoxShadow> glassShadow = [

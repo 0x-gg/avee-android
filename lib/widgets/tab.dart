@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:math';
 
 import 'package:collection/collection.dart';
+import 'package:dropweb/common/lumina.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -1052,7 +1053,7 @@ class _RenderSegmentedControl<T extends Object> extends RenderBox
         RRect.fromRectAndRadius(thumbRect.shift(offset), _kThumbRadius);
 
     context.canvas.drawRRect(
-        thumbRRect.inflate(0.5), Paint()..color = const Color(0x0A000000));
+        thumbRRect.inflate(0.5), Paint()..color = Lumina.shadowFaint);
 
     context.canvas.drawRRect(thumbRRect, Paint()..color = thumbColor);
   }

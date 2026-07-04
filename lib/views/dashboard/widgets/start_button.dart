@@ -188,11 +188,11 @@ class _StartButtonState extends ConsumerState<StartButton>
         shaderCallback: (rect) => SweepGradient(
           transform: const GradientRotation(-math.pi / 2),
           colors: [
-            const Color(0xFFFFFFFF),
+            Lumina.lensHighlight,
             accent.withValues(alpha: 0.5),
-            const Color(0xFFFFFFFF).withValues(alpha: 0.12),
+            Lumina.lensHighlight.withValues(alpha: 0.12),
             accent.withValues(alpha: 0.5),
-            const Color(0xFFFFFFFF),
+            Lumina.lensHighlight,
           ],
           stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
         ).createShader(
@@ -204,7 +204,7 @@ class _StartButtonState extends ConsumerState<StartButton>
           icon: icon,
           size: widget.iconSize,
           strokeWidth: strokeWidth,
-          color: const Color(0xFFFFFFFF),
+          color: Lumina.lensHighlight,
         ),
       ),
     );
@@ -290,7 +290,7 @@ class _StartButtonState extends ConsumerState<StartButton>
                               icon: iconData,
                               size: widget.iconSize,
                               strokeWidth: strokeWidth,
-                              color: const Color(0xFF000000)
+                              color: Lumina.lensShadow
                                   .withValues(alpha: _iconShadowAlpha),
                             ),
                           ),
