@@ -300,9 +300,6 @@ class AppController {
     );
 
     final headers = newProfile.providerHeaders;
-    if (headers.isNotEmpty) {
-      _applyAllHeaderSettings(newProfile, isNewProfile: false);
-    }
 
     _handleHwidHeaders(newProfile);
 
@@ -311,6 +308,12 @@ class AppController {
     _ref.read(profilesProvider.notifier).setProfile(finalProfile);
 
     if (profile.id == _ref.read(currentProfileIdProvider)) {
+      // Header-driven theme/settings are GLOBAL state — only the ACTIVE profile
+      // may write them. A background auto-update must never repaint the app
+      // with another provider's dropweb-theme / dropweb-settings.
+      if (headers.isNotEmpty) {
+        _applyAllHeaderSettings(newProfile, isNewProfile: false);
+      }
       applyProfileDebounce(silence: true);
       unawaited(_updateGeoFilesAfterProfileUpdate().catchError((e) {
         commonPrint.log("Error updating geo files: $e");
