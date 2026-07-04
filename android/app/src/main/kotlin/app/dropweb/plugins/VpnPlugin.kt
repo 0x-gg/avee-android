@@ -18,6 +18,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
@@ -60,6 +61,14 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     // that fan-in; ConcurrentHashMap gives lock-free reads and atomic writes.
     private val uidPageNameMap = java.util.concurrent.ConcurrentHashMap<Int, String>()
     private val networks = mutableSetOf<Network>()
+    // Identity of the underlying physical network set (sorted networkHandle list).
+    // A change here under a live tunnel means WiFi<->cell / pocket-Doze switch —
+    // stale upstream proxy sessions (mux, Hy2/QUIC) must be dropped. null = no
+    // snapshot yet (the first snapshot after start never triggers a close).
+    private var lastNetworkKey: String? = null
+    // Debounce: collapse the burst of onAvailable/onLost/onLinkPropertiesChanged
+    // callbacks a single physical switch emits into at most one core notify / 2s.
+    private var lastNetworkChangeMs = 0L
     private var screenReceiverRegistered: Boolean = false
     private var startRequested: Boolean = false
     private var attachCount = 0
@@ -207,6 +216,27 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     // Doze can stale the Network ref — keep VPN routing through the live physical network
     private fun updateUnderlyingNetworks() {
+        // Change-detection runs BEFORE the service null-check below: the network
+        // callback is registered app-wide at first attach, so this fires while
+        // dropwebService is still null (bind in flight). We only NOTIFY when the
+        // tunnel is actually up (runState==START), so a null service is harmless.
+        val key = networks.map { it.networkHandle }.sorted().joinToString(",")
+        val prev = lastNetworkKey
+        lastNetworkKey = key
+        if (prev != null && prev != key && key.isNotEmpty()
+            && GlobalState.runState.value == RunState.START) {
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastNetworkChangeMs > 2000) {
+                lastNetworkChangeMs = now
+                Log.d("VpnPlugin", "Underlying network changed ($prev -> $key) — asking core to drop stale connections")
+                scope.launch {
+                    withContext(Dispatchers.Main) {
+                        flutterMethodChannel.invokeMethod("networkChanged", null)
+                    }
+                }
+            }
+        }
+
         val vpnService = dropwebService as? DropwebVpnService ?: return
         vpnService.setUnderlyingNetworks(
             if (networks.isEmpty()) null else networks.toTypedArray()
@@ -399,6 +429,9 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             Core.stopTun()
             // UID→package mappings go stale across sessions.
             uidPageNameMap.clear()
+            // Fresh network-identity baseline for the next session: the first
+            // snapshot after the next start must not fire a spurious close.
+            lastNetworkKey = null
             // With BIND_AUTO_CREATE the binding keeps the stopped service instance
             // alive forever unless we unbind. After this isBind=false so bindService()
             // won't double-unbind; dropwebService=null forces a clean rebind on next start.

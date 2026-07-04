@@ -32,6 +32,15 @@ class Vpn {
           return await _getDefaultForegroundParams();
         case "status":
           return clashLibHandler?.getRunTime() != null;
+        case "networkChanged":
+          // Underlying physical network changed beneath the live tunnel (WiFi<->cell,
+          // pocket/Doze). Stale upstream proxy sessions (mux, Hy2/QUIC) would otherwise
+          // be reused until their own long timeouts — the "minutes-long reconnect".
+          // Drop them so new flows re-dial over the live network immediately.
+          commonPrint.log(
+            "[VPN] underlying network changed — closing stale core connections",
+          );
+          clashCore.closeConnections();
         default:
           for (final listener in _listeners) {
             switch (call.method) {
