@@ -1,4 +1,3 @@
-import 'package:dropweb/common/common.dart';
 import 'package:dropweb/enum/enum.dart';
 import 'package:dropweb/models/models.dart';
 import 'package:dropweb/state.dart';
@@ -166,11 +165,8 @@ class CommonPageTransition extends StatefulWidget {
 class _CommonPageTransitionState extends State<CommonPageTransition> {
   late Animation<Offset> _primaryPositionAnimation;
   late Animation<Offset> _secondaryPositionAnimation;
-  // ignore: unused_field - used for decoration animation setup
-  late Animation<Decoration> _primaryShadowAnimation;
   CurvedAnimation? _primaryPositionCurve;
   CurvedAnimation? _secondaryPositionCurve;
-  CurvedAnimation? _primaryShadowCurve;
 
   @override
   void initState() {
@@ -198,10 +194,8 @@ class _CommonPageTransitionState extends State<CommonPageTransition> {
   void _disposeCurve() {
     _primaryPositionCurve?.dispose();
     _secondaryPositionCurve?.dispose();
-    _primaryShadowCurve?.dispose();
     _primaryPositionCurve = null;
     _secondaryPositionCurve = null;
-    _primaryShadowCurve = null;
   }
 
   void _setupAnimation() {
@@ -216,10 +210,6 @@ class _CommonPageTransitionState extends State<CommonPageTransition> {
         curve: Curves.linearToEaseOut,
         reverseCurve: Curves.easeInToLinear,
       );
-      _primaryShadowCurve = CurvedAnimation(
-        parent: widget.primaryRouteAnimation,
-        curve: Curves.linearToEaseOut,
-      );
     }
     _primaryPositionAnimation =
         (_primaryPositionCurve ?? widget.primaryRouteAnimation)
@@ -227,18 +217,6 @@ class _CommonPageTransitionState extends State<CommonPageTransition> {
     _secondaryPositionAnimation =
         (_secondaryPositionCurve ?? widget.secondaryRouteAnimation)
             .drive(_kMiddleLeftTween);
-    _primaryShadowAnimation =
-        (_primaryShadowCurve ?? widget.primaryRouteAnimation).drive(
-      DecorationTween(
-        begin: const _CommonEdgeShadowDecoration(),
-        end: _CommonEdgeShadowDecoration(
-          <Color>[
-            widget.context.colorScheme.inverseSurface.withValues(alpha: 0.02),
-            Colors.transparent,
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -258,52 +236,3 @@ class _CommonPageTransitionState extends State<CommonPageTransition> {
   }
 }
 
-class _CommonEdgeShadowDecoration extends Decoration {
-
-  const _CommonEdgeShadowDecoration([this._colors]);
-  final List<Color>? _colors;
-
-  @override
-  BoxPainter createBoxPainter([VoidCallback? onChanged]) => _CommonEdgeShadowPainter(this, onChanged);
-}
-
-class _CommonEdgeShadowPainter extends BoxPainter {
-  _CommonEdgeShadowPainter(
-    this._decoration,
-    super.onChanged,
-  ) : assert(_decoration._colors == null || _decoration._colors.length > 1);
-
-  final _CommonEdgeShadowDecoration _decoration;
-
-  @override
-  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
-    final colors = _decoration._colors;
-    if (colors == null) {
-      return;
-    }
-
-    final shadowWidth = 1 * configuration.size!.width;
-    final shadowHeight = configuration.size!.height;
-    final bandWidth = shadowWidth / (colors.length - 1);
-
-    final textDirection = configuration.textDirection;
-    assert(textDirection != null);
-    final (double shadowDirection, double start) = switch (textDirection!) {
-      TextDirection.rtl => (1, offset.dx + configuration.size!.width),
-      TextDirection.ltr => (-1, offset.dx),
-    };
-
-    var bandColorIndex = 0;
-    for (var dx = 0; dx < shadowWidth; dx += 1) {
-      if (dx ~/ bandWidth != bandColorIndex) {
-        bandColorIndex += 1;
-      }
-      final paint = Paint()
-        ..color = Color.lerp(colors[bandColorIndex], colors[bandColorIndex + 1],
-            (dx % bandWidth) / bandWidth)!;
-      final x = start + shadowDirection * dx;
-      canvas.drawRect(
-          Rect.fromLTWH(x - 1.0, offset.dy, 1.0, shadowHeight), paint);
-    }
-  }
-}
