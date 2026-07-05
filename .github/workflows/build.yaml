@@ -253,7 +253,7 @@ jobs:
           # "type(scope): " prefixes, drop internal noise (docs/chore/refactor/
           # test/ci/build/style), dedupe, capitalize, cap at 15.
           echo "" >> release.md
-          echo "## Что нового" >> release.md
+          echo "## <img src=\"https://raw.githubusercontent.com/enkinvsh/dropweb/main/docs/icons/flash.svg\" width=\"22\" alt=\"\"> Что нового" >> release.md
           echo "" >> release.md
           if [ -n "$preTag" ]; then
             changelog_range="$preTag..${{ github.ref_name }}"

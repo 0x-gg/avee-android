@@ -94,7 +94,9 @@ def parse_commits(release_md: str) -> list[str]:
     lines, in_section = [], False
     for line in release_md.splitlines():
         if line.startswith("## "):
-            in_section = line.strip() in ("## Что нового", "## Коммиты")
+            plain = re.sub(r"<[^>]+>", "", line)
+            plain = re.sub(r"\s+", " ", plain).strip()
+            in_section = plain in ("## Что нового", "## Коммиты")
             continue
         if in_section and line.startswith("- "):
             subject = line[2:].strip()
