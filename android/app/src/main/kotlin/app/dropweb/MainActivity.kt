@@ -41,7 +41,12 @@ class MainActivity : FlutterActivity() {
         initialRoute = intent?.getStringExtra(EXTRA_ROUTE)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.attributes.preferredDisplayModeId = getHighestRefreshRateDisplayMode()
+            val modeId = getPreferredHighRefreshModeId()
+            if (modeId != 0) {
+                val attrs = window.attributes
+                attrs.preferredDisplayModeId = modeId
+                window.attributes = attrs
+            }
         }
     }
 
@@ -70,21 +75,34 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun getHighestRefreshRateDisplayMode(): Int {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val modes = windowManager.defaultDisplay.supportedModes
-            var maxRefreshRate = 60f
-            var modeId = 0
-            
-            for (mode in modes) {
-                if (mode.refreshRate > maxRefreshRate) {
-                    maxRefreshRate = mode.refreshRate
-                    modeId = mode.modeId
-                }
-            }
-            return modeId
+    // Prefer the highest refresh rate WITHOUT ever changing the panel resolution.
+    //
+    // History: the FlClash-inherited version picked the max-refresh mode across
+    // ALL display modes, ignoring resolution. Per AOSP DisplayModeDirector
+    // (Vote.java), an app's preferredDisplayModeId vote also votes for that
+    // mode's SIZE (PRIORITY_APP_REQUEST_SIZE=7), which OUTRANKS the user's
+    // resolution setting (PRIORITY_USER_SETTING_DISPLAY_PREFERRED_SIZE=4). On
+    // multi-resolution panels (Pixel 7 Pro: 1080x2340 + 1440x3120) that forced
+    // a global resolution switch while our window was focused; flipping back on
+    // a direct app->home transition made Pixel Launcher re-grid mid-inflation
+    // and wipe the bottom row of home-screen icons.
+    //
+    // We now only consider modes whose physical resolution EXACTLY matches the
+    // active mode, and we abstain (0 = no vote) when the active mode already
+    // has the best refresh rate — no vote means no APP_REQUEST_SIZE pin at all.
+    // User-set peak refresh (Smooth Display off) outranks this vote in
+    // DisplayModeDirector, so we never fight an explicit user choice.
+    private fun getPreferredHighRefreshModeId(): Int {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return 0
+        val display = display ?: return 0
+        val currentMode = display.mode
+        var best = currentMode
+        for (mode in display.supportedModes) {
+            if (mode.physicalWidth != currentMode.physicalWidth) continue
+            if (mode.physicalHeight != currentMode.physicalHeight) continue
+            if (mode.refreshRate > best.refreshRate) best = mode
         }
-        return 0
+        return if (best.modeId == currentMode.modeId) 0 else best.modeId
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
