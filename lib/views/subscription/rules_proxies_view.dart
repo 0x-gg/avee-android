@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dropweb/common/common.dart';
 import 'package:dropweb/common/smart_pool_patch.dart';
 import 'package:dropweb/models/models.dart' hide Action;
@@ -25,6 +27,43 @@ Future<void> _pingAllProxies(WidgetRef ref) async {
     }
   }
   if (allProxies.isNotEmpty) await delayTest(allProxies, null);
+}
+
+/// On-open latency refresh for the rules sheet: probes ONLY each displayed
+/// group's currently-SELECTED member, keyed by that group's own [Group.testUrl]
+/// — the exact (proxyName, testUrl) pair the row's badge reads via
+/// getDelayProvider. After an underlying-network flap the controller wipes
+/// delayDataSource (stale WiFi-era numbers are fiction on cell), so repopulating
+/// under the SAME key the badge displays from is what makes «не замерено» flip
+/// back to an honest fresh ms. Testing everything under the default URL (as
+/// pull-to-refresh does) would MISS any badge whose group carries a custom
+/// testUrl. The selected member may itself be a group («Fastest»/«Умный»/the
+/// 🧠 Smart pool behind 📶 First Available) — mihomo delay-tests a group node
+/// fine, so probe it as-is WITHOUT recursing into its children.
+///
+/// Fire-and-forget, one [delayTest] batch per distinct testUrl (null = core
+/// default URL): no UI blocking, badges stream back through the delay providers.
+/// Groups with an empty selection are skipped (nothing to test).
+void _pingSelectedProxies(WidgetRef ref, List<Group> groups) {
+  // testUrl → the selected members to probe under it. Grouped so each distinct
+  // URL is exactly one batch; a null testUrl means the core's default URL.
+  final byTestUrl = <String?, List<Proxy>>{};
+  final seen = <String>{}; // dedupe per URL: "<testUrl>\u0000<name>"
+  for (final group in groups) {
+    final proxyName = ref.read(getProxyNameProvider(group.name));
+    final selectedName =
+        proxyName != null && proxyName.isNotEmpty ? proxyName : group.realNow;
+    if (selectedName.isEmpty) continue; // no selection → nothing to measure
+    final member = group.all.where((p) => p.name == selectedName).firstOrNull;
+    if (member == null) continue;
+    if (!seen.add('${group.testUrl}\u0000${member.name}')) continue;
+    (byTestUrl[group.testUrl] ??= <Proxy>[]).add(member);
+  }
+  for (final entry in byTestUrl.entries) {
+    // Fire-and-forget: don't await — the sheet stays interactive and each
+    // batch's badges update independently as it resolves.
+    unawaited(delayTest(entry.value, entry.key));
+  }
 }
 
 // ── Proxies view (shared across all 3 modes) ─────────────────────────────
@@ -57,12 +96,16 @@ class _RulesProxiesViewState extends ConsumerState<RulesProxiesView> {
       return NullStatus(label: appLocalizations.nullProfileDesc);
     }
 
-    // Populate availability badges on open (incl. the 🧠 Smart pool that backs
-    // 📶 First Available), once per open — matching the old behavior where
-    // badges showed immediately. Pull-to-refresh re-tests.
+    // Populate availability badges on open, once per open — mirrors the country
+    // picker's `_autoPinged` one-shot. Probes each group's SELECTED member under
+    // that group's own testUrl, so after a network flap (controller wiped
+    // delayDataSource) every displayed badge repopulates with an honest fresh
+    // measurement under the exact key it reads. Pull-to-refresh (below) still
+    // re-tests EVERY node incl. the hidden 🧠 Smart pool.
     if (!_pingTriggered) {
       _pingTriggered = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _pingAllProxies(ref));
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _pingSelectedProxies(ref, groups));
     }
 
     return RefreshIndicator(

@@ -41,6 +41,15 @@ class Vpn {
             "[VPN] underlying network changed — closing stale core connections",
           );
           clashCore.closeConnections();
+          // Delay measurements from the previous network are FICTION on the new
+          // one (same physical flap that just orphaned those sessions). Wiping
+          // delayDataSource flips every badge to «не замерено» (shimmer/blank)
+          // instead of leaving stale green numbers next to nodes now failing on
+          // the fresh network; the core's URLTest cycles + the rules sheet's
+          // open-ping repopulate honest values within a cycle. Safe here:
+          // networkChanged only fires under a LIVE tunnel, so the app (and
+          // appController) is already initialized — no null-init window.
+          globalState.appController.invalidateDelayData();
         default:
           for (final listener in _listeners) {
             switch (call.method) {

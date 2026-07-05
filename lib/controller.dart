@@ -838,11 +838,27 @@ class AppController {
     globalState.cacheHeightMap = {};
     globalState.cacheScrollPosition = {};
 
-    if (currentProfileId != null) {
+      if (currentProfileId != null) {
       _updateGeoFilesAfterProfileUpdate(forceUpdate: true).catchError((e) {
         commonPrint.log("Error updating geo files on profile change: $e");
       });
     }
+  }
+
+  /// Wipe every cached delay measurement (`delayDataSource` → `{}`).
+  ///
+  /// Latency is measured against a SPECIFIC upstream network. When the physical
+  /// network flips beneath a live tunnel (WiFi↔cell, pocket/Doze), the core
+  /// drops stale sessions and re-dials — but the previously-cached ms values are
+  /// now fiction: they were measured over the OLD network. Left in place, badges
+  /// would show pre-flap green numbers next to nodes that are actually failing on
+  /// the new network (owner repro: parents «131ms» from the WiFi era while the
+  /// live selection honestly showed red n/a on LTE). Clearing flips every badge
+  /// to «не замерено» (shimmer/blank) — honest absence — until the core's URLTest
+  /// cycles and the sheet's open-ping repopulate fresh numbers. Same one-liner
+  /// [handleChangeProfile] uses on a profile switch.
+  void invalidateDelayData() {
+    _ref.read(delayDataSourceProvider.notifier).value = {};
   }
 
   /// Re-sync the operator theme to the CURRENT profile at app startup.
