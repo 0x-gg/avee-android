@@ -548,7 +548,9 @@ class BuildCommand extends Command {
       distDir.createSync(recursive: true);
     }
 
-    // Stage a folder with the .app + Applications symlink for drag-to-install
+    // Stage a folder holding just the .app. The create-dmg branch adds the
+    // Applications drop-link itself (--app-drop-link); only the hdiutil
+    // fallback needs a manual symlink, so it's created there.
     final stagingPath = join(current, "build", "macos", "dmg-staging");
     final stagingDir = Directory(stagingPath);
     if (stagingDir.existsSync()) {
@@ -560,31 +562,84 @@ class BuildCommand extends Command {
       name: "copy app to staging",
       ["cp", "-R", appPath, stagingPath],
     );
-    await Build.exec(
-      name: "create Applications symlink",
-      ["ln", "-s", "/Applications", join(stagingPath, "Applications")],
-    );
 
     final targetDmgName = "$appName-${arch.name}.dmg";
     final targetDmgPath = join(Build.distPath, targetDmgName);
 
-    print("Creating DMG with hdiutil...");
+    // Prefer the Homebrew `create-dmg` formula
+    // (github.com/create-dmg/create-dmg) when present: it produces a styled
+    // installer window with our branded background, positioned icons and a
+    // drag-to-Applications arrow. CI installs it on the macOS runners; local
+    // builds that lack it fall back to a plain hdiutil image so the macos
+    // target keeps working without brew.
+    final createDmg = await Process.run("which", ["create-dmg"]);
+    if (createDmg.exitCode == 0) {
+      print("Creating styled DMG with create-dmg...");
 
-    await Build.exec(
-      name: "create-dmg",
-      [
-        "hdiutil",
-        "create",
-        "-volname",
-        appName,
-        "-srcfolder",
-        stagingPath,
-        "-ov",
-        "-format",
-        "UDZO",
-        targetDmgPath,
-      ],
-    );
+      final targetDmgFile = File(targetDmgPath);
+      if (targetDmgFile.existsSync()) {
+        // create-dmg refuses to overwrite an existing image.
+        targetDmgFile.deleteSync();
+      }
+
+      final process = await Process.start(
+        "create-dmg",
+        [
+          "--volname", appName,
+          "--volicon",
+          join(appPath, "Contents", "Resources", "AppIcon.icns"),
+          "--background", join("assets", "dmg", "background.png"),
+          "--window-pos", "200", "120",
+          "--window-size", "660", "400",
+          "--icon-size", "128",
+          "--text-size", "13",
+          "--icon", "$appName.app", "165", "200",
+          "--app-drop-link", "495", "200",
+          "--hide-extension", "$appName.app",
+          "--no-internet-enable",
+          targetDmgPath,
+          stagingPath,
+        ],
+        runInShell: true,
+      );
+      process.stdout.listen((data) => print(utf8.decode(data)));
+      process.stderr.listen((data) => print(utf8.decode(data)));
+      final exitCode = await process.exitCode;
+
+      // create-dmg can exit non-zero when no code-signing identity is
+      // available (it still writes a valid image), so the real success
+      // signal is the presence of the output file, not the exit code.
+      if (!targetDmgFile.existsSync()) {
+        throw "create-dmg error (exit $exitCode): $targetDmgPath not produced";
+      }
+      if (exitCode != 0) {
+        print("create-dmg exited $exitCode but DMG was written; continuing.");
+      }
+    } else {
+      print("create-dmg not found; falling back to hdiutil...");
+
+      // Plain image: add the Applications symlink manually for drag-to-install.
+      await Build.exec(
+        name: "create Applications symlink",
+        ["ln", "-s", "/Applications", join(stagingPath, "Applications")],
+      );
+
+      await Build.exec(
+        name: "create-dmg",
+        [
+          "hdiutil",
+          "create",
+          "-volname",
+          appName,
+          "-srcfolder",
+          stagingPath,
+          "-ov",
+          "-format",
+          "UDZO",
+          targetDmgPath,
+        ],
+      );
+    }
 
     stagingDir.deleteSync(recursive: true);
     print("✅ DMG created: $targetDmgPath");
