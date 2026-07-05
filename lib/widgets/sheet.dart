@@ -4,6 +4,7 @@ import 'package:dropweb/models/models.dart';
 import 'package:dropweb/state.dart';
 import 'package:flutter/material.dart';
 
+import 'deferred_page_body.dart';
 import 'scaffold.dart';
 import 'side_sheet.dart';
 
@@ -225,7 +226,9 @@ class _AdaptiveSheetScaffoldState extends State<AdaptiveSheetScaffold> {
       // (Lumina.void_ fill + mesh) to show, so don't pass a custom tint and
       // re-enable the background layer.
       backgroundColor: page ? null : backgroundColor,
-      body: widget.body,
+      // Page-mode = a real route push: defer the heavy body past the slide
+      // (see DeferredPageBody) so the transition's first frames stay cheap.
+      body: page ? DeferredPageBody(child: widget.body) : widget.body,
       disableBackground: page ? false : widget.disableBackground,
     );
   }

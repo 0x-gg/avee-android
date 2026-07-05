@@ -3,6 +3,7 @@ export 'card.dart';
 export 'chip.dart';
 export 'color_scheme_box.dart';
 export 'container.dart';
+export 'deferred_page_body.dart';
 export 'dialog.dart';
 export 'disabled_mask.dart';
 export 'donut_chart.dart';

@@ -70,33 +70,35 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage>
       body: Stack(
         children: [
           if (isDark) const Positioned.fill(child: MeshBackground()),
-          Column(
-            children: [
-              SizedBox(
-                  height: MediaQuery.of(context).padding.top + kToolbarHeight),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _GlassTabBar(
-                  controller: _tabController,
-                  isDark: isDark,
-                  colorScheme: colorScheme,
-                  tabs: [
-                    appLocalizations.workModes,
-                    appLocalizations.profile,
-                  ],
+          DeferredPageBody(
+            child: Column(
+              children: [
+                SizedBox(
+                    height: MediaQuery.of(context).padding.top + kToolbarHeight),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _GlassTabBar(
+                    controller: _tabController,
+                    isDark: isDark,
+                    colorScheme: colorScheme,
+                    tabs: [
+                      appLocalizations.workModes,
+                      appLocalizations.profile,
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    const ModesContent(),
-                    ProfilesContent(onAdd: _handleShowAddProfilePage),
-                  ],
+                const SizedBox(height: 8),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      const ModesContent(),
+                      ProfilesContent(onAdd: _handleShowAddProfilePage),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
