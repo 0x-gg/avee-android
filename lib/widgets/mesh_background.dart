@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:dropweb/common/common.dart';
@@ -7,11 +8,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Ambient mesh-gradient background used in dark mode.
 ///
-/// The three radial orbs "breathe" with a slow, phase-offset alpha pulse so
-/// the dashboard never looks fully static, with a gentle ±18% alpha swing
-/// per orb over a 14s loop — visible but still restrained. When the user
-/// has enabled reduced motion (`MediaQuery.disableAnimationsOf`), the
-/// animation is paused and the canonical static frame is rendered instead.
+/// The three radial orbs "breathe" with a slow, phase-offset alpha pulse
+/// (±18% over a 14s loop). The breathe is driven by a wall-clock phase
+/// sampled at 12.5 Hz (80 ms) — visually identical to per-vsync for an
+/// alpha-only drift this slow, but it stops the app from re-rasterizing
+/// three fullscreen gradients at 120 Hz forever (measured 5-6 ms/frame of
+/// raster at idle on Pixel 10 before this change).
+///
+/// Motion is FROZEN (last frame stays) whenever animating would be wasted
+/// or would fight a transition for GPU time:
+///  - OS reduce-motion is enabled (static canonical frame),
+///  - the app is backgrounded,
+///  - the owning route is covered by a sheet/dialog/pushed screen
+///    (a static backdrop also makes the modal's BackdropFilter free at rest),
+///  - the owning route's entrance/exit transition is in flight.
+///
+/// Wall-clock phase means every mesh on every screen breathes in the same
+/// phase and resumes without drift after a freeze.
 class MeshBackground extends ConsumerStatefulWidget {
   const MeshBackground({super.key});
 
@@ -20,24 +33,96 @@ class MeshBackground extends ConsumerStatefulWidget {
 }
 
 class _MeshBackgroundState extends ConsumerState<MeshBackground>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
+    with WidgetsBindingObserver {
+  static const int _periodMs = 14000;
+  // 12.5 Hz repaint — imperceptible for a 14s alpha breathe.
+  static const Duration _step = Duration(milliseconds: 80);
 
   // Gentle: orb alpha varies by ±18% around the static baseline.
   static const double _breathAmplitude = 0.18;
 
+  final ValueNotifier<double> _phase = ValueNotifier(0);
+  Timer? _timer;
+  ModalRoute<dynamic>? _route;
+  bool _lifecyclePaused = false;
+
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 14),
-    )..repeat();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // ModalRoute.of() subscribes us to route changes: didChangeDependencies
+    // re-fires when routes are pushed/popped above this one, which is what
+    // resumes the breathe after a covering sheet/dialog goes away.
+    final route = ModalRoute.of(context);
+    if (!identical(route, _route)) {
+      _detachRouteListeners();
+      _route = route;
+      route?.animation?.addStatusListener(_onRouteStatus);
+      route?.secondaryAnimation?.addStatusListener(_onRouteStatus);
+    }
+    _syncMotion();
+  }
+
+  void _onRouteStatus(AnimationStatus _) => _syncMotion();
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _lifecyclePaused = state != AppLifecycleState.resumed;
+    _syncMotion();
+  }
+
+  bool get _shouldAnimate {
+    if (_lifecyclePaused) return false;
+    if (MediaQuery.disableAnimationsOf(context)) return false;
+    final route = _route;
+    if (route != null) {
+      if (!route.isCurrent) return false;
+      if (route.animation?.status == AnimationStatus.forward ||
+          route.animation?.status == AnimationStatus.reverse) {
+        return false;
+      }
+      if (route.secondaryAnimation?.status == AnimationStatus.forward ||
+          route.secondaryAnimation?.status == AnimationStatus.reverse) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void _syncMotion() {
+    if (!mounted) return;
+    if (_shouldAnimate) {
+      if (_timer == null) {
+        _tick();
+        _timer = Timer.periodic(_step, (_) => _tick());
+      }
+    } else {
+      _timer?.cancel();
+      _timer = null;
+    }
+  }
+
+  void _tick() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    _phase.value = (now % _periodMs) / _periodMs;
+  }
+
+  void _detachRouteListeners() {
+    _route?.animation?.removeStatusListener(_onRouteStatus);
+    _route?.secondaryAnimation?.removeStatusListener(_onRouteStatus);
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _detachRouteListeners();
+    WidgetsBinding.instance.removeObserver(this);
+    _timer?.cancel();
+    _phase.dispose();
     super.dispose();
   }
 
@@ -64,24 +149,18 @@ class _MeshBackgroundState extends ConsumerState<MeshBackground>
     // Slider maps to the middle gradient stop (sharpness), not a post-blur.
     final sharpness =
         ((5.0 - orbSettings.$3) / 8.0).clamp(0.0, 0.95).toDouble();
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
-    if (reduceMotion) {
-      if (_controller.isAnimating) _controller.stop();
+    if (MediaQuery.disableAnimationsOf(context)) {
       return RepaintBoundary(
         child: _buildLayers(orbA, orbB, sharpness, 0, 0, 0),
       );
     }
 
-    if (!_controller.isAnimating) {
-      _controller.repeat();
-    }
-
     return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (_, __) {
-          final t = _controller.value * 2 * math.pi;
+      child: ValueListenableBuilder<double>(
+        valueListenable: _phase,
+        builder: (_, phase, __) {
+          final t = phase * 2 * math.pi;
           // Phase-offset each orb by 120° so they breathe independently.
           final p1 = math.sin(t);
           final p2 = math.sin(t + (2 * math.pi / 3));
