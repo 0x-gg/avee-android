@@ -29,18 +29,19 @@ AppUpdateInfo? resolveAndroidUpdate({
   final url = entry['url'];
   if (url is! String || url.isEmpty) return null;
 
-  final tag = remote.startsWith('v') ? remote : 'v$remote';
-  final asset = kGithubApkAssetByPlatform[platformKey];
-  final fallback = asset == null
+  final version = remote.startsWith('v') ? remote.substring(1) : remote;
+  final tag = 'v$version';
+  final suffix = kGithubApkAssetByPlatform[platformKey];
+  final fallback = suffix == null
       ? null
-      : 'https://github.com/$repository/releases/download/$tag/$asset';
+      : 'https://github.com/$repository/releases/download/$tag/dropweb-$version-$suffix';
 
   final notes = manifest['notes'] is List
       ? (manifest['notes'] as List).map((e) => e.toString()).toList()
       : const <String>[];
 
   return AppUpdateInfo(
-    version: remote.startsWith('v') ? remote.substring(1) : remote,
+    version: version,
     tag: tag,
     notes: notes,
     primaryUrl: url,

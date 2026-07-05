@@ -73,11 +73,15 @@ const bool kIsPlayBuild = bool.fromEnvironment('PLAY_BUILD');
 /// Update manifest endpoint: dropweb.org → Vercel → Yandex Cloud Object Storage.
 const kUpdateManifestUrl = "https://dropweb.org/update.json";
 
-/// GitHub release asset name per platform key — the YC→GitHub fallback source.
-/// Combined with [repository] + the release tag to reconstruct the asset URL.
+/// GitHub release asset filename SUFFIX per platform key — the YC→GitHub
+/// fallback source. Since v0.8.5-pre.5 release assets are versioned as
+/// `dropweb-<version>-<suffix>` (CI "Version asset filenames" step), so the
+/// resolver interpolates the version WITHOUT the leading 'v'
+/// (e.g. `dropweb-0.8.5-android-arm64-v8a.apk`), combined with [repository] +
+/// the release tag (WITH 'v') to reconstruct the full asset URL.
 const kGithubApkAssetByPlatform = <String, String>{
-  'android-arm64': 'dropweb-arm64-v8a.apk',
-  'android-universal': 'dropweb-universal.apk',
+  'android-arm64': 'android-arm64-v8a.apk',
+  'android-universal': 'android-universal.apk',
 };
 
 /// Subdir under the app cache dir where a downloaded APK is staged before install.

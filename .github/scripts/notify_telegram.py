@@ -71,12 +71,17 @@ GROUPS = [  # (conventional type, emoji, title)
 ]
 OTHER = ("📟", "Под капотом")
 
-PLATFORMS = [  # (emoji, name, label, artifact)
-    ("🤖", "Android", "APK · arm64", "dropweb-arm64-v8a.apk"),
-    ("🤖", "Android (старые устройства)", "APK · universal", "dropweb-universal.apk"),
-    ("🪟", "Windows", "Установщик · x64", "dropweb-amd64-setup.exe"),
-    ("🍎", "macOS", "DMG · Apple Silicon", "dropweb-arm64.dmg"),
-    ("🐧", "Linux", "AppImage · x64", "dropweb-amd64.AppImage"),
+PLATFORMS = [  # (emoji, name, label, yc_name, gh_suffix)
+    # yc_name = fixed YC-bucket asset name (the in-app updater's contract);
+    # gh_suffix = the "<platform>-<arch>[...].<ext>" tail of the versioned
+    # GitHub release asset (dropweb-<version>-<suffix>) from build.yaml's
+    # "Version asset filenames" step.
+    ("🤖", "Android", "APK · arm64", "dropweb-arm64-v8a.apk", "android-arm64-v8a.apk"),
+    ("🤖", "Android (старые устройства)", "APK · universal", "dropweb-universal.apk", "android-universal.apk"),
+    ("🪟", "Windows", "Установщик · x64", "dropweb-amd64-setup.exe", "windows-amd64-setup.exe"),
+    ("🍎", "macOS", "DMG · Apple Silicon", "dropweb-arm64.dmg", "macos-arm64.dmg"),
+    ("🍎", "macOS (Intel)", "DMG · Intel", "dropweb-amd64.dmg", "macos-amd64.dmg"),
+    ("🐧", "Linux", "AppImage · x64", "dropweb-amd64.AppImage", "linux-amd64.AppImage"),
 ]
 
 
@@ -135,10 +140,15 @@ def classify(commits: list[str]) -> list[tuple[str, str, list[str]]]:
 
 
 def platform_urls(version: str, is_stable: bool) -> list[tuple[str, str, str, str]]:
-    """Stable -> YC versioned links (RU-friendly), pre -> GitHub assets."""
+    """Stable -> YC versioned links (RU-friendly, fixed bucket names = the
+    in-app updater's contract); pre -> GitHub release assets (versioned names
+    dropweb-<version>-<suffix> from build.yaml's "Version asset filenames")."""
+    if is_stable:
+        base = f"{YC_BASE}/v{version}"
+        return [(e, name, label, f"{base}/{yc}") for e, name, label, yc, _ in PLATFORMS]
     gh = f"https://github.com/{REPO}/releases/download/v{version}"
-    base = f"{YC_BASE}/v{version}" if is_stable else gh
-    return [(e, name, label, f"{base}/{art}") for e, name, label, art in PLATFORMS]
+    return [(e, name, label, f"{gh}/dropweb-{version}-{suf}")
+            for e, name, label, _, suf in PLATFORMS]
 
 
 def load_release_notes(tag: str) -> tuple[str, list[tuple[str, str]]]:
