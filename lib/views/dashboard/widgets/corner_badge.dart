@@ -26,6 +26,25 @@ String? decodeLogoUrl(String? value) {
 /// Whether [url] points at an SVG (rendered as a vector, not background-keyed).
 bool isSvgLogoUrl(String url) => url.toLowerCase().endsWith('.svg');
 
+/// How the provider logo is displayed on the dashboard subscription card.
+/// Driven by the OPTIONAL 6th positional field of the `dropweb-theme` header
+/// (`<filter>,<accentHex>,<orb1Hex>,<orb2Hex>,<blur>[,<logoStyle>]`):
+/// `inline` -> small raw logo left of the provider name; anything else
+/// (missing field, empty, unknown value, no header) -> `watermark`, the
+/// legacy corner-bleed treatment. Fail-safe by design: old panels that send
+/// five fields keep the current look.
+enum SubscriptionLogoStyle { watermark, inline }
+
+SubscriptionLogoStyle parseSubscriptionLogoStyle(Map<String, String>? headers) {
+  final raw = headers?['dropweb-theme'];
+  if (raw == null || raw.isEmpty) return SubscriptionLogoStyle.watermark;
+  final parts = raw.split(',');
+  if (parts.length < 6) return SubscriptionLogoStyle.watermark;
+  return parts[5].trim().toLowerCase() == 'inline'
+      ? SubscriptionLogoStyle.inline
+      : SubscriptionLogoStyle.watermark;
+}
+
 /// Provider-logo flourish on the subscription card: the logo bleeds off the
 /// card's right edge, recoloured to the theme accent, its (dark/opaque)
 /// background dropped via a render-time luminance->alpha key, and every edge
@@ -162,6 +181,69 @@ class SubscriptionCardLogo extends ConsumerWidget {
       ),
       errorWidget: (_, __, ___) => const SizedBox.shrink(),
       placeholder: (_, __) => const SizedBox.shrink(),
+    );
+  }
+}
+
+/// The `inline` variant counterpart of [SubscriptionCardLogo]: a small, raw
+/// provider logo shown left of the service name in the dashboard subscription
+/// card's title row (compact row layout). Reads the SAME `dropweb-logo` header
+/// via [decodeLogoUrl] and is gated by the SAME user toggle
+/// (`applySubscriptionLogo`) as the watermark, but renders the logo verbatim:
+/// no accent keying, no luminance->alpha matrix, no feathering. When the toggle
+/// is off or no logo is present it collapses to `SizedBox.shrink()`, so the
+/// title row falls back to showing the name alone (dropweb ships no provider
+/// fallback mark). Which variant is active is decided by
+/// [parseSubscriptionLogoStyle]; the two widgets are mutually exclusive.
+class SubscriptionInlineLogo extends ConsumerWidget {
+  const SubscriptionInlineLogo({super.key, this.headers});
+
+  /// Provider headers to read `dropweb-logo` from. When null, the widget
+  /// tracks the currently selected profile (dashboard behaviour); when
+  /// provided, it renders that specific profile's logo.
+  final Map<String, String>? headers;
+
+  static const double _size = 32.0;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(
+      appSettingProvider.select((s) => s.applySubscriptionLogo),
+    );
+    final resolvedHeaders = headers ??
+        ref.watch(
+          currentProfileProvider.select((p) => p?.providerHeaders),
+        );
+    final url = decodeLogoUrl(resolvedHeaders?['dropweb-logo']);
+    if (!enabled || url == null || url.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final Widget logo;
+    if (isSvgLogoUrl(url)) {
+      logo = SvgPicture.network(
+        url,
+        width: _size,
+        height: _size,
+        placeholderBuilder: (_) => const SizedBox(width: _size, height: _size),
+      );
+    } else {
+      final cachePx = (_size * MediaQuery.devicePixelRatioOf(context)).round();
+      logo = CachedNetworkImage(
+        imageUrl: url,
+        width: _size,
+        height: _size,
+        fit: BoxFit.cover,
+        memCacheWidth: cachePx,
+        memCacheHeight: cachePx,
+        placeholder: (_, __) => const SizedBox.shrink(),
+        errorWidget: (_, __, ___) => const SizedBox.shrink(),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: logo,
     );
   }
 }

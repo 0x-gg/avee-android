@@ -164,6 +164,7 @@ class _MetainfoWidgetState extends ConsumerState<MetainfoWidget> {
     final isPerpetual = subscriptionInfo.expire == 0;
 
     final headers = currentProfile.providerHeaders;
+    final logoStyle = parseSubscriptionLogoStyle(headers);
     final profileTitle = _decodeBase64IfNeeded(headers['profile-title']);
     final serviceName = _decodeBase64IfNeeded(headers['dropweb-servicename']);
     final announceText = _decodeAnnounce(headers['announce']);
@@ -243,7 +244,8 @@ class _MetainfoWidgetState extends ConsumerState<MetainfoWidget> {
       },
       child: Stack(
         children: [
-          const Positioned.fill(child: SubscriptionCardLogo()),
+          if (logoStyle == SubscriptionLogoStyle.watermark)
+            const Positioned.fill(child: SubscriptionCardLogo()),
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -252,6 +254,10 @@ class _MetainfoWidgetState extends ConsumerState<MetainfoWidget> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    if (logoStyle == SubscriptionLogoStyle.inline) ...[
+                      const SubscriptionInlineLogo(),
+                      const SizedBox(width: 10),
+                    ],
                     Expanded(
                       child: EmojiText(
                         titleText,
