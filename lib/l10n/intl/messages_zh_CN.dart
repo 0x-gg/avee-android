@@ -152,6 +152,15 @@ class MessageLookup extends MessageLookupByLibrary {
     "copySuccess": MessageLookupByLibrary.simpleMessage("复制成功"),
     "core": MessageLookupByLibrary.simpleMessage("内核"),
     "coreInfo": MessageLookupByLibrary.simpleMessage("内核信息"),
+    "countriesAllUnreachable": MessageLookupByLibrary.simpleMessage(
+      "服务器无响应。请检查您的网络连接。",
+    ),
+    "countriesAvailabilityUnknown": MessageLookupByLibrary.simpleMessage(
+      "无法检查服务器可用性。下拉以重试。",
+    ),
+    "countriesLoadFailed": MessageLookupByLibrary.simpleMessage(
+      "无法加载国家列表。下拉以重试。",
+    ),
     "countriesNotDetected": MessageLookupByLibrary.simpleMessage(
       "未检测到国家。请更新您的订阅。",
     ),

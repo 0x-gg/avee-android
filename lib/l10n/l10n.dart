@@ -3964,6 +3964,36 @@ class AppLocalizations {
     );
   }
 
+  /// `Couldn't check server availability. Pull down to retry.`
+  String get countriesAvailabilityUnknown {
+    return Intl.message(
+      'Couldn\'t check server availability. Pull down to retry.',
+      name: 'countriesAvailabilityUnknown',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Servers are not responding. Check your internet connection.`
+  String get countriesAllUnreachable {
+    return Intl.message(
+      'Servers are not responding. Check your internet connection.',
+      name: 'countriesAllUnreachable',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Couldn't load the country list. Pull down to retry.`
+  String get countriesLoadFailed {
+    return Intl.message(
+      'Couldn\'t load the country list. Pull down to retry.',
+      name: 'countriesLoadFailed',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Mode reset to Standard: settings unavailable after subscription update.`
   String get workModeResetNotice {
     return Intl.message(

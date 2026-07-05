@@ -221,6 +221,15 @@ class MessageLookup extends MessageLookupByLibrary {
     "copySuccess": MessageLookupByLibrary.simpleMessage("Копирование успешно"),
     "core": MessageLookupByLibrary.simpleMessage("Ядро"),
     "coreInfo": MessageLookupByLibrary.simpleMessage("Информация о ядре"),
+    "countriesAllUnreachable": MessageLookupByLibrary.simpleMessage(
+      "Серверы не отвечают. Проверьте подключение к интернету.",
+    ),
+    "countriesAvailabilityUnknown": MessageLookupByLibrary.simpleMessage(
+      "Не удалось проверить доступность серверов. Потяните вниз, чтобы повторить.",
+    ),
+    "countriesLoadFailed": MessageLookupByLibrary.simpleMessage(
+      "Не удалось загрузить список стран. Потяните вниз, чтобы повторить.",
+    ),
     "countriesNotDetected": MessageLookupByLibrary.simpleMessage(
       "Страны не определены. Обновите подписку.",
     ),

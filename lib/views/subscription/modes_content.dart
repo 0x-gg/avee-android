@@ -1,4 +1,5 @@
 import 'package:dropweb/common/common.dart';
+import 'package:dropweb/common/error_mapper.dart';
 import 'package:dropweb/enum/enum.dart';
 import 'package:dropweb/models/models.dart' hide Action;
 import 'package:dropweb/providers/providers.dart';
@@ -110,7 +111,13 @@ class _ModesContentState extends ConsumerState<ModesContent>
 
     return dataAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => NullStatus(label: appLocalizations.nullProfileDesc),
+      // The profile EXISTS (guarded above) — a config-load failure here is a
+      // real error, NOT «no profile». Surface a mapped/generic error instead of
+      // the old nullProfileDesc lie (same class of lie the country picker fix
+      // removes). No redesign: still a plain NullStatus panel.
+      error: (e, __) => NullStatus(
+        label: ErrorMapper.mapError('$e') ?? appLocalizations.genericErrorMessage,
+      ),
       data: (_) {
         final stack = ListView(
           physics: const AlwaysScrollableScrollPhysics(),

@@ -168,6 +168,15 @@ class MessageLookup extends MessageLookupByLibrary {
     "copySuccess": MessageLookupByLibrary.simpleMessage("コピー成功"),
     "core": MessageLookupByLibrary.simpleMessage("コア"),
     "coreInfo": MessageLookupByLibrary.simpleMessage("コア情報"),
+    "countriesAllUnreachable": MessageLookupByLibrary.simpleMessage(
+      "サーバーが応答しません。インターネット接続を確認してください。",
+    ),
+    "countriesAvailabilityUnknown": MessageLookupByLibrary.simpleMessage(
+      "サーバーの利用可否を確認できませんでした。下に引いて再試行してください。",
+    ),
+    "countriesLoadFailed": MessageLookupByLibrary.simpleMessage(
+      "国リストを読み込めませんでした。下に引いて再試行してください。",
+    ),
     "countriesNotDetected": MessageLookupByLibrary.simpleMessage(
       "国を検出できません。サブスクリプションを更新してください。",
     ),

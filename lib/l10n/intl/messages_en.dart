@@ -216,6 +216,15 @@ class MessageLookup extends MessageLookupByLibrary {
     "copySuccess": MessageLookupByLibrary.simpleMessage("Copy success"),
     "core": MessageLookupByLibrary.simpleMessage("Core"),
     "coreInfo": MessageLookupByLibrary.simpleMessage("Core info"),
+    "countriesAllUnreachable": MessageLookupByLibrary.simpleMessage(
+      "Servers are not responding. Check your internet connection.",
+    ),
+    "countriesAvailabilityUnknown": MessageLookupByLibrary.simpleMessage(
+      "Couldn\'t check server availability. Pull down to retry.",
+    ),
+    "countriesLoadFailed": MessageLookupByLibrary.simpleMessage(
+      "Couldn\'t load the country list. Pull down to retry.",
+    ),
     "countriesNotDetected": MessageLookupByLibrary.simpleMessage(
       "Countries not detected. Update your subscription.",
     ),

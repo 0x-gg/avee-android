@@ -1,4 +1,5 @@
 import 'package:dropweb/common/common.dart';
+import 'package:dropweb/common/error_mapper.dart';
 import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/views/subscription/common.dart';
 import 'package:dropweb/widgets/widgets.dart';
@@ -29,16 +30,24 @@ class _CountryDeepViewState extends ConsumerState<CountryDeepView> {
   /// pre-warm result without re-testing).
   bool _autoPinged = false;
 
-  /// Last settled ALIVE set — kept locally so the list stays stable across a
+  /// Last settled probe RESULT — kept locally so the list stays stable across a
   /// re-ping (open / pull-to-refresh) regardless of how the AsyncValue reports
   /// the in-flight reload. `null` only before the very first settle.
-  Set<String>? _lastAlive;
+  CountryProbeResult? _lastResult;
 
-  /// Pull-to-refresh: re-run the probe (fresh ping) and await its settle so the
-  /// [RefreshIndicator] spinner stays until measurements are in.
+  /// Pull-to-refresh: re-fetch the profile config AND re-run the probe (fresh
+  /// ping), awaiting the settle so the [RefreshIndicator] spinner stays until
+  /// measurements are in. Invalidating the config too makes the error state's
+  /// retry actually re-attempt the load. Errors are swallowed so the spinner
+  /// resolves (the state itself re-renders from the async values).
   Future<void> _refresh() async {
+    ref.invalidate(modeProfileDataProvider(widget.profileId));
     ref.invalidate(countryProbeProvider(widget.profileId));
-    await ref.read(countryProbeProvider(widget.profileId).future);
+    try {
+      await ref.read(countryProbeProvider(widget.profileId).future);
+    } catch (_) {
+      // Surfaced through the rebuilt async value → error/unmeasured state.
+    }
   }
 
   @override
@@ -89,35 +98,8 @@ class _CountryDeepViewState extends ConsumerState<CountryDeepView> {
           },
         );
 
-    // The ALIVE set. Cache the last settled value locally so a re-ping (open /
-    // pull-to-refresh) never flickers the list to skeleton — it keeps the
-    // previous set until the new one settles, refreshing only the badges.
-    // `null` only before the very first settle. Canonical «load → stable list».
-    final live = probeAsync.valueOrNull;
-    if (live != null) _lastAlive = live;
-    final alive = _lastAlive;
-
-    final Widget child;
-    final String stateKey;
-    if (dataAsync.hasError || probeAsync.hasError) {
-      stateKey = 'error';
-      child = NullStatus(label: appLocalizations.nullProfileDesc);
-    } else if (dataAsync.isLoading || alive == null) {
-      stateKey = 'skeleton';
-      child = const _CountrySkeletonList();
-    } else {
-      // Only probe-confirmed-alive nodes survive (АВТО routers, decoys, anything
-      // mihomo can't dial are dropped); the active selection is always kept.
-      // Same-flag servers stay expanded (one row per server).
-      final entries = [
-        for (final entry
-            in countryPickerEntries(dataAsync.requireValue.countries))
-          if (entry.key == activeCountry || alive.contains(entry.proxyName))
-            entry,
-      ];
-      if (entries.isEmpty) {
-        stateKey = 'empty';
-        child = RefreshIndicator(
+    // A centered, pull-to-refresh-able message panel (error / empty-countries).
+    Widget centeredRefresh(String message) => RefreshIndicator(
           onRefresh: _refresh,
           color: colorScheme.primary,
           child: SingleChildScrollView(
@@ -128,7 +110,7 @@ class _CountryDeepViewState extends ConsumerState<CountryDeepView> {
                 child: Padding(
                   padding: const EdgeInsets.all(32),
                   child: Text(
-                    appLocalizations.countriesNotDetected,
+                    message,
                     textAlign: TextAlign.center,
                     style: context.textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
@@ -139,9 +121,13 @@ class _CountryDeepViewState extends ConsumerState<CountryDeepView> {
             ),
           ),
         );
-      } else {
-        stateKey = 'list';
-        child = RefreshIndicator(
+
+    // A staggered, pull-to-refresh-able list of country rows, with an optional
+    // small non-blocking [notice] pinned at the top (unmeasured / unreachable
+    // states). The rows stay tappable/appliable regardless of the notice — the
+    // apply path never depends on the probe.
+    Widget buildList(List<CountryPickerEntry> entries, {String? notice}) =>
+        RefreshIndicator(
           onRefresh: _refresh,
           color: colorScheme.primary,
           child: SingleChildScrollView(
@@ -150,6 +136,7 @@ class _CountryDeepViewState extends ConsumerState<CountryDeepView> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (notice != null) _InlineNotice(message: notice),
                 for (final (i, entry) in entries.indexed)
                   _RowReveal(
                     key: ValueKey(entry.key),
@@ -160,7 +147,58 @@ class _CountryDeepViewState extends ConsumerState<CountryDeepView> {
             ),
           ),
         );
-      }
+
+    // Cache the last SETTLED probe result locally so a re-ping (open /
+    // pull-to-refresh) never flickers the list to skeleton — the pure resolver
+    // reads the cache, refreshing only the badges. `null` only before the very
+    // first settle. Canonical «load → stable list».
+    final settled = probeAsync.valueOrNull;
+    if (settled != null) _lastResult = settled;
+
+    // The honesty matrix lives in [resolveCountryPickerState] (pure + tested).
+    final state = resolveCountryPickerState(
+      data: dataAsync,
+      probe: probeAsync,
+      cachedProbe: _lastResult,
+      activeCountry: activeCountry,
+    );
+
+    final Widget child;
+    final String stateKey;
+    switch (state.status) {
+      case CountryPickerStatus.skeleton:
+        stateKey = 'skeleton';
+        child = const _CountrySkeletonList();
+      case CountryPickerStatus.error:
+        stateKey = 'error';
+        // A real load failure — a mapped message when we recognise it, else the
+        // generic «couldn't load, pull to retry» copy. NEVER «no profile».
+        final mapped = ErrorMapper.mapError(dataAsync.error?.toString() ?? '');
+        child = centeredRefresh(mapped ?? appLocalizations.countriesLoadFailed);
+      case CountryPickerStatus.emptyCountries:
+        // The ONLY honest «обновите подписку» — the subscription truly has none.
+        stateKey = 'empty';
+        child = centeredRefresh(appLocalizations.countriesNotDetected);
+      case CountryPickerStatus.unmeasured:
+        // Countries exist but liveness is unknown: show them ALL, with a small
+        // notice; the user can still tap and apply any country.
+        stateKey = 'unmeasured';
+        child = buildList(
+          state.entries,
+          notice: appLocalizations.countriesAvailabilityUnknown,
+        );
+      case CountryPickerStatus.allUnreachable:
+        // Probe ran, nothing answered (likely no internet): show them ALL with
+        // an honest connectivity hint rather than hiding every country.
+        stateKey = 'allUnreachable';
+        child = buildList(
+          state.entries,
+          notice: appLocalizations.countriesAllUnreachable,
+        );
+      case CountryPickerStatus.list:
+        // Measured with live servers: the filtered list (decoys/SOS hidden).
+        stateKey = 'list';
+        child = buildList(state.entries);
     }
 
     return AnimatedSwitcher(
@@ -170,6 +208,27 @@ class _CountryDeepViewState extends ConsumerState<CountryDeepView> {
       child: KeyedSubtree(key: ValueKey(stateKey), child: child),
     );
   }
+}
+
+/// A small, non-blocking advisory pinned above the country list (unmeasured /
+/// unreachable states). Deliberately quiet — a left-aligned [bodySmall] line in
+/// [onSurfaceVariant] on the existing surface, no new visual language, no glass
+/// panel — so it informs without stealing focus from the tappable rows below.
+class _InlineNotice extends StatelessWidget {
+  const _InlineNotice({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+        child: Text(
+          message,
+          style: context.textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
 }
 
 /// Premium entrance for a country-picker row: it FADES in while gently RISING
