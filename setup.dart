@@ -514,6 +514,52 @@ class BuildCommand extends Command {
     }
   }
 
+  // Map dart [Arch] → the Mach-O slice name understood by `lipo`.
+  static const _lipoArch = {Arch.amd64: "x86_64", Arch.arm64: "arm64"};
+
+  /// Thin one Mach-O file down to [sliceArch], in place. Returns true if the
+  /// file was fat and got thinned, false if it was skipped (not a Mach-O or
+  /// already single-arch).
+  ///
+  /// `lipo` refuses to rewrite its own input, so we thin into a sibling temp
+  /// file and copy the bytes back over the original with `writeAsBytes` — that
+  /// truncates the existing inode rather than recreating it, so the file keeps
+  /// its permission bits (a plain rename would drop the executable's +x mode to
+  /// 0644 and break launch). [failLoud] throws on any lipo failure — used for
+  /// the main executable, where a broken thin must NEVER ship silently;
+  /// per-framework thinning warns-and-continues (some frameworks are thin).
+  Future<bool> _thinMachO(
+    String path,
+    String sliceArch, {
+    required bool failLoud,
+  }) async {
+    final info = await Process.run("lipo", ["-info", path]);
+    if (info.exitCode != 0) {
+      return false; // not a Mach-O (plist, asset, dead symlink, …)
+    }
+    // Only fat binaries carry this banner; "Non-fat file:" means already thin.
+    if (!info.stdout.toString().contains("Architectures in the fat file")) {
+      return false;
+    }
+    final tmpPath = "$path.thin-tmp";
+    final thin = await Process.run(
+      "lipo",
+      [path, "-thin", sliceArch, "-output", tmpPath],
+    );
+    if (thin.exitCode != 0) {
+      final tmpFile = File(tmpPath);
+      if (tmpFile.existsSync()) tmpFile.deleteSync();
+      final msg = "lipo -thin $sliceArch failed for $path: ${thin.stderr}";
+      if (failLoud) throw msg;
+      print("⚠️  $msg (skipping)");
+      return false;
+    }
+    final bytes = await File(tmpPath).readAsBytes();
+    await File(path).writeAsBytes(bytes, flush: true);
+    await File(tmpPath).delete();
+    return true;
+  }
+
   _buildMacosApp({
     required Arch arch,
     required String env,
@@ -534,6 +580,47 @@ class BuildCommand extends Command {
     final appName = Build.appName;
     final appPath = join(current, "build", "macos", "Build", "Products",
         "Release", "$appName.app");
+
+    // ── ARCH-HONEST DMG ─────────────────────────────────────────────────────
+    // Field incident (Intel Mac, Monterey, pre.7): `flutter build macos` ALWAYS
+    // emits UNIVERSAL Mach-O (the main app AND every bundled framework), but the
+    // DropwebCore helper that Xcode's CopyFiles brings in is SINGLE-ARCH (built
+    // per --arch). So an arm64 dmg opened on an Intel Mac still LAUNCHED (the
+    // universal main simply ran its native x86_64 slice), then copied its
+    // arm64-only core into Application Support as root+setuid. That poisoned
+    // core then survived every later correct install — the old mtime heuristic
+    // saw the bundle core as "not newer" and never re-copied it → helper died
+    // `bad CPU type in executable` → the main app wrote to the dead helper
+    // socket → SIGPIPE, exit 141, tray icon a single-frame flash. Fix: thin the
+    // main binary and frameworks down to THIS dmg's target arch, so an arm64 dmg
+    // simply CANNOT open on an Intel Mac (macOS shows a clear "app can't be
+    // opened on this Mac" message) instead of silently poisoning it — and the
+    // dmgs shrink too.
+    // The `codesign --deep --force` below runs AFTER this, so the ad-hoc
+    // signatures over the now-thinned Mach-Os stay valid.
+    final sliceArch = _lipoArch[arch]!;
+
+    final mainExecPath = join(appPath, "Contents", "MacOS", appName);
+    print("Thinning main executable → $sliceArch");
+    // failLoud: a broken main thin must abort the build, never ship.
+    await _thinMachO(mainExecPath, sliceArch, failLoud: true);
+
+    final frameworksDir = Directory(join(appPath, "Contents", "Frameworks"));
+    if (frameworksDir.existsSync()) {
+      var thinnedCount = 0;
+      // Walk every regular file under Frameworks — handles the
+      // X.framework/Versions/A/X layout plus any loose .dylibs. followLinks
+      // is false so the Versions/Current aliases aren't thinned twice.
+      for (final entity
+          in frameworksDir.listSync(recursive: true, followLinks: false)) {
+        if (entity is! File) continue;
+        if (await _thinMachO(entity.path, sliceArch, failLoud: false)) {
+          thinnedCount++;
+        }
+      }
+      print("Thinned $thinnedCount framework Mach-O file(s) → $sliceArch");
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Re-sign entire bundle so all frameworks share the same ad-hoc identity.
     // Without this, CocoaPods/SPM frameworks may have mismatched Team IDs

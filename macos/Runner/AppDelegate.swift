@@ -2,6 +2,7 @@ import Cocoa
 import FlutterMacOS
 import window_ext
 import LaunchAtLogin
+import CryptoKit
 
 @main
 class AppDelegate: FlutterAppDelegate {
@@ -11,6 +12,18 @@ class AppDelegate: FlutterAppDelegate {
     
     override init() {
         super.init()
+
+        // SIGPIPE hardening (field incident: exit 141). When the DropwebCore
+        // helper dies — e.g. `bad CPU type in executable` from a poisoned
+        // Application Support core — the main app's next write to the now-dead
+        // helper socket raises SIGPIPE, whose default disposition kills the
+        // process instantly (128 + 13 = 141). The tray icon flashes for one
+        // frame and the app vanishes with no error. Ignoring SIGPIPE turns that
+        // write into a normal EPIPE error the socket code can surface/handle,
+        // instead of a silent kill. Set here (earliest entry) so no early write
+        // can race it. Darwin's signal()/SIG_IGN come in via Cocoa.
+        signal(SIGPIPE, SIG_IGN)
+
         flutterUIPopover.behavior = NSPopover.Behavior.transient
     }
     
@@ -104,7 +117,7 @@ class AppDelegate: FlutterAppDelegate {
             print("Directory created: \(appSupportDir.path)")
             
             let coreExists = FileManager.default.fileExists(atPath: appSupportCorePath.path)
-            let needsUpdate = !coreExists || shouldUpdateCore(bundlePath: bundleCorePath.path, appSupportPath: appSupportCorePath.path)
+            let needsUpdate = !coreExists || coreContentDiffers(bundlePath: bundleCorePath.path, appSupportPath: appSupportCorePath.path)
             
             if needsUpdate {
                 try? FileManager.default.removeItem(at: appSupportCorePath)
@@ -165,14 +178,31 @@ class AppDelegate: FlutterAppDelegate {
         alert.runModal()
     }
     
-    func shouldUpdateCore(bundlePath: String, appSupportPath: String) -> Bool {
-        guard let bundleAttrs = try? FileManager.default.attributesOfItem(atPath: bundlePath),
-              let appSupportAttrs = try? FileManager.default.attributesOfItem(atPath: appSupportPath),
-              let bundleDate = bundleAttrs[.modificationDate] as? Date,
-              let appSupportDate = appSupportAttrs[.modificationDate] as? Date else {
+    // Decide whether the Application Support core must be replaced by the
+    // bundle's, by CONTENT identity (SHA-256) rather than mtime. The old
+    // mtime heuristic (bundleDate > appSupportDate) is why a wrong-arch core
+    // poisoned into Application Support survived every later correct install:
+    // a freshly installed bundle core is not "newer" than the already-copied
+    // one, so it was never re-copied, and the app kept launching an arm64-only
+    // core on an Intel Mac (`bad CPU type`). Content comparison replaces the
+    // core whenever the bytes differ — covering wrong-arch AND version bumps —
+    // so a poisoned/stale core self-heals on the next launch (the admin prompt
+    // re-appears, which is correct: the binary genuinely changed). Fast path:
+    // a size mismatch means differ without hashing; equal sizes fall through to
+    // the SHA-256 compare (~30-50MB read at launch, acceptable). On any read
+    // failure we return true (update) — fail toward a known-good bundle core.
+    func coreContentDiffers(bundlePath: String, appSupportPath: String) -> Bool {
+        let fm = FileManager.default
+        if let bundleSize = (try? fm.attributesOfItem(atPath: bundlePath))?[.size] as? Int,
+           let appSupportSize = (try? fm.attributesOfItem(atPath: appSupportPath))?[.size] as? Int,
+           bundleSize != appSupportSize {
             return true
         }
-        return bundleDate > appSupportDate
+        guard let bundleData = try? Data(contentsOf: URL(fileURLWithPath: bundlePath)),
+              let appSupportData = try? Data(contentsOf: URL(fileURLWithPath: appSupportPath)) else {
+            return true
+        }
+        return SHA256.hash(data: bundleData) != SHA256.hash(data: appSupportData)
     }
     
     override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
