@@ -71,6 +71,10 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      - name: Install create-dmg (macOS)
+        if: matrix.platform == 'macos'
+        run: brew install create-dmg
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -195,6 +199,36 @@ jobs:
           pattern: artifact-*
           merge-multiple: true
 
+      # GitHub release assets carry the version in the filename
+      # (dropweb-<version>-<platform>-<arch>.<ext>); the YC update bucket
+      # keeps the historical fixed names — the in-app updater's contract.
+      - name: Version asset filenames
+        run: |
+          set -euo pipefail
+          version=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          declare -A map=(
+            [dropweb-arm64-v8a.apk]=dropweb-$version-android-arm64-v8a.apk
+            [dropweb-armeabi-v7a.apk]=dropweb-$version-android-armeabi-v7a.apk
+            [dropweb-x86_64.apk]=dropweb-$version-android-x86_64.apk
+            [dropweb-universal.apk]=dropweb-$version-android-universal.apk
+            [dropweb-arm64.dmg]=dropweb-$version-macos-arm64.dmg
+            [dropweb-amd64.dmg]=dropweb-$version-macos-amd64.dmg
+            [dropweb-amd64-setup.exe]=dropweb-$version-windows-amd64-setup.exe
+            [dropweb-amd64.zip]=dropweb-$version-windows-amd64-portable.zip
+            [dropweb-amd64.AppImage]=dropweb-$version-linux-amd64.AppImage
+            [dropweb-amd64.deb]=dropweb-$version-linux-amd64.deb
+            [dropweb-amd64.rpm]=dropweb-$version-linux-amd64.rpm
+          )
+          for src in "${!map[@]}"; do
+            if [ -f "./dist/$src" ]; then
+              mv "./dist/$src" "./dist/${map[$src]}"
+              echo "renamed $src -> ${map[$src]}"
+            else
+              echo "WARN: ./dist/$src not present, skipping"
+            fi
+          done
+          ls -la ./dist
+
       - name: Generate release.md
         run: |
           version=$(echo "${{ github.ref_name }}" | sed 's/^v//')
@@ -270,12 +304,19 @@ jobs:
           build=$(grep '^version:' pubspec.yaml | sed -E 's/.*\+([0-9]+).*/\1/')
           ep="--endpoint-url=https://storage.yandexcloud.net"
           B="s3://dropweb-downloads"
-          for f in dropweb-arm64-v8a.apk dropweb-universal.apk dropweb-amd64-setup.exe dropweb-arm64.dmg dropweb-amd64.dmg dropweb-amd64.AppImage; do
-            if [ -f "./dist/$f" ]; then
-              aws s3 cp "./dist/$f" "$B/v$version/$f" $ep
-              aws s3 cp "./dist/$f" "$B/latest/$f" $ep
+          for pair in \
+            "dropweb-$version-android-arm64-v8a.apk:dropweb-arm64-v8a.apk" \
+            "dropweb-$version-android-universal.apk:dropweb-universal.apk" \
+            "dropweb-$version-windows-amd64-setup.exe:dropweb-amd64-setup.exe" \
+            "dropweb-$version-macos-arm64.dmg:dropweb-arm64.dmg" \
+            "dropweb-$version-macos-amd64.dmg:dropweb-amd64.dmg" \
+            "dropweb-$version-linux-amd64.AppImage:dropweb-amd64.AppImage"; do
+            local_f="${pair%%:*}"; remote_f="${pair##*:}"
+            if [ -f "./dist/$local_f" ]; then
+              aws s3 cp "./dist/$local_f" "$B/v$version/$remote_f" $ep
+              aws s3 cp "./dist/$local_f" "$B/latest/$remote_f" $ep
             else
-              echo "WARN: ./dist/$f not found, skipping"
+              echo "WARN: ./dist/$local_f not found, skipping"
             fi
           done
           base="https://storage.yandexcloud.net/dropweb-downloads/latest"
@@ -288,12 +329,12 @@ jobs:
           # binary yields an empty string, which the app treats as "unverified,
           # install anyway" (graceful).
           sha() { [ -f "./dist/$1.sha256" ] && cut -d' ' -f1 "./dist/$1.sha256" || echo ""; }
-          apk_sha=$(sha dropweb-arm64-v8a.apk)
-          universal_sha=$(sha dropweb-universal.apk)
-          exe_sha=$(sha dropweb-amd64-setup.exe)
-          dmg_sha=$(sha dropweb-arm64.dmg)
-          dmg_amd64_sha=$(sha dropweb-amd64.dmg)
-          appimage_sha=$(sha dropweb-amd64.AppImage)
+          apk_sha=$(sha dropweb-$version-android-arm64-v8a.apk)
+          universal_sha=$(sha dropweb-$version-android-universal.apk)
+          exe_sha=$(sha dropweb-$version-windows-amd64-setup.exe)
+          dmg_sha=$(sha dropweb-$version-macos-arm64.dmg)
+          dmg_amd64_sha=$(sha dropweb-$version-macos-amd64.dmg)
+          appimage_sha=$(sha dropweb-$version-linux-amd64.AppImage)
           jq -n --arg version "$version" --argjson build "${build:-0}" --arg pubDate "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson notes "$notes_json" \
             --arg apk "$base/dropweb-arm64-v8a.apk" --arg universal "$base/dropweb-universal.apk" --arg exe "$base/dropweb-amd64-setup.exe" --arg dmg "$base/dropweb-arm64.dmg" --arg dmgAmd "$base/dropweb-amd64.dmg" --arg appimage "$base/dropweb-amd64.AppImage" \
             --arg apkSha "$apk_sha" --arg universalSha "$universal_sha" --arg exeSha "$exe_sha" --arg dmgSha "$dmg_sha" --arg dmgAmdSha "$dmg_amd64_sha" --arg appimageSha "$appimage_sha" \
@@ -349,7 +390,10 @@ jobs:
         run: |
           set -euo pipefail
           PKGVER="${GITHUB_REF_NAME#v}"
-          DEB_SHA=$(sha256sum dist/dropweb-amd64.deb | cut -d' ' -f1)
+          # This job downloads the raw build artifact (pre-rename name); the
+          # PKGBUILD source URL points at the renamed GitHub release asset —
+          # same bytes, so this sha is valid for both.
+          DEB_SHA=$(sha256sum "dist/dropweb-amd64.deb" | cut -d' ' -f1)
           SH_SHA=$(sha256sum .github/aur/dropweb.sh | cut -d' ' -f1)
           mkdir -p ./aur-pkg
           sed -e "s|@PKGVER@|$PKGVER|g" \

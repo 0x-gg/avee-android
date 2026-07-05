@@ -10,7 +10,7 @@ conflicts=('dropweb')
 provides=("dropweb=${pkgver}")
 depends=('libayatana-appindicator' 'libkeybinder3')
 source=("dropweb.sh")
-source_x86_64=("dropweb-${pkgver}-x86_64.deb::${url}/releases/download/v${pkgver}/dropweb-amd64.deb")
+source_x86_64=("dropweb-@PKGVER@-x86_64.deb::${url}/releases/download/v@PKGVER@/dropweb-@PKGVER@-linux-amd64.deb")
 sha256sums=('@SH_SHA@')
 sha256sums_x86_64=('@DEB_SHA@')
 
