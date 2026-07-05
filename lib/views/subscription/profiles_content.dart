@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dropweb/common/common.dart';
+import 'package:dropweb/common/error_mapper.dart';
 import 'package:dropweb/models/models.dart' hide Action;
 import 'package:dropweb/plugins/app.dart';
 import 'package:dropweb/providers/providers.dart';
@@ -40,12 +41,16 @@ Future<void> refreshProfiles(BuildContext context, [Profile? current]) async {
     try {
       await controller.updateProfile(current);
     } catch (e) {
+      commonPrint.log("$e");
       controller.setProfile(current.copyWith(isUpdating: false));
       if (context.mounted) {
+        final message =
+            ErrorMapper.mapError("$e") ?? appLocalizations.genericErrorMessage;
         globalState.showMessage(
-          title: appLocalizations.tip,
+          title: appLocalizations.errorTitle,
+          cancelable: false,
           message: TextSpan(
-            text: "${current.label ?? current.id}: $e",
+            text: "${current.label ?? current.id}: $message",
             style: Theme.of(context).textTheme.titleMedium,
           ),
         );
@@ -65,7 +70,10 @@ Future<void> refreshProfiles(BuildContext context, [Profile? current]) async {
       try {
         await controller.updateProfile(profile);
       } catch (e) {
-        messages.add("${profile.label ?? profile.id}: $e \n");
+        commonPrint.log("$e");
+        final message =
+            ErrorMapper.mapError("$e") ?? appLocalizations.genericErrorMessage;
+        messages.add("«${profile.label ?? profile.id}»: $message \n");
         controller.setProfile(profile.copyWith(isUpdating: false));
       }
     }),
@@ -73,7 +81,8 @@ Future<void> refreshProfiles(BuildContext context, [Profile? current]) async {
   );
   if (messages.isNotEmpty && context.mounted) {
     globalState.showMessage(
-      title: appLocalizations.tip,
+      title: appLocalizations.errorTitle,
+      cancelable: false,
       message: TextSpan(
         children: [
           for (final msg in messages)

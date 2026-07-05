@@ -129,6 +129,18 @@ class ErrorMapper {
       ru: 'Ваш провайдер не поддерживает это приложение. Обратитесь к провайдеру или используйте другую ссылку на подписку.',
       en: 'Your provider does not support this app. Contact your provider or use a different subscription link.',
     ),
+    // Subscription body exceeded our size ceiling (our own raw throw)
+    _ErrorPattern(
+      RegExp(r'Subscription too large', caseSensitive: false),
+      ru: 'Подписка слишком большая — обратитесь к провайдеру.',
+      en: 'Subscription file is too large — contact your provider.',
+    ),
+    // Redirect without a Location header (our own raw throw)
+    _ErrorPattern(
+      RegExp(r'Redirect detected, but no location', caseSensitive: false),
+      ru: 'Сервер подписки вернул некорректный ответ. Попробуйте позже.',
+      en: 'Subscription server returned an invalid response. Try later.',
+    ),
     // No internet / host unreachable / Dio connection error / SocketException
     _ErrorPattern(
       RegExp(

@@ -192,7 +192,8 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
       final message = ErrorMapper.mapError(e.toString()) ??
           appLocalizations.genericErrorMessage;
       globalState.showMessage(
-        title: title ?? appLocalizations.tip,
+        title: title ?? appLocalizations.errorTitle,
+        cancelable: false,
         message: TextSpan(
           text: message,
         ),

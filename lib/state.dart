@@ -464,7 +464,8 @@ class GlobalState {
         showNotifier(message);
       } else {
         showMessage(
-          title: title ?? appLocalizations.tip,
+          title: title ?? appLocalizations.errorTitle,
+          cancelable: false,
           message: TextSpan(
             text: message,
           ),

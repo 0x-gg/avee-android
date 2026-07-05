@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dropweb/clash/clash.dart';
 import 'package:dropweb/common/common.dart';
+import 'package:dropweb/common/error_mapper.dart';
 import 'package:dropweb/l10n/l10n.dart';
 import 'package:dropweb/models/models.dart';
 import 'package:dropweb/providers/config.dart';
@@ -266,10 +267,15 @@ class _GeoDataListItemState extends State<GeoDataListItem> {
         }
       }
     } catch (e) {
+      commonPrint.log("$e");
       if (mounted) {
         globalState.showMessage(
           title: appLocalizations.errorTitle,
-          message: TextSpan(text: e.toString()),
+          cancelable: false,
+          message: TextSpan(
+            text: ErrorMapper.mapError("$e") ??
+                appLocalizations.genericErrorMessage,
+          ),
         );
       }
     } finally {
