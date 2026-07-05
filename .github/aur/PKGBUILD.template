@@ -1,0 +1,34 @@
+# Maintainer: dropweb <info@dropweb.org>
+pkgname=dropweb-bin
+pkgver=@PKGVER@
+pkgrel=1
+pkgdesc="Multi-platform consumer VPN client built on the mihomo/Clash core"
+arch=('x86_64')
+url="https://github.com/enkinvsh/dropweb"
+license=('GPL-3.0-only')
+conflicts=('dropweb')
+provides=("dropweb=${pkgver}")
+depends=('libayatana-appindicator' 'libkeybinder3')
+source=("dropweb.sh")
+source_x86_64=("dropweb-${pkgver}-x86_64.deb::${url}/releases/download/v${pkgver}/dropweb-amd64.deb")
+sha256sums=('@SH_SHA@')
+sha256sums_x86_64=('@DEB_SHA@')
+
+prepare() {
+  bsdtar -xf "${srcdir}/data."*
+}
+
+package() {
+  install -Dm755 "${srcdir}/dropweb.sh" "${pkgdir}/usr/bin/dropweb"
+
+  install -dm755 "${pkgdir}/usr/lib/dropweb"
+  cp -a "${srcdir}/usr/share/dropweb/." "${pkgdir}/usr/lib/dropweb/"
+
+  install -Dm644 "${srcdir}/usr/share/applications/dropweb.desktop" \
+    "${pkgdir}/usr/share/applications/dropweb.desktop"
+
+  install -Dm644 "${srcdir}/usr/share/icons/hicolor/128x128/apps/dropweb.png" \
+    "${pkgdir}/usr/share/icons/hicolor/128x128/apps/dropweb.png"
+  install -Dm644 "${srcdir}/usr/share/icons/hicolor/256x256/apps/dropweb.png" \
+    "${pkgdir}/usr/share/icons/hicolor/256x256/apps/dropweb.png"
+}

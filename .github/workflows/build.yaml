@@ -22,6 +22,12 @@ jobs:
           - platform: macos
             os: macos-latest
             arch: arm64
+          # macOS Intel: setup.dart cross-builds amd64 on the arm64 runner
+          # (Target.macos/Arch.amd64 is declared in setup.dart). Same signing/
+          # Xcode steps fire for both via `matrix.platform == 'macos'`.
+          - platform: macos
+            os: macos-latest
+            arch: amd64
           - platform: linux
             os: ubuntu-24.04
             arch: amd64
@@ -264,7 +270,7 @@ jobs:
           build=$(grep '^version:' pubspec.yaml | sed -E 's/.*\+([0-9]+).*/\1/')
           ep="--endpoint-url=https://storage.yandexcloud.net"
           B="s3://dropweb-downloads"
-          for f in dropweb-arm64-v8a.apk dropweb-universal.apk dropweb-amd64-setup.exe dropweb-arm64.dmg dropweb-amd64.AppImage; do
+          for f in dropweb-arm64-v8a.apk dropweb-universal.apk dropweb-amd64-setup.exe dropweb-arm64.dmg dropweb-amd64.dmg dropweb-amd64.AppImage; do
             if [ -f "./dist/$f" ]; then
               aws s3 cp "./dist/$f" "$B/v$version/$f" $ep
               aws s3 cp "./dist/$f" "$B/latest/$f" $ep
@@ -286,11 +292,12 @@ jobs:
           universal_sha=$(sha dropweb-universal.apk)
           exe_sha=$(sha dropweb-amd64-setup.exe)
           dmg_sha=$(sha dropweb-arm64.dmg)
+          dmg_amd64_sha=$(sha dropweb-amd64.dmg)
           appimage_sha=$(sha dropweb-amd64.AppImage)
           jq -n --arg version "$version" --argjson build "${build:-0}" --arg pubDate "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson notes "$notes_json" \
-            --arg apk "$base/dropweb-arm64-v8a.apk" --arg universal "$base/dropweb-universal.apk" --arg exe "$base/dropweb-amd64-setup.exe" --arg dmg "$base/dropweb-arm64.dmg" --arg appimage "$base/dropweb-amd64.AppImage" \
-            --arg apkSha "$apk_sha" --arg universalSha "$universal_sha" --arg exeSha "$exe_sha" --arg dmgSha "$dmg_sha" --arg appimageSha "$appimage_sha" \
-            '{version:$version,build:$build,mandatory:false,minSupported:"0.7.0",pubDate:$pubDate,notes:$notes,platforms:{"android-arm64":{url:$apk,sha256:$apkSha},"android-universal":{url:$universal,sha256:$universalSha},"windows-amd64":{url:$exe,sha256:$exeSha},"windows-arm64":{url:"",sha256:""},"linux-amd64":{url:$appimage,sha256:$appimageSha},"linux-arm64":{url:"",sha256:""},"macos":{url:$dmg,sha256:$dmgSha},"ios":{url:"",sha256:""}}}' > update.json
+            --arg apk "$base/dropweb-arm64-v8a.apk" --arg universal "$base/dropweb-universal.apk" --arg exe "$base/dropweb-amd64-setup.exe" --arg dmg "$base/dropweb-arm64.dmg" --arg dmgAmd "$base/dropweb-amd64.dmg" --arg appimage "$base/dropweb-amd64.AppImage" \
+            --arg apkSha "$apk_sha" --arg universalSha "$universal_sha" --arg exeSha "$exe_sha" --arg dmgSha "$dmg_sha" --arg dmgAmdSha "$dmg_amd64_sha" --arg appimageSha "$appimage_sha" \
+            '{version:$version,build:$build,mandatory:false,minSupported:"0.7.0",pubDate:$pubDate,notes:$notes,platforms:{"android-arm64":{url:$apk,sha256:$apkSha},"android-universal":{url:$universal,sha256:$universalSha},"windows-amd64":{url:$exe,sha256:$exeSha},"windows-arm64":{url:"",sha256:""},"linux-amd64":{url:$appimage,sha256:$appimageSha},"linux-arm64":{url:"",sha256:""},"macos":{url:$dmg,sha256:$dmgSha},"macos-amd64":{url:$dmgAmd,sha256:$dmgAmdSha},"ios":{url:"",sha256:""}}}' > update.json
           aws s3 cp update.json "$B/update.json" $ep --content-type application/json --cache-control no-cache
           echo "Published v$version binaries + manifest to YC (dropweb-downloads)."
 
@@ -309,3 +316,56 @@ jobs:
           RELEASE_URL: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
           IS_STABLE: ${{ env.IS_STABLE }}
         run: python3 .github/scripts/notify_telegram.py --release-md release.md
+
+  # Publish the Arch `dropweb-bin` package (repack of the release .deb) to the
+  # AUR on stable tags only. This is a NO-OP until the owner adds the AUR
+  # secrets (AUR_SSH_PRIVATE_KEY / AUR_USERNAME / AUR_EMAIL): the gate step
+  # detects their absence and every downstream step is skipped, so a release
+  # never fails just because AUR is not configured. continue-on-error also
+  # keeps a transient AUR push failure from turning a good release red.
+  # One-time setup: docs/aur-publishing.md.
+  publish-aur:
+    needs: [upload]
+    if: ${{ !contains(github.ref, '-') }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check AUR secrets
+        id: gate
+        run: echo "enabled=${{ secrets.AUR_SSH_PRIVATE_KEY != '' && 'true' || 'false' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Download linux amd64 artifact
+        if: steps.gate.outputs.enabled == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: artifact-linux-amd64
+          path: ./dist
+
+      - name: Render PKGBUILD
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          set -euo pipefail
+          PKGVER="${GITHUB_REF_NAME#v}"
+          DEB_SHA=$(sha256sum dist/dropweb-amd64.deb | cut -d' ' -f1)
+          SH_SHA=$(sha256sum .github/aur/dropweb.sh | cut -d' ' -f1)
+          mkdir -p ./aur-pkg
+          sed -e "s|@PKGVER@|$PKGVER|g" \
+              -e "s|@DEB_SHA@|$DEB_SHA|g" \
+              -e "s|@SH_SHA@|$SH_SHA|g" \
+              .github/aur/PKGBUILD.template > ./aur-pkg/PKGBUILD
+          cp .github/aur/dropweb.sh ./aur-pkg/dropweb.sh
+
+      - name: Publish to AUR
+        if: steps.gate.outputs.enabled == 'true'
+        uses: KSXGitHub/github-actions-deploy-aur@v4
+        with:
+          pkgname: dropweb-bin
+          pkgbuild: ./aur-pkg/PKGBUILD
+          assets: ./aur-pkg/dropweb.sh
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update to ${{ github.ref_name }}"
