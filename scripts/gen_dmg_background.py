@@ -6,91 +6,63 @@ by anyone with Pillow installed:
 
     python3 scripts/gen_dmg_background.py
 
-Design language mirrors the app's dark-only "Lumina" system (see
-lib/common/lumina.dart): a near-black base, two soft gold accent glows, and a
-neutral drag arrow pointing from the app icon toward the Applications symlink.
-No text is drawn so the artwork is locale-safe.
+Light direction: a clean near-white background lets Finder render its
+(hardcoded black) icon labels natively and readably, so no baked label pads or
+custom art are needed. A single black hugeicons-style drag arrow points from
+the app icon toward the Applications symlink. No text is drawn so the artwork
+is locale-safe.
 
 Geometry: the DMG Finder window is 660x400 pt. We render at @2x (1320x800 px)
 and tag the PNG with 144 dpi metadata so Finder scales it back to 660x400 pt.
 create-dmg places the app icon center at (165, 200) pt and the Applications
-drop link at (495, 200) pt; at 128 pt icon size each spans +/-64 pt. The arrow
-therefore lives in the clear gap between them (roughly x 245..415 pt), rendered
-at @2x below.
+drop link at (495, 200) pt; the arrow lives in the clear gap between them.
 """
 
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 
 # ---- Canvas ---------------------------------------------------------------
 SCALE = 2  # @2x retina render
 W, H = 660 * SCALE, 400 * SCALE  # 1320 x 800
 DPI = (72 * SCALE, 72 * SCALE)  # (144, 144) -> Finder renders at 660x400 pt
 
-# ---- Brand palette (dropweb greens) ---------------------------------------
-# Sourced from the theme header `fidelity,#15803D,#009938,#2BFF7A,4`.
-BASE = (0x0A, 0x0F, 0x0B)  # green-tinted near-black base #0A0F0B
-GREEN_MID = (0x00, 0x99, 0x38)  # primary accent #009938 (bottom-right glow)
-GREEN_BRIGHT = (0x2B, 0xFF, 0x7A)  # bright accent #2BFF7A (top-left glow)
-ARROW = (0xFF, 0xFF, 0xFF)  # white — every foreground element stays light
+# ---- Palette --------------------------------------------------------------
+BASE = (0xF7, 0xF9, 0xF7)  # near-white #F7F9F7, a hair off pure white
+ARROW = (0x1C, 0x1C, 0x1E)  # near-black #1C1C1E hugeicons-style stroke
 
 
-def _radial_glow(size, center, radius, color, peak_alpha):
-    """A soft circular glow as an RGBA layer.
-
-    Drawn as a filled circle then Gaussian-blurred so the edge falls off
-    smoothly; peak_alpha caps the opacity at the center (0-255).
-    """
-    layer = Image.new("RGBA", size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(layer)
-    cx, cy = center
-    draw.ellipse(
-        [cx - radius, cy - radius, cx + radius, cy + radius],
-        fill=color + (peak_alpha,),
-    )
-    return layer.filter(ImageFilter.GaussianBlur(radius * 0.55))
+def _stroke(draw, p0, p1, width, fill):
+    """A single round-capped stroke: the line plus a disc at each endpoint."""
+    draw.line([p0, p1], fill=fill, width=width)
+    r = width // 2
+    for x, y in (p0, p1):
+        draw.ellipse([x - r, y - r, x + r, y + r], fill=fill)
 
 
 def _arrow_layer(size):
-    """Horizontal drag arrow: rounded shaft + triangular head, gray + alpha."""
-    layer = Image.new("RGBA", size, (0, 0, 0, 0))
+    """hugeicons-style drag arrow: horizontal shaft + chevron ">" head.
+
+    Stroke-based with round caps/joins (not a filled triangle). Coordinates
+    are already @2x pixels; supersampled 4x then downscaled for clean AA.
+    """
+    ss = 4
+    layer = Image.new("RGBA", (size[0] * ss, size[1] * ss), (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
 
-    y = 200 * SCALE  # icon center line
-    x_start = 250 * SCALE  # just right of the app icon (edge at 229 pt)
-    x_head = 408 * SCALE  # just left of Applications (edge at 431 pt)
-    shaft_end = x_head - 18 * SCALE  # shaft stops before the head tip
-    alpha = 217  # ~85% opacity
-    rgba = ARROW + (alpha,)
+    width = 14 * ss
+    fill = ARROW + (255,)
+    tip = (790 * ss, 400 * ss)
 
-    # Shaft with rounded end caps.
-    draw.line([(x_start, y), (shaft_end, y)], fill=rgba, width=6 * SCALE)
-    cap = 3 * SCALE
-    for x in (x_start, shaft_end):
-        draw.ellipse([x - cap, y - cap, x + cap, y + cap], fill=rgba)
+    _stroke(draw, (500 * ss, 400 * ss), tip, width, fill)  # shaft
+    _stroke(draw, tip, (730 * ss, 340 * ss), width, fill)  # chevron upper
+    _stroke(draw, tip, (730 * ss, 460 * ss), width, fill)  # chevron lower
 
-    # Triangular head.
-    hh = 16 * SCALE  # half-height
-    draw.polygon(
-        [(x_head, y), (shaft_end, y - hh), (shaft_end, y + hh)],
-        fill=rgba,
-    )
-    return layer
+    return layer.resize(size, Image.Resampling.LANCZOS)
 
 
 def build():
-    img = Image.new("RGB", (W, H), BASE)
-
-    # Green accent glow anchored bottom-right, brighter echo top-left.
-    br = _radial_glow(
-        (W, H), (W - 40 * SCALE, H - 20 * SCALE), 260 * SCALE, GREEN_MID, 34)
-    tl = _radial_glow(
-        (W, H), (60 * SCALE, 40 * SCALE), 200 * SCALE, GREEN_BRIGHT, 18)
-    img = Image.alpha_composite(img.convert("RGBA"), br)
-    img = Image.alpha_composite(img, tl)
-
-    # Drag arrow between the two icon slots.
+    img = Image.new("RGB", (W, H), BASE).convert("RGBA")
     img = Image.alpha_composite(img, _arrow_layer((W, H)))
 
     out = Path(__file__).resolve().parent.parent / "assets" / "dmg" / "background.png"
