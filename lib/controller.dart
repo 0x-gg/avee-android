@@ -314,6 +314,11 @@ class AppController {
       if (headers.isNotEmpty) {
         _applyAllHeaderSettings(newProfile, isNewProfile: false);
       }
+      // A subscription refresh of the ACTIVE profile can change
+      // `dropweb-servicename` / the label rendered in the foreground
+      // notification, so re-prime the plugin cache (pure in-memory write,
+      // null-safe, no notification flash when idle) alongside the theme apply.
+      _connectService.initForegroundCache();
       applyProfileDebounce(silence: true);
       unawaited(_updateGeoFilesAfterProfileUpdate().catchError((e) {
         commonPrint.log("Error updating geo files: $e");
@@ -816,6 +821,16 @@ class AppController {
         _applyAllHeaderSettings(currentProfile, isNewProfile: false);
       }
     }
+
+    // Refresh the Android foreground-notification cache for the profile we just
+    // switched TO. initForegroundCache was connect-time-only ([updateStatus]),
+    // so a switch WHILE CONNECTED hot-swapped the core config but left the
+    // notification showing the PREVIOUS profile's label until reconnect/restart
+    // (owner-reported). It reads globalState.config.currentProfile — already the
+    // new profile here — and only writes pure in-memory plugin cache, so the
+    // unconditional call is cheap, null-safe (`vpn?.`), and a no-op-when-idle
+    // cache prime for the next connect.
+    _connectService.initForegroundCache();
 
     applyProfile();
     _ref.read(logsProvider.notifier).value = FixedList(500);

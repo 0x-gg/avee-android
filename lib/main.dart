@@ -433,6 +433,43 @@ void _handleMainIpc(ClashLibHandler clashLibHandler) {
         sendPortHolder.value.send({'success': true});
         return;
       }
+      if (action == 'updateCurrentProfile') {
+        // Stale-snapshot fix: the foreground-params composer above reads THIS
+        // service isolate's own globalState.config.currentProfile, which only
+        // ever changed via 'updateForegroundServer'/'updateMode'. A profile
+        // SWITCH (or an active-profile subscription update that rewrites
+        // profile-title / dropweb-servicename) sends no such IPC, so the service
+        // kept rendering the PREVIOUS profile's title — while live speed updates
+        // masked it, since this isolate was the one answering. Replace the
+        // profile in the service-side list (or append if unseen here) AND
+        // repoint currentProfileId, so currentProfile → the NEW profile and its
+        // title chain (profile-title → dropweb-serverinfo → servicename)
+        // resolves fresh.
+        final profileJson = message['profile'] as String? ?? '';
+        final profileId = message['profileId'] as String? ?? '';
+        if (profileJson.isNotEmpty && profileId.isNotEmpty) {
+          try {
+            final decoded = Profile.fromJson(
+              json.decode(profileJson) as Map<String, dynamic>,
+            );
+            final exists =
+                globalState.config.profiles.any((p) => p.id == decoded.id);
+            final newProfiles = exists
+                ? globalState.config.profiles
+                    .map((p) => p.id == decoded.id ? decoded : p)
+                    .toList()
+                : [...globalState.config.profiles, decoded];
+            globalState.config = globalState.config.copyWith(
+              profiles: newProfiles,
+              currentProfileId: decoded.id,
+            );
+          } catch (e) {
+            commonPrint.log('[service] updateCurrentProfile decode failed: $e');
+          }
+        }
+        sendPortHolder.value.send({'success': true});
+        return;
+      }
     }
     final res = await clashLibHandler.invokeAction(message);
     sendPortHolder.value.send(res);

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dropweb/clash/clash.dart';
@@ -77,7 +78,23 @@ class ConnectService {
     });
   }
 
-  /// Initialize foreground notification cache with current profile and server
+  /// Initialize foreground notification cache with current profile and server.
+  ///
+  /// Pushes profileName / serviceName / serverName into the VPN plugin's
+  /// in-memory cache that feeds the Android foreground notification. Call sites:
+  ///   • connect ([updateStatus] `isStart==true`) — seed the cache before the
+  ///     service comes up.
+  ///   • profile switch ([AppController.handleChangeProfile]) — a switch while
+  ///     connected hot-swaps the core config but left this cache untouched, so
+  ///     the notification kept showing the PREVIOUS profile's label until a
+  ///     reconnect/restart (owner-reported).
+  ///   • current-profile update ([AppController.updateProfile], active-profile
+  ///     branch) — a subscription refresh can change `dropweb-servicename` /
+  ///     the label rendered in the notification.
+  /// The plugin setters (`updateProfileInfo`/`updateServerName`) are pure
+  /// in-memory writes with no MethodChannel/notification side effect, so calling
+  /// this while disconnected is a cheap, harmless cache prime (never flashes a
+  /// notification).
   void initForegroundCache() {
     final profile = globalState.config.currentProfile;
     if (profile == null) return;
@@ -103,6 +120,25 @@ class ConnectService {
       final serverName = profile.selectedMap[decodedGroupName] ?? "";
       vpn?.updateServerName(serverName);
     }
+
+    // The plugin cache writes above only feed the notification when the MAIN
+    // isolate composes foreground params. In Android service mode the title is
+    // composed by the handler in main.dart from the SERVICE isolate's OWN
+    // `globalState.config.currentProfile` snapshot, which mutates ONLY via IPC
+    // ('updateForegroundServer' → selectedMap, 'updateMode' → mode). A profile
+    // switch/update sends no IPC, so that snapshot keeps the OLD profile and the
+    // title (profile-title → dropweb-serverinfo → servicename chain) stays stale
+    // even after the cache write above (live speed updates masked it — the
+    // service isolate was the one answering). Mirror the updateForegroundServer
+    // precedent: push the freshly-active profile to the service isolate so its
+    // title chain resolves the NEW profile. Fire-and-forget — sendIpcMessage
+    // awaits the handshake internally, so this stays sync (same as
+    // updateForegroundServerName, which also does not await).
+    clashLib?.sendIpcMessage({
+      'action': 'updateCurrentProfile',
+      'profileId': profile.id,
+      'profile': json.encode(profile.toJson()),
+    });
   }
 
   Future<void> restartCore() async {
