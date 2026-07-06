@@ -28,18 +28,6 @@ String _formatBytes(int bytes) {
   return '${value.toStringAsFixed(1)} ${units[i]}';
 }
 
-(String, String) _splitBytes(int bytes) {
-  if (bytes <= 0) return ('0', 'B');
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  var value = bytes.toDouble();
-  var i = 0;
-  while (value >= 1024 && i < units.length - 1) {
-    value /= 1024;
-    i++;
-  }
-  return (value.toStringAsFixed(1), units[i]);
-}
-
 class StatsGrid extends ConsumerWidget {
   const StatsGrid({super.key});
 
@@ -182,7 +170,7 @@ class _TrafficPill extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '${_splitBytes(used).$1} / ${_formatBytes(total)}',
+                      '${_formatBytes(used)} / ${_formatBytes(total)}',
                       style: context.textTheme.labelSmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),

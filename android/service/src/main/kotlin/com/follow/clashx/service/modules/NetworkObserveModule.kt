@@ -18,12 +18,26 @@ class NetworkObserveModule(
 
     companion object {
         private val gson = Gson()
+
+        // resetConnections() closes every live connection and grabs the core's
+        // runLock. A single network transition fires a burst of callbacks
+        // (onAvailable + onCapabilitiesChanged + onLinkPropertiesChanged within
+        // ~1-2s), and a flapping screen-off link can repeat that endlessly.
+        // Leading-edge throttle: reset immediately on the first event (fast
+        // recovery), drop the rest inside the window.
+        private const val RESET_THROTTLE_MS = 5_000L
     }
 
     private var registered = false
     private var currentNetwork: Network? = null
     private var lastCapabilities: NetworkCapabilities? = null
     private var lastActivityTime = 0L
+    // Last DNS server list pushed to the core. Link properties change far more
+    // often than the resolver list itself, and every updateDns flushes the core's
+    // whole DNS cache — so push only when the list actually changes.
+    private var lastDnsKey: String? = null
+    // elapsedRealtime of the last connection reset, for RESET_THROTTLE_MS.
+    private var lastResetAt = 0L
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -77,7 +91,12 @@ class NetworkObserveModule(
         override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
             super.onLinkPropertiesChanged(network, linkProperties)
             lastActivityTime = android.os.SystemClock.elapsedRealtime()
+            // Only the network we actually route through; mirrors onCapabilitiesChanged.
+            if (network != currentNetwork) return
             val dns = linkProperties.dnsServers.map { it.hostAddress ?: "" }.filter { it.isNotBlank() }
+            val key = dns.joinToString(",")
+            if (key == lastDnsKey) return
+            lastDnsKey = key
             runCatching {
                 com.follow.clashx.core.Core.updateDns(gson.toJson(dns))
             }.onFailure { GlobalState.log("updateDns failed: ${it.message}") }
@@ -85,12 +104,20 @@ class NetworkObserveModule(
     }
 
     private fun resetAndCheck(reason: String) {
-        runCatching { com.follow.clashx.core.Core.resetConnections() }
-            .onFailure { GlobalState.log("resetConnections failed: ${it.message}") }
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastResetAt >= RESET_THROTTLE_MS) {
+            lastResetAt = now
+            runCatching { com.follow.clashx.core.Core.resetConnections() }
+                .onFailure { GlobalState.log("resetConnections failed: ${it.message}") }
+        }
         healthCheck?.scheduleCheck(reason)
     }
 
     override suspend fun install() {
+        // Re-register may reuse this instance; clear dedup/throttle so the first
+        // post-register callback always pushes DNS and may reset once.
+        lastDnsKey = null
+        lastResetAt = 0L
         val cm = service.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val request = NetworkRequest.Builder()
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)

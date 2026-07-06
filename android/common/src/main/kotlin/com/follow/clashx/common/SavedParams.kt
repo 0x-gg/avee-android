@@ -87,17 +87,25 @@ object SavedParams {
             .onFailure { GlobalState.log("saveNotificationTitle error: ${it.message}") }
     }
 
+    // ifBlank as well: an existing-but-empty file reads back "" without throwing,
+    // which would render a blank notification title.
     fun loadNotificationTitle(): String =
-        runCatching { notifTitleFile.readText().trim() }.getOrDefault("FlClashX")
+        runCatching { notifTitleFile.readText().trim() }.getOrDefault("").ifBlank { "FlClashX" }
 
     private fun writeAtomic(target: File, content: String) {
-        val tmp = File(target.parentFile, "${target.name}.tmp")
+        // Unique per-writer temp name: saveQuickStartParams runs in BOTH the :app and
+        // :remote processes, so a fixed "<name>.tmp" lets concurrent writers stomp the
+        // same temp and produce torn JSON. The rename to the target stays atomic.
+        val tmp = File(target.parentFile, "${target.name}.${java.util.UUID.randomUUID()}.tmp")
         FileOutputStream(tmp).use {
             it.write(content.toByteArray(Charsets.UTF_8))
             it.fd.sync()
         }
         if (!tmp.renameTo(target)) {
             tmp.delete()
+            // Surface the loss: every caller wraps writeAtomic in runCatching+log, so
+            // throwing turns a silently dropped write into a visible log line.
+            error("atomic rename to ${target.name} failed")
         }
     }
 }

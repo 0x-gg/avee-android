@@ -513,10 +513,35 @@ bool hasServerInfoData(Ref ref) {
   return value != null && value.isNotEmpty;
 }
 
+// `flclashx-background` is "<url>" or "<url>,<opacity 1-100>" (opacity = how visible
+// the background image is; higher = more visible; absent = the default dimmed look).
+String? backgroundUrlFromHeader(String? raw) {
+  if (raw == null || raw.isEmpty) return null;
+  final i = raw.indexOf(',');
+  final url = (i >= 0 ? raw.substring(0, i) : raw).trim();
+  return url.isEmpty ? null : url;
+}
+
+int? backgroundOpacityFromHeader(String? raw) {
+  if (raw == null) return null;
+  final i = raw.indexOf(',');
+  if (i < 0) return null;
+  final v = int.tryParse(raw.substring(i + 1).trim());
+  return v == null ? null : v.clamp(1, 100);
+}
+
 @riverpod
 String? backgroundUrl(Ref ref) {
   final profile = ref.watch(currentProfileProvider);
-  return profile?.providerHeaders['flclashx-background'];
+  return backgroundUrlFromHeader(profile?.providerHeaders['flclashx-background']);
+}
+
+/// Background image opacity (1-100, higher = more visible) parsed from the optional
+/// `,<opacity>` suffix of `flclashx-background`. Null = not specified (default look).
+@riverpod
+int? backgroundOpacity(Ref ref) {
+  final profile = ref.watch(currentProfileProvider);
+  return backgroundOpacityFromHeader(profile?.providerHeaders['flclashx-background']);
 }
 
 @riverpod
@@ -530,8 +555,10 @@ int getProxiesColumns(Ref ref) {
 ProxyCardState _getProxyCardState(
   List<Group> groups,
   SelectedMap selectedMap,
-  ProxyCardState proxyDelayState,
-) {
+  ProxyCardState proxyDelayState, [
+  int depth = 0,
+]) {
+  if (depth > 16) return proxyDelayState;
   if (proxyDelayState.proxyName.isEmpty) return proxyDelayState;
   final index =
       groups.indexWhere((element) => element.name == proxyDelayState.proxyName);
@@ -539,7 +566,8 @@ ProxyCardState _getProxyCardState(
   final group = groups[index];
   final currentSelectedName = group
       .getCurrentSelectedName(selectedMap[proxyDelayState.proxyName] ?? '');
-  if (currentSelectedName.isEmpty) {
+  if (currentSelectedName.isEmpty ||
+      currentSelectedName == proxyDelayState.proxyName) {
     return proxyDelayState;
   }
   return _getProxyCardState(
@@ -549,6 +577,7 @@ ProxyCardState _getProxyCardState(
       proxyName: currentSelectedName,
       testUrl: group.testUrl,
     ),
+    depth + 1,
   );
 }
 

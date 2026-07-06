@@ -144,26 +144,42 @@ class GlobalState {
 
   String get ua => config.patchClashConfig.globalUa ?? packageInfo.ua;
 
+  int _tasksEpoch = 0;
+
   Future<void> startUpdateTasks([UpdateTasks? tasks]) async {
     if (timer != null && timer!.isActive == true) return;
     if (tasks != null) {
       this.tasks = tasks;
     }
+    final epoch = ++_tasksEpoch;
     await executorUpdateTask();
-    timer = Timer(const Duration(seconds: 3), () async {
+    // stopUpdateTasks() (or a restart) bumped the epoch while the executor was
+    // in flight: don't reschedule, otherwise the poll loop resurrects itself and
+    // keeps hammering a (possibly dead) remote forever after a stop.
+    if (epoch != _tasksEpoch) return;
+    timer = Timer(const Duration(seconds: 3), () {
       startUpdateTasks();
     });
   }
 
   Future<void> executorUpdateTask() async {
     for (final task in tasks) {
-      await task();
+      // Isolate failures: one throwing task must not kill the whole loop (which
+      // would silently freeze traffic/runtime counters while the tunnel is live).
+      try {
+        await task();
+      } catch (e) {
+        commonPrint.log('executorUpdateTask error: $e');
+      }
     }
     timer = null;
   }
 
   void stopUpdateTasks() {
-    if (timer == null || timer?.isActive == false) return;
+    // Always invalidate the in-flight cycle (the executor nulls `timer` mid-run,
+    // so the old `timer == null` early-return let a stop slip through and the
+    // loop rescheduled anyway).
+    _tasksEpoch++;
     timer?.cancel();
     timer = null;
   }
@@ -204,8 +220,22 @@ class GlobalState {
     return true;
   }
 
-  Future updateStartTime() async {
-    startTime = await clashLib?.getRunTime();
+  /// Probes the native run time and syncs [startTime]. Returns false when the
+  /// probe failed (state unknown) — [startTime] is left untouched in that case
+  /// so callers don't mistake "couldn't reach the service" for "stopped".
+  Future<bool> updateStartTime() async {
+    final lib = clashLib;
+    if (lib == null) return true;
+    for (var attempt = 1; attempt <= 2; attempt++) {
+      try {
+        startTime = await lib.getRunTime();
+        return true;
+      } catch (e) {
+        commonPrint.log('updateStartTime probe failed (#$attempt): $e');
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    }
+    return false;
   }
 
   Future handleStop() async {
@@ -693,19 +723,26 @@ class GlobalState {
       config["proxy-providers"] = {};
     }
     final configJs = json.encode(config);
+    // Dispose the runtime every time: handleEvaluate runs on each applyProfile
+    // (twice+ per apply), and a leaked QuickJS runtime grows native heap (RSS),
+    // which makes aggressive OEMs kill the process sooner.
     final runtime = getJavascriptRuntime();
-    final res = await runtime.evaluateAsync("""
-      ${currentScript.content}
-      main($configJs)
-    """);
-    if (res.isError) {
-      throw res.stringResult;
+    try {
+      final res = await runtime.evaluateAsync("""
+        ${currentScript.content}
+        main($configJs)
+      """);
+      if (res.isError) {
+        throw res.stringResult;
+      }
+      final value = switch (res.rawResult is Pointer) {
+        true => runtime.convertValue<Map<String, dynamic>>(res),
+        false => Map<String, dynamic>.from(res.rawResult),
+      };
+      return value ?? config;
+    } finally {
+      runtime.dispose();
     }
-    final value = switch (res.rawResult is Pointer) {
-      true => runtime.convertValue<Map<String, dynamic>>(res),
-      false => Map<String, dynamic>.from(res.rawResult),
-    };
-    return value ?? config;
   }
 }
 

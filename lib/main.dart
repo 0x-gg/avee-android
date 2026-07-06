@@ -161,7 +161,13 @@ String _buildNotificationTitle(Profile? profile) {
 Future<void> _handleStop() async {
   try {
     unawaited(app?.tip(appLocalizations.stopVpn));
-    await globalState.appController.updateStatus(false);
+    // Cold-start window: appController doesn't exist yet, so go straight to the
+    // native stop primitive (stopListener + stopVpn). Routing through
+    // appController.updateStatus(false) NPEs on the null appController and the
+    // stop is silently swallowed by the catch — i.e. a headless VPN can't be
+    // stopped from the tile until Flutter finishes init. UI run-state reconciles
+    // on the later resume/sync.
+    await globalState.handleStop();
   } catch (e) {
     commonPrint.log("Tile onStop error: $e");
   }

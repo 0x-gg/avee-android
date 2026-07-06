@@ -436,5 +436,9 @@
   "subscriptionExpiresToday": "サブスクリプションは本日期限切れになります",
   "subscriptionExpired": "サブスクリプションが期限切れになりました",
   "renew": "更新",
-  "announcement": "お知らせ"
+  "announcement": "お知らせ",
+  "batteryOptimization": "バッテリー最適化",
+  "batteryOptimizationDesc": "バックグラウンドでVPNが終了されないようアプリを除外します",
+  "autoStart": "自動起動",
+  "autoStartDesc": "再起動や更新後もVPNが復帰するよう自動起動を許可します（MIUI/EMUIなど）"
 }

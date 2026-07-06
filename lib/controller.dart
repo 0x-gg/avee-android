@@ -159,7 +159,6 @@ class AppController {
 
   Future<void> restartCore() async {
     commonPrint.log("restart core");
-    await _applyPendingCoreUpdate();
     await clashService?.reStart();
     await _initCore();
     if (_ref.read(runTimeProvider.notifier).isStart) {
@@ -167,7 +166,37 @@ class AppController {
     }
   }
 
-  Future<void> updateStatus(bool isStart) async {
+  // Serializes VPN toggles. A stop issued while a (possibly ~70s) start is in
+  // flight must queue behind it, never interleave — otherwise native start/stop
+  // ordering is nondeterministic and the tunnel can survive a "disconnected" UI.
+  Future<void> _statusOp = Future.value();
+  int _statusEpoch = 0;
+  // True only while a start/stop op is actually executing _updateStatus (e.g. a
+  // ~70s startVpn awaiting VPN consent). A resume-triggered resync must skip
+  // while this is set: the tunnel isn't up yet so getRunTime returns null and
+  // would clobber the optimistic startTime, tearing down a live tunnel's UI.
+  bool _statusOpInFlight = false;
+
+  Future<void> updateStatus(bool isStart) {
+    final epoch = ++_statusEpoch;
+    final op = _statusOp.then((_) async {
+      // Superseded by a newer toggle (rapid double-tap, start-then-stop): make
+      // it a no-op instead of driving a full redundant bring-up/tear-down.
+      if (epoch != _statusEpoch) return;
+      _statusOpInFlight = true;
+      try {
+        await _updateStatus(isStart);
+      } finally {
+        _statusOpInFlight = false;
+      }
+    });
+    // Keep the chain alive if one toggle throws, but still surface the error to
+    // this caller.
+    _statusOp = op.catchError((_) {});
+    return op;
+  }
+
+  Future<void> _updateStatus(bool isStart) async {
     await StatusBarManager.updateIcon(isConnected: isStart);
 
     if (isStart) {
@@ -198,7 +227,12 @@ class AppController {
       // rebuilds the executor — the same thing the manual profile-switch workaround
       // does. Desktop keeps the fast path (re-apply only when the profile changed).
       if (Platform.isAndroid) {
-        applyProfileDebounce();
+        // Direct silent re-setup, NOT applyProfileDebounce(): the debounced path
+        // runs applyProfile(silence:false), which skips entirely when the home
+        // scaffold isn't mounted (early/headless start) — exactly when recovery
+        // is needed, so the reconnect would land on the degraded executor.
+        // silence:true bypasses the scaffold gate and the 600ms debounce window.
+        unawaited(applyProfile(silence: true));
         return;
       }
       final currentLastModified =
@@ -259,8 +293,10 @@ class AppController {
   Future<void> addProfile(Profile profile) async {
     _ref.read(profilesProvider.notifier).setProfile(profile);
     if (_ref.read(currentProfileIdProvider) != null) return;
+    // Setting currentProfileId drives needSetupProvider → clash_manager →
+    // handleChangeProfile() → applyProfile(), so an explicit apply here would
+    // run setupConfig twice on the first add.
     _ref.read(currentProfileIdProvider.notifier).value = profile.id;
-    applyProfileDebounce(silence: true);
   }
 
   Future<void> deleteProfile(String id) async {
@@ -464,7 +500,14 @@ class AppController {
       isUpdating: false,
     );
 
-    if (mergedHeaders.isNotEmpty) {
+    // Apply the header-driven app settings (theme/flclashx-hex, flclashx-settings,
+    // flclashx-custom view/widgets, etc.) ONLY when the updated profile is the ACTIVE
+    // one. Otherwise auto-updating a background profile would push its headers into the
+    // global settings and clobber the active profile's ("last updated wins"). Mirrors
+    // the active-profile gate on applyProfileDebounce below; the reactive header
+    // providers (background / global-mode / server-info) already read the active profile.
+    if (mergedHeaders.isNotEmpty &&
+        profile.id == _ref.read(currentProfileIdProvider)) {
       _applyAllHeaderSettings(mergedProfile, isNewProfile: false);
     }
 
@@ -597,10 +640,6 @@ class AppController {
       _ref.read(hotKeyActionsProvider.notifier).value = List.from(hotKeyActions)
         ..[index] = hotKeyAction;
     }
-
-    _ref.read(hotKeyActionsProvider.notifier).value = index == -1
-        ? (List.from(hotKeyActions)..add(hotKeyAction))
-        : (List.from(hotKeyActions)..[index] = hotKeyAction);
   }
 
   List<Group> getCurrentGroups() =>
@@ -731,19 +770,30 @@ class AppController {
       pathConfig: realPatchConfig,
     );
     final message = await clashCore.setupConfig(params);
+    if (message.isNotEmpty) {
+      // Don't advance lastProfileModified on a failed/timed-out setup: doing so
+      // would make the next start's recovery re-apply think the profile is
+      // already applied and skip it, leaving a degraded executor in place.
+      throw message;
+    }
     lastProfileModified = await _ref.read(
       currentProfileProvider.select(
         (state) => state?.profileLastModified,
       ),
     );
-    if (message.isNotEmpty) {
-      throw message;
-    }
   }
 
-  Future _applyProfile() async {
+  Future _applyProfile({bool silence = false}) async {
     clashCore.requestGc();
-    await setupClashConfig();
+    if (silence) {
+      // Silent/headless/early-start recovery: bypass the PUBLIC setupClashConfig()
+      // scaffold gate + loadingRun (which no-ops when the home scaffold isn't
+      // mounted — exactly when recovery is needed — and shows a loading overlay
+      // when it is) by re-applying through the private path directly.
+      await _setupClashConfig();
+    } else {
+      await setupClashConfig();
+    }
     await updateGroups();
     await updateProviders();
     initForegroundCache();
@@ -751,7 +801,7 @@ class AppController {
 
   Future applyProfile({bool silence = false}) async {
     if (silence) {
-      await _applyProfile();
+      await _applyProfile(silence: true);
     } else {
       final commonScaffoldState = globalState.homeScaffoldKey.currentState;
       if (commonScaffoldState?.mounted != true) return;
@@ -782,8 +832,8 @@ class AppController {
     }
 
     applyProfile();
-    _ref.read(logsProvider.notifier).value = FixedList(500);
-    _ref.read(requestsProvider.notifier).value = FixedList(500);
+    _ref.read(logsProvider.notifier).value = FixedList(maxLength);
+    _ref.read(requestsProvider.notifier).value = FixedList(maxLength);
     globalState.cacheHeightMap = {};
     globalState.cacheScrollPosition = {};
 
@@ -846,6 +896,20 @@ class AppController {
       commonPrint.log(
           "Updating subscription info for current profile '${currentProfile.label}' on startup...");
       if (currentProfile.autoUpdate) {
+        // autoUpdateProfiles() (fired immediately on startup) already refreshes
+        // any auto-update profile whose update window has elapsed (or that never
+        // updated). Skip those here so we don't fetch+apply the same current
+        // profile a second time 1s later; only handle the not-yet-due case it
+        // leaves untouched.
+        final isDue = currentProfile.lastUpdateDate
+                ?.add(currentProfile.autoUpdateDuration)
+                .isBeforeNow ??
+            true;
+        if (isDue) {
+          commonPrint.log(
+              "_updateCurrentProfileSubscription: already covered by autoUpdateProfiles, skipping");
+          return;
+        }
         await updateProfile(currentProfile);
         commonPrint.log("Subscription info updated successfully");
       } else {
@@ -940,10 +1004,26 @@ class AppController {
       clashCore.closeConnections();
     }
     addCheckIpNumDebounce();
+    // Android: re-persist cold-start params so a later headless restart (tile/
+    // Always-on/sticky) brings the tunnel up with the NEWLY selected node, not
+    // the one captured at app init. Without this, "picked a server, phone sat
+    // idle, VPN auto-reconnected to the old one". changeProxy is debounced, so
+    // this runs at most once per debounce window.
+    if (Platform.isAndroid && globalState.isStart) {
+      unawaited(_persistColdStartParams());
+    }
   }
 
   Future<void> handleBackOrExit() async {
     if (_ref.read(backBlockProvider)) {
+      return;
+    }
+    // Android: the back gesture must never shut the core down while the tunnel
+    // is up — the FGS + TUN are designed to outlive the UI, and handleExit()
+    // would kill the executor under a live VPN icon (blackholed traffic).
+    // Background the activity instead, regardless of minimizeOnExit.
+    if (Platform.isAndroid && globalState.isStart) {
+      await system.back();
       return;
     }
     if (_ref.read(appSettingProvider).minimizeOnExit) {
@@ -1177,40 +1257,24 @@ class AppController {
     await handleExit();
   }
 
-  Future<void> _applyPendingCoreUpdate() async {
-    final pending = File(appPath.corePendingPath);
-    if (!await pending.exists()) return;
-    commonPrint.log("Applying pending core update...");
-    try {
-      final target = File(appPath.corePath);
-      if (await target.exists()) {
-        for (var i = 0; i < 10; i++) {
-          try {
-            await target.delete();
-            break;
-          } catch (_) {
-            await Future.delayed(const Duration(milliseconds: 500));
-          }
-        }
-      }
-      await pending.rename(appPath.corePath);
-      if (!Platform.isWindows) {
-        await Process.run('chmod', ['+x', appPath.corePath]);
-      }
-      commonPrint.log("Pending core update applied successfully");
-    } catch (e) {
-      commonPrint.log("Failed to apply pending core update: $e");
-    }
-  }
-
   Future<void> _initCore() async {
-    await _applyPendingCoreUpdate();
     final isInit = await clashCore.isInit;
     if (!isInit) {
       await clashCore.init();
       await clashCore.setState(
         globalState.getCoreState(),
       );
+    }
+    // Re-assert the log subscription on every attach. startLog() lives inside
+    // clashCore.init(), which is skipped above when the core is already
+    // initialised — e.g. after a headless tile/always-on cold-start the core is
+    // isInit==true with no log subscriber, so Logs would stay empty until a full
+    // process kill. startLog/stopLog are idempotent (resubscribe), so re-issuing
+    // on every launch/attach is safe and fixes empty Logs without re-init.
+    if (globalState.config.appSetting.openLogs) {
+      clashCore.startLog();
+    } else {
+      clashCore.stopLog();
     }
     await applyProfile();
   }
@@ -1242,6 +1306,9 @@ class AppController {
       commonPrint.log(details.stack.toString());
     };
     updateTray(true);
+    // Desktop only (clashService is null on Android): on an unexpected core-process
+    // death, respawn it AND re-init/re-apply (and re-start the tunnel if it was up).
+    clashService?.onCoreCrash = (_) => restartCore();
     try {
       await _initCore();
     } catch (e) {
@@ -1270,7 +1337,15 @@ class AppController {
 
   Future<void> _initStatus() async {
     if (Platform.isAndroid) {
-      await globalState.updateStartTime();
+      final known = await globalState.updateStartTime();
+      if (!known) {
+        // Probe failed → tunnel state unknown. Don't drive updateStatus(false):
+        // it sends a stop intent that kills a possibly-live VPN service (the
+        // classic "opened the app and VPN dropped" on slow-binding OEMs).
+        // Leave native state untouched; the resumed-resync picks up the truth.
+        addCheckIpNumDebounce();
+        return;
+      }
     }
     final status = globalState.isStart == true
         ? true
@@ -1278,6 +1353,34 @@ class AppController {
 
     await updateStatus(status);
     if (!status) {
+      addCheckIpNumDebounce();
+    }
+  }
+
+  /// Aligns UI run-state with the native truth after a resume. STOP/START can
+  /// be missed while the process is frozen or killed (fire-and-forget tile
+  /// channel, lost broadcasts), leaving a ticking "connected" UI over a dead
+  /// tunnel — or a "disconnected" UI over a live one. Never sends start/stop
+  /// IPC; only local state is touched.
+  Future<void> syncVpnStateOnResume() async {
+    // A start/stop toggle is mid-flight (e.g. a ~70s startVpn still awaiting VPN
+    // consent): its optimistic startTime isn't reflected by getRunTime yet, so
+    // re-probing now would null it and tear down a live tunnel's UI. The
+    // in-flight op sets the correct run-state on completion, so just skip.
+    if (_statusOpInFlight) return;
+    final known = await globalState.updateStartTime();
+    if (!known) return;
+    final running = globalState.isStart;
+    await StatusBarManager.updateIcon(isConnected: running);
+    if (running) {
+      globalState.startUpdateTasks();
+      startRunTimeTimer();
+    } else {
+      stopRunTimeTimer();
+      globalState.stopUpdateTasks();
+      _ref.read(runTimeProvider.notifier).value = null;
+      _ref.read(trafficsProvider.notifier).clear();
+      _ref.read(totalTrafficProvider.notifier).value = Traffic();
       addCheckIpNumDebounce();
     }
   }
@@ -1488,11 +1591,12 @@ class AppController {
                 testUrl: testUrl,
               ),
             );
-            if (aDelay == null && bDelay == null) {
-              return 0;
-            }
+            // null (untested) and -1 (failed) are equivalent "no delay"
+            // sentinels: map both to the same rank so the comparator stays
+            // antisymmetric (compare(a,b) == -compare(b,a)) and they sort to
+            // the end together.
             if (aDelay == null || aDelay == -1) {
-              return 1;
+              return (bDelay == null || bDelay == -1) ? 0 : 1;
             }
             if (bDelay == null || bDelay == -1) {
               return -1;

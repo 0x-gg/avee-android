@@ -146,6 +146,77 @@ String? _decodeBase64(String? value) {
 }
 
 // ----------------------------------------------------------------------------
+// Focusable tap wrapper — makes a tappable area reachable by a D-pad/remote
+// (Android TV). The hero board's controls were bare GestureDetectors, which
+// have no focus node and don't respond to D-pad-center/Enter, so the TV remote
+// couldn't focus or activate them. This adds a focus node, a primary-colour ring
+// + subtle scale while focused, and activates onTap on both tap and Enter/Select.
+// ----------------------------------------------------------------------------
+class _FocusableTap extends StatefulWidget {
+  const _FocusableTap({
+    required this.onTap,
+    required this.child,
+    this.autofocus = false,
+    this.borderRadius = 18,
+  });
+
+  final VoidCallback? onTap;
+  final Widget child;
+  final bool autofocus;
+  final double borderRadius;
+
+  @override
+  State<_FocusableTap> createState() => _FocusableTapState();
+}
+
+class _FocusableTapState extends State<_FocusableTap> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onTap != null;
+    return FocusableActionDetector(
+      enabled: enabled,
+      autofocus: widget.autofocus && enabled,
+      onShowFocusHighlight: (value) {
+        if (mounted && value != _focused) setState(() => _focused = value);
+      },
+      // No explicit Map<Type, Action<Intent>> annotation: `Action` is ambiguous here
+      // (flclashx models also export an `Action` class). Context inference from
+      // FocusableActionDetector.actions gives the right type without naming it.
+      actions: {
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            widget.onTap?.call();
+            return null;
+          },
+        ),
+      },
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 150),
+        scale: _focused ? 1.03 : 1.0,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(widget.borderRadius + 4),
+            border: Border.all(
+              color:
+                  _focused ? context.colorScheme.primary : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onTap,
+            child: widget.child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ----------------------------------------------------------------------------
 // Hero
 // ----------------------------------------------------------------------------
 class HeroConnect extends ConsumerWidget {
@@ -507,9 +578,9 @@ class _HeroBuyButton extends StatelessWidget {
         ? colorScheme.primary
         : colorScheme.surfaceContainerHigh.withValues(alpha: 0.6);
     final fg = filled ? colorScheme.onPrimary : colorScheme.primary;
-    return GestureDetector(
+    return _FocusableTap(
+      borderRadius: 16,
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
       child: Container(
         width: double.infinity,
         height: 48,
@@ -586,9 +657,9 @@ class _ServerPanel extends ConsumerWidget {
         final flag = _countryCodeToEmoji(code);
         final title = displayName.isNotEmpty ? displayName : '—';
 
-        return GestureDetector(
+        return _FocusableTap(
+          borderRadius: 18,
           onTap: () => globalState.appController.toPage(PageLabel.proxies),
-          behavior: HitTestBehavior.opaque,
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -929,7 +1000,9 @@ class _ConnectButton extends ConsumerWidget {
       fg = colorScheme.onPrimary;
     }
 
-    return GestureDetector(
+    return _FocusableTap(
+      autofocus: true,
+      borderRadius: 24,
       onTap: isReady
           ? () => globalState.appController.updateStatus(!isStart)
           : null,
@@ -982,7 +1055,9 @@ class _EmptyHero extends ConsumerWidget {
           style: context.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 24),
-        GestureDetector(
+        _FocusableTap(
+          autofocus: true,
+          borderRadius: 16,
           onTap: () async {
             final url = await globalState.showCommonDialog<String>(
               child: const URLFormDialog(),
@@ -1105,9 +1180,9 @@ class _ActionChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    return GestureDetector(
+    return _FocusableTap(
+      borderRadius: 22,
       onTap: busy ? null : onTap,
-      behavior: HitTestBehavior.opaque,
       child: Container(
         height: 44,
         alignment: Alignment.center,

@@ -152,7 +152,7 @@ Usage:
     flclashx-serverinfo: Proxy
 ```
 
-- flclashx-background: Sets a custom background image for the application. Provide a direct link to an image.
+- flclashx-background: Sets a custom background image for the application. Provide a direct link to an image. Optionally append a comma and a transparency (visibility) value from 1 to 100 (higher = more visible image; omit it for the default dimmed look).
 
 **Image Recommendations:**
   - Format: PNG, JPG, or WebP
@@ -165,6 +165,8 @@ Usage:
 
 ```bash
     flclashx-background: https://example.com/background.jpg
+    # with transparency (1-100, higher = more visible background):
+    flclashx-background: https://example.com/background.jpg,30
 ```
 
 - flclashx-settings: Manage application settings via header (with client-side override option). By default, all parameters are **disabled**. If you pass a parameter, it will be **enabled**. If you don't pass it - it stays **disabled**.
