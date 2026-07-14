@@ -476,7 +476,6 @@ class AutoCheckUpdateItem extends ConsumerWidget {
   }
 }
 
-
 class ApplicationSettingView extends StatelessWidget {
   const ApplicationSettingView({super.key});
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 class FloatLayout extends StatelessWidget {
-
   const FloatLayout({
     super.key,
     required this.floatingWidget,
@@ -13,24 +12,23 @@ class FloatLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Stack(
-      fit: StackFit.loose,
-      children: [
-        Center(
-          child: child,
-        ),
-        Positioned(
-          bottom: 0,
-          right: 0,
-          child: Container(
-            child: floatingWidget,
+        fit: StackFit.loose,
+        children: [
+          Center(
+            child: child,
           ),
-        ),
-      ],
-    );
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Container(
+              child: floatingWidget,
+            ),
+          ),
+        ],
+      );
 }
 
 class FloatWrapper extends StatelessWidget {
-
   const FloatWrapper({
     super.key,
     required this.child,
@@ -39,7 +37,7 @@ class FloatWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-      margin: const EdgeInsets.all(kFloatingActionButtonMargin),
-      child: child,
-    );
+        margin: const EdgeInsets.all(kFloatingActionButtonMargin),
+        child: child,
+      );
 }

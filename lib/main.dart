@@ -140,8 +140,8 @@ Future<void> _service(List<String> flags) async {
             await ClashCore.initGeo();
             commonPrint.log("TileService: GeoIP/GeoSite initialized");
           } else {
-            commonPrint.log(
-                "TileService: Skipping Geo init (geodata-mode != true)");
+            commonPrint
+                .log("TileService: Skipping Geo init (geodata-mode != true)");
           }
 
           commonPrint.log("TileService: Getting paths...");
@@ -265,10 +265,9 @@ Future<void> _service(List<String> flags) async {
       // dashboard subscription-card title — may be `base64:`-prefixed), else
       // selected server name, else provider service name, else "AVEE".
       final rawProfileTitle = profile?.providerHeaders['profile-title'];
-      final profileTitle =
-          (rawProfileTitle == null || rawProfileTitle.isEmpty)
-              ? ""
-              : decodeMaybeBase64(rawProfileTitle).trim();
+      final profileTitle = (rawProfileTitle == null || rawProfileTitle.isEmpty)
+          ? ""
+          : decodeMaybeBase64(rawProfileTitle).trim();
       final serverDisplay = serverName.trim();
       final serviceName = profile?.serviceName.trim() ?? "";
       final title = profileTitle.isNotEmpty

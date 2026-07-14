@@ -104,8 +104,7 @@ class SecureProfileUrlStore {
       await _storage.write(key: _migrationKey, value: '1');
     } catch (e) {
       if (kDebugMode) {
-        debugPrint(
-            redactUrls('[SecureProfileStore] markMigrated failed: $e'));
+        debugPrint(redactUrls('[SecureProfileStore] markMigrated failed: $e'));
       }
     }
   }

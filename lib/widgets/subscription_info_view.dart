@@ -3,7 +3,6 @@ import 'package:dropweb/models/models.dart';
 import 'package:flutter/material.dart';
 
 class SubscriptionInfoView extends StatelessWidget {
-
   const SubscriptionInfoView({
     super.key,
     this.subscriptionInfo,

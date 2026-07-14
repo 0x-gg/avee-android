@@ -184,16 +184,18 @@ extension PackageListSelectorStateExt on PackageListSelectorState {
 
   List<Package> getSortList(List<String> selectedList) {
     final sort = accessControl.sort;
-    return list.sorted(
+    return list
+        .sorted(
       (a, b) => switch (sort) {
-          AccessSortType.none => 0,
-          AccessSortType.name => utils.sortByChar(
-              utils.getPinyin(a.label),
-              utils.getPinyin(b.label),
-            ),
-          AccessSortType.time => b.lastUpdateTime.compareTo(a.lastUpdateTime),
-        },
-    ).sorted(
+        AccessSortType.none => 0,
+        AccessSortType.name => utils.sortByChar(
+            utils.getPinyin(a.label),
+            utils.getPinyin(b.label),
+          ),
+        AccessSortType.time => b.lastUpdateTime.compareTo(a.lastUpdateTime),
+      },
+    )
+        .sorted(
       (a, b) {
         final isSelectA = selectedList.contains(a.packageName);
         final isSelectB = selectedList.contains(b.packageName);

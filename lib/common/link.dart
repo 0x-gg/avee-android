@@ -7,7 +7,6 @@ import 'print.dart';
 typedef InstallConfigCallBack = void Function(String url);
 
 class LinkManager {
-
   factory LinkManager() {
     _instance ??= LinkManager._internal();
     return _instance!;

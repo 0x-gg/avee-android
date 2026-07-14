@@ -47,7 +47,6 @@ List<TextSpan> buildEmojiSpans(String text, {TextStyle? style}) {
 }
 
 class TooltipText extends StatelessWidget {
-
   const TooltipText({
     super.key,
     required this.text,
@@ -56,25 +55,24 @@ class TooltipText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-      builder: (context, container) {
-        final maxWidth = container.maxWidth;
-        final size = globalState.measure.computeTextSize(
-          text,
-        );
-        if (maxWidth < size.width) {
-          return Tooltip(
-            preferBelow: false,
-            message: text.data,
-            child: text,
+        builder: (context, container) {
+          final maxWidth = container.maxWidth;
+          final size = globalState.measure.computeTextSize(
+            text,
           );
-        }
-        return text;
-      },
-    );
+          if (maxWidth < size.width) {
+            return Tooltip(
+              preferBelow: false,
+              message: text.data,
+              child: text,
+            );
+          }
+          return text;
+        },
+      );
 }
 
 class EmojiText extends StatelessWidget {
-
   const EmojiText(
     this.text, {
     super.key,
@@ -89,11 +87,11 @@ class EmojiText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => RichText(
-      textScaler: MediaQuery.of(context).textScaler,
-      maxLines: maxLines,
-      overflow: overflow ?? TextOverflow.clip,
-      text: TextSpan(
-        children: buildEmojiSpans(text, style: style),
-      ),
-    );
+        textScaler: MediaQuery.of(context).textScaler,
+        maxLines: maxLines,
+        overflow: overflow ?? TextOverflow.clip,
+        text: TextSpan(
+          children: buildEmojiSpans(text, style: style),
+        ),
+      );
 }

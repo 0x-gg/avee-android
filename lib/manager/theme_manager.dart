@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ThemeManager extends ConsumerWidget {
-
   const ThemeManager({
     super.key,
     required this.child,

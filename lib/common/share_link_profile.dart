@@ -326,8 +326,24 @@ bool _needsQuoting(String s) {
   const reserved = {'true', 'false', 'null', 'yes', 'no', 'on', 'off', '~'};
   if (reserved.contains(s.toLowerCase())) return true;
   const indicators = {
-    '?', ':', '-', ',', '[', ']', '{', '}', '&', '*',
-    '!', '|', '>', "'", '"', '%', '@', '`',
+    '?',
+    ':',
+    '-',
+    ',',
+    '[',
+    ']',
+    '{',
+    '}',
+    '&',
+    '*',
+    '!',
+    '|',
+    '>',
+    "'",
+    '"',
+    '%',
+    '@',
+    '`',
   };
   if (indicators.contains(s[0])) return true;
   if (RegExp(r'^-?\d').hasMatch(s) && double.tryParse(s) != null) return true;

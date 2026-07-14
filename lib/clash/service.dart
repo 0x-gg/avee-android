@@ -9,7 +9,6 @@ import 'package:dropweb/models/core.dart';
 import 'package:dropweb/state.dart';
 
 class ClashService extends ClashHandlerInterface {
-
   factory ClashService() {
     _instance ??= ClashService._internal();
     return _instance!;

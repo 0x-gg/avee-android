@@ -37,7 +37,6 @@ class BaseNavigator {
 }
 
 class CommonDesktopRoute<T> extends PageRoute<T> {
-
   CommonDesktopRoute({
     required this.builder,
   });
@@ -107,13 +106,14 @@ class CommonPageTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> animation,
     Animation<double> secondaryAnimation,
     Widget child,
-  ) => CommonPageTransition(
-      context: context,
-      primaryRouteAnimation: animation,
-      secondaryRouteAnimation: secondaryAnimation,
-      linearTransition: false,
-      child: child,
-    );
+  ) =>
+      CommonPageTransition(
+        context: context,
+        primaryRouteAnimation: animation,
+        secondaryRouteAnimation: secondaryAnimation,
+        linearTransition: false,
+        child: child,
+      );
 }
 
 class CommonPageTransition extends StatefulWidget {
@@ -235,4 +235,3 @@ class _CommonPageTransitionState extends State<CommonPageTransition> {
     );
   }
 }
-

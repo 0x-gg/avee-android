@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 class SendToTvPage extends ConsumerStatefulWidget {
-
   const SendToTvPage({
     super.key,
     required this.profileUrl,
@@ -129,12 +128,12 @@ class _SendToTvPageState extends ConsumerState<SendToTvPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: Text(appLocalizations.sendToTvTitle)),
-      body: MobileScanner(
-        controller: _scannerController,
-        onDetect: _handleQrCode,
-      ),
-    );
+        appBar: AppBar(title: Text(appLocalizations.sendToTvTitle)),
+        body: MobileScanner(
+          controller: _scannerController,
+          onDetect: _handleQrCode,
+        ),
+      );
 
   @override
   void dispose() {

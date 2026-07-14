@@ -5,7 +5,6 @@ import 'package:dropweb/state.dart';
 import 'package:flutter/cupertino.dart';
 
 class CommonPrint {
-
   factory CommonPrint() {
     _instance ??= CommonPrint._internal();
     return _instance!;

@@ -24,8 +24,7 @@ String computeSetupHash({
 }) {
   final payload = <String, dynamic>{
     'profileId': profileId,
-    'profileFileLastModified':
-        profileFileLastModified?.microsecondsSinceEpoch,
+    'profileFileLastModified': profileFileLastModified?.microsecondsSinceEpoch,
     'profileFileLength': profileFileLength,
     'patchConfigJson': patchConfigJson,
     'overrideDataJson': overrideDataJson,

@@ -9,13 +9,10 @@ abstract mixin class TileListener {
 
   void onStop() {}
 
-  void onDetached(){
-
-  }
+  void onDetached() {}
 }
 
 class Tile {
-
   Tile._() {
     _channel.setMethodCallHandler(_methodCallHandler);
   }
@@ -51,7 +48,7 @@ class Tile {
   void removeListener(TileListener listener) {
     _listeners.remove(listener);
   }
-  
+
   Future<void> updateTile() async {
     try {
       await _channel.invokeMethod('updateTile');
@@ -59,7 +56,7 @@ class Tile {
       // Ignore errors if tile service not available
     }
   }
-  
+
   /// Signal to native side that Dart service is ready to receive commands.
   /// This should be called after _service entrypoint has finished initialization.
   Future<void> signalServiceReady() async {
@@ -71,4 +68,4 @@ class Tile {
   }
 }
 
-final tile =  Platform.isAndroid ? Tile.instance : null;
+final tile = Platform.isAndroid ? Tile.instance : null;

@@ -106,8 +106,7 @@ String patchSmartPool(String mihomoYaml, List<Map<String, Object>> sosProxies) {
   // No-op guard: if there is no `📶 First Available` to target AND no
   // qualifying primary to anchor a new one, there is nowhere meaningful to
   // surface the pool — leave the profile byte-for-byte unchanged.
-  if (!hasFirstAvail &&
-      (primary == null || groupMembers[primary]!.isEmpty)) {
+  if (!hasFirstAvail && (primary == null || groupMembers[primary]!.isEmpty)) {
     return mihomoYaml;
   }
 
@@ -213,8 +212,7 @@ String patchSmartPool(String mihomoYaml, List<Map<String, Object>> sosProxies) {
     final reparsed = loadYaml(editor.toString());
     final faIndex = findGroupIndex(reparsed, _firstAvailableGroupName);
     if (faIndex != null) {
-      final members =
-          (reparsed as Map)['proxy-groups'][faIndex]['proxies'];
+      final members = (reparsed as Map)['proxy-groups'][faIndex]['proxies'];
       if (members is List && members.isNotEmpty) {
         final firstIsSmart = members.first?.toString() == _smartGroupName;
         if (!firstIsSmart) {

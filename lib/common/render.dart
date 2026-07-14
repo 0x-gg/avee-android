@@ -3,7 +3,6 @@ import 'package:dropweb/enum/enum.dart';
 import 'package:flutter/scheduler.dart';
 
 class Render {
-
   factory Render() {
     _instance ??= Render._internal();
     return _instance!;

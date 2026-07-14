@@ -116,7 +116,8 @@ class _ModesContentState extends ConsumerState<ModesContent>
       // the old nullProfileDesc lie (same class of lie the country picker fix
       // removes). No redesign: still a plain NullStatus panel.
       error: (e, __) => NullStatus(
-        label: ErrorMapper.mapError('$e') ?? appLocalizations.genericErrorMessage,
+        label:
+            ErrorMapper.mapError('$e') ?? appLocalizations.genericErrorMessage,
       ),
       data: (_) {
         final stack = ListView(

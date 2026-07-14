@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:dropweb/common/common.dart';
 
 class SingleInstanceLock {
-
   factory SingleInstanceLock() {
     _instance ??= SingleInstanceLock._internal();
     return _instance!;

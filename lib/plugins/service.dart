@@ -8,7 +8,6 @@ import 'package:flutter/services.dart';
 import '../clash/lib.dart';
 
 class Service {
-
   factory Service() {
     _instance ??= Service._internal();
     return _instance!;
@@ -35,4 +34,5 @@ class Service {
   Future<bool?> stopVpn() async => methodChannel.invokeMethod<bool>("stopVpn");
 }
 
-Service? get service => Platform.isAndroid && !globalState.isService ? Service() : null;
+Service? get service =>
+    Platform.isAndroid && !globalState.isService ? Service() : null;

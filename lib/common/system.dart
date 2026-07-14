@@ -248,7 +248,8 @@ class System {
   /// is chained onto [_dnsOp] so they run strictly one-at-a-time; this prevents
   /// a concurrent restore from re-reading the injected DNS as the new origin.
   Future<void> setMacOSDns(bool restore) {
-    final next = _dnsOp.then((_) => _setMacOSDnsInner(restore)).catchError((_) {});
+    final next =
+        _dnsOp.then((_) => _setMacOSDnsInner(restore)).catchError((_) {});
     _dnsOp = next;
     return next;
   }

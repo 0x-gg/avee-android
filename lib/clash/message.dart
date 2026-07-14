@@ -6,7 +6,6 @@ import 'package:dropweb/models/models.dart';
 import 'package:flutter/foundation.dart';
 
 class ClashMessage {
-
   ClashMessage._() {
     // Core messages carry untrusted-derived data (connection hosts,
     // server-influenced log payloads). A single malformed message must never
@@ -67,6 +66,7 @@ class ClashMessage {
       }
     }
   }
+
   final controller = StreamController<Map<String, Object?>>();
 
   static final ClashMessage instance = ClashMessage._();

@@ -97,7 +97,8 @@ ChangeProxyParams _minimalChangeProxyParams() => const ChangeProxyParams(
 
 void main() {
   group('invoke timeout contract', () {
-    test('String invoke WITHOUT onTimeout returns empty default on timeout '
+    test(
+        'String invoke WITHOUT onTimeout returns empty default on timeout '
         '(getters rely on this — must not regress)', () async {
       final handler = _NeverReplyHandler();
       final result = await handler.invoke<String>(
@@ -145,7 +146,8 @@ void main() {
           reason: 'updateConfig must wire an explicit onTimeout sentinel');
     });
 
-    test('validateConfig passes a non-null onTimeout returning an error sentinel',
+    test(
+        'validateConfig passes a non-null onTimeout returning an error sentinel',
         () async {
       final handler = _CapturingHandler();
       final result = await handler.validateConfig("port: 7890");

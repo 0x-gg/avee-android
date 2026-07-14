@@ -127,7 +127,8 @@ class _ThemePresetItem extends ConsumerWidget {
     return ItemCard(
       info: Info(
         label: appLocalizations.themePresets,
-        iconWidget: HugeIcon(icon: HugeIcons.strokeRoundedPaintBrush01, size: 24),
+        iconWidget:
+            HugeIcon(icon: HugeIcons.strokeRoundedPaintBrush01, size: 24),
       ),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -656,11 +657,11 @@ class _OrbColorItem extends ConsumerWidget {
                     label: appLocalizations.orbOne,
                     color: orbColorPrimary,
                     onTap: () => _handlePick(
-                      (picked) => ref
-                          .read(themeSettingProvider.notifier)
-                          .updateState(
-                            (state) => state.copyWith(orbColorPrimary: picked),
-                          ),
+                      (picked) =>
+                          ref.read(themeSettingProvider.notifier).updateState(
+                                (state) =>
+                                    state.copyWith(orbColorPrimary: picked),
+                              ),
                     ),
                   ),
                 ),
@@ -669,12 +670,11 @@ class _OrbColorItem extends ConsumerWidget {
                     label: appLocalizations.orbTwo,
                     color: orbColorSecondary,
                     onTap: () => _handlePick(
-                      (picked) => ref
-                          .read(themeSettingProvider.notifier)
-                          .updateState(
-                            (state) =>
-                                state.copyWith(orbColorSecondary: picked),
-                          ),
+                      (picked) =>
+                          ref.read(themeSettingProvider.notifier).updateState(
+                                (state) =>
+                                    state.copyWith(orbColorSecondary: picked),
+                              ),
                     ),
                   ),
                 ),
@@ -764,7 +764,9 @@ class _OrbSlot extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            color != null ? Color(color!).hex : appLocalizations.autoFollowAccent,
+            color != null
+                ? Color(color!).hex
+                : appLocalizations.autoFollowAccent,
             style: context.textTheme.bodySmall?.copyWith(
               color: context.colorScheme.onSurfaceVariant,
             ),
@@ -971,8 +973,7 @@ class _PaletteDialogState extends State<_PaletteDialog> {
   // `defaultPrimaryColor` (0xFF29FF76) — that would alter the picker's default.
   late Color _color = widget.initialColor ?? Lumina.glowSecondary;
 
-  int _toArgb(Color c) =>
-      0xFF000000 | (c.toARGB32() & 0x00FFFFFF);
+  int _toArgb(Color c) => 0xFF000000 | (c.toARGB32() & 0x00FFFFFF);
 
   @override
   Widget build(BuildContext context) => CommonDialog(
@@ -1014,17 +1015,18 @@ class _SliderDefaultsM3 extends SliderThemeData {
   Color? get inactiveTrackColor => _colors.secondaryContainer;
 
   @override
-  Color? get secondaryActiveTrackColor =>       _colors.primary.withValues(alpha: 0.54);
+  Color? get secondaryActiveTrackColor =>
+      _colors.primary.withValues(alpha: 0.54);
 
   @override
   Color? get disabledActiveTrackColor => _colors.onSurface.opacity38;
 
   @override
-  Color? get disabledInactiveTrackColor =>       _colors.onSurface.withValues(alpha: 0.12);
+  Color? get disabledInactiveTrackColor =>
+      _colors.onSurface.withValues(alpha: 0.12);
 
   @override
-  Color? get disabledSecondaryActiveTrackColor =>
-      _colors.onSurface.opacity38;
+  Color? get disabledSecondaryActiveTrackColor => _colors.onSurface.opacity38;
 
   @override
   Color? get activeTickMarkColor => _colors.onPrimary.withValues(alpha: 1.0);

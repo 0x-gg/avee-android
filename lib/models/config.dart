@@ -87,6 +87,7 @@ class AppSettingProps with _$AppSettingProps {
     // Play build ignores this (gated by kIsPlayBuild). Desktop just opens the
     // release page on a newer version. See docs/plans/2026-06-25-auto-update.md.
     @Default(true) bool autoCheckUpdate,
+
     /// Epoch-ms of the last in-app update check; drives the once/day cadence of
     /// the Android updater (see shouldRunScheduledCheck). 0 = never checked.
     @Default(0) int lastUpdateCheckMs,

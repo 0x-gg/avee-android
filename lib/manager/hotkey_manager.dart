@@ -9,7 +9,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 
 class HotKeyManager extends ConsumerStatefulWidget {
-
   const HotKeyManager({
     super.key,
     required this.child,
@@ -43,7 +42,8 @@ class _HotKeyManagerState extends ConsumerState<HotKeyManager> {
         // value is retained (persisted keybindings deserialize it via
         // $enumDecode with no unknownEnumValue fallback, so removing it would
         // throw on load), but the hotkey no longer cycles mode.
-        commonPrint.log('HotAction.mode ignored: mode is derived from work mode');
+        commonPrint
+            .log('HotAction.mode ignored: mode is derived from work mode');
       case HotAction.start:
         globalState.appController.updateStart();
       case HotAction.view:
@@ -59,9 +59,12 @@ class _HotKeyManagerState extends ConsumerState<HotKeyManager> {
     required List<HotKeyAction> hotKeyActions,
   }) async {
     await hotKeyManager.unregisterAll();
-    final hotkeyActionHandles = hotKeyActions.where(
-      (hotKeyAction) => hotKeyAction.key != null && hotKeyAction.modifiers.isNotEmpty,
-    ).map<Future>(
+    final hotkeyActionHandles = hotKeyActions
+        .where(
+      (hotKeyAction) =>
+          hotKeyAction.key != null && hotKeyAction.modifiers.isNotEmpty,
+    )
+        .map<Future>(
       (hotKeyAction) async {
         final modifiers = hotKeyAction.modifiers
             .map((item) => item.toHotKeyModifier())
@@ -82,25 +85,25 @@ class _HotKeyManagerState extends ConsumerState<HotKeyManager> {
   }
 
   Shortcuts _buildShortcuts(Widget child) => Shortcuts(
-      shortcuts: {
-        utils.controlSingleActivator(LogicalKeyboardKey.keyW):
-            const CloseWindowIntent(),
-      },
-      child: Actions(
-        actions: {
-          CloseWindowIntent: CallbackAction<CloseWindowIntent>(
-            onInvoke: (_) => globalState.appController.handleBackOrExit(),
-          ),
-          DoNothingIntent: CallbackAction<DoNothingIntent>(
-            onInvoke: (_) => null,
-          ),
+        shortcuts: {
+          utils.controlSingleActivator(LogicalKeyboardKey.keyW):
+              const CloseWindowIntent(),
         },
-        child: child,
-      ),
-    );
+        child: Actions(
+          actions: {
+            CloseWindowIntent: CallbackAction<CloseWindowIntent>(
+              onInvoke: (_) => globalState.appController.handleBackOrExit(),
+            ),
+            DoNothingIntent: CallbackAction<DoNothingIntent>(
+              onInvoke: (_) => null,
+            ),
+          },
+          child: child,
+        ),
+      );
 
   @override
   Widget build(BuildContext context) => _buildShortcuts(
-      widget.child,
-    );
+        widget.child,
+      );
 }

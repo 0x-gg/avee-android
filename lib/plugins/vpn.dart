@@ -125,10 +125,9 @@ class Vpn {
       // selected server name, else cached service name, else cached profile
       // name. Same preference order as the _service-mode handler in main.dart.
       final rawProfileTitle = profile?.providerHeaders['profile-title'];
-      final profileTitle =
-          (rawProfileTitle == null || rawProfileTitle.isEmpty)
-              ? ""
-              : decodeMaybeBase64(rawProfileTitle).trim();
+      final profileTitle = (rawProfileTitle == null || rawProfileTitle.isEmpty)
+          ? ""
+          : decodeMaybeBase64(rawProfileTitle).trim();
       final serverDisplay = (proxyName ?? "").trim();
       final title = profileTitle.isNotEmpty
           ? profileTitle
@@ -141,8 +140,7 @@ class Vpn {
       return json.encode({
         "title": title,
         "server": "",
-        "content":
-            "\u2191 ${traffic.up.show}/s  \u2193 ${traffic.down.show}/s",
+        "content": "\u2191 ${traffic.up.show}/s  \u2193 ${traffic.down.show}/s",
       });
     } catch (e) {
       return json.encode({

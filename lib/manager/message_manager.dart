@@ -7,7 +7,6 @@ import 'package:dropweb/widgets/fade_box.dart';
 import 'package:flutter/material.dart';
 
 class MessageManager extends StatefulWidget {
-
   const MessageManager({
     super.key,
     required this.child,
@@ -80,11 +79,11 @@ class MessageManagerState extends State<MessageManager> {
 
   @override
   Widget build(BuildContext context) => Stack(
-      children: [
-        widget.child,
-        ValueListenableBuilder(
-          valueListenable: _messagesNotifier,
-          builder: (_, messages, __) => FadeThroughBox(
+        children: [
+          widget.child,
+          ValueListenableBuilder(
+            valueListenable: _messagesNotifier,
+            builder: (_, messages, __) => FadeThroughBox(
               margin: const EdgeInsets.only(
                 top: kToolbarHeight + 8,
                 left: 12,
@@ -96,30 +95,30 @@ class MessageManagerState extends State<MessageManager> {
                   : LayoutBuilder(
                       key: Key(messages.last.id),
                       builder: (_, constraints) => Card(
-                          shape: const RoundedSuperellipseBorder(
-                            borderRadius: BorderRadius.all(
-                              Radius.circular(Lumina.radiusLg),
-                            ),
-                          ),
-                          elevation: 10,
-                          color: context.colorScheme.surfaceContainerHigh,
-                          child: Container(
-                            width: min(
-                              constraints.maxWidth,
-                              500,
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 16,
-                            ),
-                            child: Text(
-                              messages.last.text,
-                            ),
+                        shape: const RoundedSuperellipseBorder(
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(Lumina.radiusLg),
                           ),
                         ),
+                        elevation: 10,
+                        color: context.colorScheme.surfaceContainerHigh,
+                        child: Container(
+                          width: min(
+                            constraints.maxWidth,
+                            500,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 16,
+                          ),
+                          child: Text(
+                            messages.last.text,
+                          ),
+                        ),
+                      ),
                     ),
             ),
-        ),
-      ],
-    );
+          ),
+        ],
+      );
 }

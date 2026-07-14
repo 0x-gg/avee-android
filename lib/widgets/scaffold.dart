@@ -536,8 +536,8 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
     // that the mesh renders INSIDE the scaffold's body area — on top of
     // the opaque void fill, below the actual content.
     // ── Compose body layers ──
-      // Bottom nav bar is placed INSIDE the body Stack (not Scaffold.bottomNavigationBar)
-      // so it stays in the same compositing boundary as the mesh-backed body.
+    // Bottom nav bar is placed INSIDE the body Stack (not Scaffold.bottomNavigationBar)
+    // so it stays in the same compositing boundary as the mesh-backed body.
     final Widget bodyWithMesh;
     final hasBottomNav = widget.bottomNavigationBar != null;
     if (isDark && !widget.disableBackground) {

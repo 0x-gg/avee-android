@@ -287,7 +287,8 @@ CountryPickerState resolveCountryPickerState({
   // active country always kept.
   final filtered = [
     for (final entry in allEntries)
-      if (entry.key == activeCountry || cachedProbe.alive.contains(entry.proxyName))
+      if (entry.key == activeCountry ||
+          cachedProbe.alive.contains(entry.proxyName))
         entry,
   ];
   return CountryPickerState(CountryPickerStatus.list, filtered);

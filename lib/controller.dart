@@ -245,7 +245,8 @@ class AppController {
   Future<void> updateTraffic() => _connectService.updateTraffic();
 
   /// Delegates to [ProfileService.addProfile].
-  Future<void> addProfile(Profile profile) => _profileService.addProfile(profile);
+  Future<void> addProfile(Profile profile) =>
+      _profileService.addProfile(profile);
 
   /// Delegates to [ProfileService.deleteProfile].
   Future<void> deleteProfile(String id) => _profileService.deleteProfile(id);
@@ -477,7 +478,8 @@ class AppController {
   /// facade kept so the staying callers ([updateProfile], [handleChangeProfile])
   /// stay unchanged.
   Future<void> _updateGeoFilesAfterProfileUpdate({bool forceUpdate = false}) =>
-      _profileService.updateGeoFilesAfterProfileUpdate(forceUpdate: forceUpdate);
+      _profileService.updateGeoFilesAfterProfileUpdate(
+          forceUpdate: forceUpdate);
 
   /// Delegates to [ProfileService.setProfile].
   void setProfile(Profile profile) => _profileService.setProfile(profile);
@@ -838,7 +840,7 @@ class AppController {
     globalState.cacheHeightMap = {};
     globalState.cacheScrollPosition = {};
 
-      if (currentProfileId != null) {
+    if (currentProfileId != null) {
       _updateGeoFilesAfterProfileUpdate(forceUpdate: true).catchError((e) {
         commonPrint.log("Error updating geo files on profile change: $e");
       });
@@ -1181,7 +1183,8 @@ class AppController {
     try {
       await _initStatus().timeout(const Duration(seconds: 25));
     } catch (e) {
-      commonPrint.log('init: _initStatus failed/timed out (UI stays usable): $e');
+      commonPrint
+          .log('init: _initStatus failed/timed out (UI stays usable): $e');
     }
     // Sync the operator theme to the current profile on launch so a previous
     // provider's colors don't linger until the user switches/updates a profile.
@@ -1842,5 +1845,4 @@ class AppController {
       trayState: _ref.read(trayStateProvider),
     );
   }
-
 }

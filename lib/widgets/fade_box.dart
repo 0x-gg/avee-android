@@ -3,7 +3,6 @@ import 'package:dropweb/common/common.dart';
 import 'package:flutter/material.dart';
 
 class FadeBox extends StatelessWidget {
-
   const FadeBox({
     super.key,
     required this.child,
@@ -14,40 +13,37 @@ class FadeBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PageTransitionSwitcher(
-      transitionBuilder: (
-        child,
-        animation,
-        secondaryAnimation,
-      ) => Container(
+        transitionBuilder: (
+          child,
+          animation,
+          secondaryAnimation,
+        ) =>
+            Container(
           alignment: alignment ?? Alignment.centerLeft,
           child: FadeTransition(
             opacity: animation,
             child: child,
           ),
         ),
-      child: child,
-    );
+        child: child,
+      );
 }
 
 class FadeThroughBox extends StatelessWidget {
-
-  const FadeThroughBox({
-    super.key,
-    required this.child,
-    this.alignment,
-    this.margin
-  });
+  const FadeThroughBox(
+      {super.key, required this.child, this.alignment, this.margin});
   final Widget child;
   final Alignment? alignment;
   final EdgeInsets? margin;
 
   @override
   Widget build(BuildContext context) => PageTransitionSwitcher(
-      transitionBuilder: (
-        child,
-        animation,
-        secondaryAnimation,
-      ) => Container(
+        transitionBuilder: (
+          child,
+          animation,
+          secondaryAnimation,
+        ) =>
+            Container(
           margin: margin,
           alignment: alignment ?? Alignment.centerLeft,
           child: FadeThroughTransition(
@@ -57,12 +53,11 @@ class FadeThroughBox extends StatelessWidget {
             child: child,
           ),
         ),
-      child: child,
-    );
+        child: child,
+      );
 }
 
 class FadeScaleBox extends StatelessWidget {
-
   const FadeScaleBox({
     super.key,
     required this.child,
@@ -71,23 +66,23 @@ class FadeScaleBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AnimatedSwitcher(
-      transitionBuilder: (
-        child,
-        animation,
-      ) => Container(
+        transitionBuilder: (
+          child,
+          animation,
+        ) =>
+            Container(
           alignment: Alignment.bottomRight,
           child: FadeScaleTransition(
             animation: animation,
             child: child,
           ),
         ),
-      duration: const Duration(milliseconds: 300),
-      child: child,
-    );
+        duration: const Duration(milliseconds: 300),
+        child: child,
+      );
 }
 
 class FadeScaleEnterBox extends StatefulWidget {
-
   const FadeScaleEnterBox({
     super.key,
     required this.child,
@@ -128,13 +123,13 @@ class _FadeScaleEnterBoxState extends State<FadeScaleEnterBox>
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-      animation: _controller.view,
-      builder: (_, child) => FadeScaleEnterTransition(
+        animation: _controller.view,
+        builder: (_, child) => FadeScaleEnterTransition(
           animation: _animation,
           child: child,
         ),
-      child: widget.child,
-    );
+        child: widget.child,
+      );
 }
 
 class FadeScaleEnterTransition extends StatelessWidget {
@@ -157,10 +152,10 @@ class FadeScaleEnterTransition extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => FadeTransition(
-      opacity: _fadeInTransition.animate(animation),
-      child: ScaleTransition(
-        scale: _scaleInTransition.animate(animation),
-        child: child,
-      ),
-    );
+        opacity: _fadeInTransition.animate(animation),
+        child: ScaleTransition(
+          scale: _scaleInTransition.animate(animation),
+          child: child,
+        ),
+      );
 }

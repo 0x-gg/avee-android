@@ -134,8 +134,12 @@ class _MeshBackgroundState extends ConsumerState<MeshBackground>
     }
     final orbSettings = ref.watch(
       themeSettingProvider.select(
-        (s) =>
-            (s.orbColorPrimary, s.orbColorSecondary, s.orbBlur, s.schemeVariant),
+        (s) => (
+          s.orbColorPrimary,
+          s.orbColorSecondary,
+          s.orbBlur,
+          s.schemeVariant
+        ),
       ),
     );
     final accent = theme.colorScheme.primary;

@@ -4,7 +4,6 @@ import 'package:dropweb/state.dart';
 import 'package:flutter/widgets.dart';
 
 class CommonPopScope extends StatelessWidget {
-
   const CommonPopScope({
     super.key,
     required this.child,
@@ -15,28 +14,27 @@ class CommonPopScope extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PopScope(
-      canPop: onPop == null ? true : false,
-      onPopInvokedWithResult: onPop == null
-          ? null
-          : (didPop, __) async {
-              if (didPop) {
-                return;
-              }
-              final res = await onPop!();
-              if (!context.mounted) {
-                return;
-              }
-              if (!res) {
-                return;
-              }
-              Navigator.of(context).pop();
-            },
-      child: child,
-    );
+        canPop: onPop == null ? true : false,
+        onPopInvokedWithResult: onPop == null
+            ? null
+            : (didPop, __) async {
+                if (didPop) {
+                  return;
+                }
+                final res = await onPop!();
+                if (!context.mounted) {
+                  return;
+                }
+                if (!res) {
+                  return;
+                }
+                Navigator.of(context).pop();
+              },
+        child: child,
+      );
 }
 
 class SystemBackBlock extends StatefulWidget {
-
   const SystemBackBlock({
     super.key,
     required this.child,

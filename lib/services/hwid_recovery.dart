@@ -51,8 +51,7 @@ class HwidRecoveryService {
 
   /// Poll budget per episode, derived from [episodeCap] (tick COUNT, not wall
   /// clock: deterministic under fake_async and unaffected by resume retries).
-  int get _maxTicks =>
-      episodeCap.inMilliseconds ~/ pollInterval.inMilliseconds;
+  int get _maxTicks => episodeCap.inMilliseconds ~/ pollInterval.inMilliseconds;
 
   /// Desktop `lifecycleState` may be null — treat unknown as foreground
   /// (desktop windows have no meaningful paused state for our purposes).

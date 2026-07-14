@@ -191,7 +191,8 @@ class Request {
   /// [_clashDio] so a ТСПУ block on dropweb.org/YC is bypassed via the active
   /// node; otherwise it goes direct via [_dio]. The caller owns the tunnel-state
   /// decision and the direct→proxy fallback ordering.
-  Future<Map<String, dynamic>?> fetchUpdateManifest({bool viaProxy = false}) async {
+  Future<Map<String, dynamic>?> fetchUpdateManifest(
+      {bool viaProxy = false}) async {
     try {
       final response = await (viaProxy ? _clashDio : _dio).get(
         kUpdateManifestUrl,

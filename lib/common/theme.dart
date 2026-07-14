@@ -2,7 +2,6 @@ import 'package:dropweb/common/common.dart';
 import 'package:flutter/material.dart';
 
 class CommonTheme {
-
   CommonTheme.of(
     this.context,
     this.textScaleFactor,

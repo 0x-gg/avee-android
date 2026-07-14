@@ -52,8 +52,8 @@ final RegExp _alreadyRedactedShape = RegExp(
 /// Returns [text] with any URL substring of a known sensitive scheme
 /// (`http`, `https`, `clash`, `dropweb`) rewritten so userinfo, query,
 /// and fragment never appear in clear text.
-String redactUrls(String text) =>
-    text.replaceAllMapped(_urlPattern, (match) => _sanitizeUrl(match.group(0)!));
+String redactUrls(String text) => text.replaceAllMapped(
+    _urlPattern, (match) => _sanitizeUrl(match.group(0)!));
 
 String _sanitizeUrl(String raw) {
   // Idempotency: only short-circuit when the entire URL substring matches

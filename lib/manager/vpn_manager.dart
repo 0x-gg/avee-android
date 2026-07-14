@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class VpnManager extends ConsumerStatefulWidget {
-
   const VpnManager({
     super.key,
     required this.child,

@@ -51,7 +51,6 @@ class AppUpdateInfo with _$AppUpdateInfo {
   }) = _AppUpdateInfo;
 }
 
-
 /// Reactive state for the in-app updater, surfaced by `appUpdateProvider` and
 /// rendered by the Lumina update banner/sheet.
 @freezed

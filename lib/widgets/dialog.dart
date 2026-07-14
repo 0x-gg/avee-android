@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class CommonDialog extends ConsumerWidget {
-
   const CommonDialog({
     super.key,
     required this.title,
@@ -38,7 +37,8 @@ class CommonDialog extends ConsumerWidget {
       title: title.isEmpty ? null : Text(title),
       actions: actions,
       contentPadding: padding,
-      backgroundColor: backgroundColor ?? colorScheme.surface.withValues(alpha: 0.92),
+      backgroundColor:
+          backgroundColor ?? colorScheme.surface.withValues(alpha: 0.92),
       content: Container(
         constraints: BoxConstraints(
           maxHeight: min(
@@ -59,7 +59,6 @@ class CommonDialog extends ConsumerWidget {
 }
 
 class CommonModal extends ConsumerWidget {
-
   const CommonModal({
     super.key,
     this.child,

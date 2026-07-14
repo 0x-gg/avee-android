@@ -269,8 +269,7 @@ class _StartButtonState extends ConsumerState<StartButton>
                           : HugeIcons.strokeRoundedPower;
                       final strokeWidth =
                           _pressController.value > 0 ? 3.0 : 1.7;
-                      final accent =
-                          Theme.of(context).colorScheme.primary;
+                      final accent = Theme.of(context).colorScheme.primary;
                       final connected = isStart;
                       final rimAmount =
                           connected ? _glyphRimConnected : _glyphRimIdle;

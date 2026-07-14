@@ -151,8 +151,8 @@ class ProfileService {
     try {
       final applyTheme = _ref.read(appSettingProvider).applySubscriptionTheme;
       if (!applyTheme) {
-        commonPrint.log(
-            "Apply subscription theme disabled - ignoring operator theme");
+        commonPrint
+            .log("Apply subscription theme disabled - ignoring operator theme");
         return;
       }
       final themeHeader = headers['dropweb-theme'];

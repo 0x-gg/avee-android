@@ -3,9 +3,11 @@ import 'package:dropweb/widgets/scaffold.dart';
 import 'package:flutter/material.dart';
 
 extension BuildContextExtension on BuildContext {
-  CommonScaffoldState? get commonScaffoldState => findAncestorStateOfType<CommonScaffoldState>();
+  CommonScaffoldState? get commonScaffoldState =>
+      findAncestorStateOfType<CommonScaffoldState>();
 
-  Future<void>? showNotifier(String text) => findAncestorStateOfType<MessageManagerState>()?.message(text);
+  Future<void>? showNotifier(String text) =>
+      findAncestorStateOfType<MessageManagerState>()?.message(text);
 
   void showSnackBar(
     String message, {

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 class DisabledMask extends StatefulWidget {
-
   const DisabledMask({
     super.key,
     required this.child,

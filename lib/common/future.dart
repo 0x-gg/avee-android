@@ -29,16 +29,17 @@ extension FutureExt<T> on Future<T> {
     required Duration timeout,
     required String functionName,
     FutureOr<T> Function()? onTimeout,
-  }) => this.timeout(
-      timeout,
-      onTimeout: () async {
-        if (onTimeout != null) {
-          return onTimeout();
-        } else {
-          throw TimeoutException('$functionName timeout');
-        }
-      },
-    );
+  }) =>
+      this.timeout(
+        timeout,
+        onTimeout: () async {
+          if (onTimeout != null) {
+            return onTimeout();
+          } else {
+            throw TimeoutException('$functionName timeout');
+          }
+        },
+      );
 
   /// Races this future against [timeout]. On expiry, runs [onTimeout] (e.g.
   /// disposing a wedged resource that the pending work still holds) and then

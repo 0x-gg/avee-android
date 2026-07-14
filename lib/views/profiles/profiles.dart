@@ -280,9 +280,10 @@ class _ProfileItemState extends State<ProfileItem> {
                                     },
                                   ),
                                 if (widget.profile
-                                                .providerHeaders['support-url'] !=
-                                            null &&
-                                    widget.profile
+                                            .providerHeaders['support-url'] !=
+                                        null &&
+                                    widget
+                                        .profile
                                         .providerHeaders['support-url']!
                                         .isNotEmpty &&
                                     !_isTV)

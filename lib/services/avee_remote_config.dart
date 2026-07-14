@@ -63,7 +63,8 @@ class AveeRemoteConfig extends ChangeNotifier {
     if (algorithm != 'ed25519' || signature is! String || payload is! Map) {
       throw const FormatException('Remote policy signature is invalid');
     }
-    if (_publicKey.isEmpty) throw const FormatException('Config public key missing');
+    if (_publicKey.isEmpty)
+      throw const FormatException('Config public key missing');
     final publicKey = SimplePublicKey(
       base64Url.decode(base64Url.normalize(_publicKey)),
       type: KeyPairType.ed25519,

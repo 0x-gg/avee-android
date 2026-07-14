@@ -166,7 +166,7 @@ class _RequestsViewState extends ConsumerState<RequestsView> with PageMixin {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-      builder: (_, constraints) => Consumer(
+        builder: (_, constraints) => Consumer(
           builder: (_, ref, child) {
             final value = ref.watch(
               patchClashConfigProvider.select(
@@ -252,5 +252,5 @@ class _RequestsViewState extends ConsumerState<RequestsView> with PageMixin {
             },
           ),
         ),
-    );
+      );
 }

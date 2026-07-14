@@ -8,7 +8,6 @@ import 'constant.dart';
 import 'system.dart';
 
 class AutoLaunch {
-
   factory AutoLaunch() {
     _instance ??= AutoLaunch._internal();
     return _instance!;

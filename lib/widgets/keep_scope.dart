@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 class KeepScope extends StatefulWidget {
-
   const KeepScope({
     super.key,
     required this.child,

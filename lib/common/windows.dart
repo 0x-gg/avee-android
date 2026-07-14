@@ -234,7 +234,8 @@ class Windows {
       final parts = line.trim().split(RegExp(r'\s+'));
       final pid = int.tryParse(parts.last);
       if (pid != null) {
-        commonPrint.log("[helper-conflict] freeing port $port: killing pid=$pid");
+        commonPrint
+            .log("[helper-conflict] freeing port $port: killing pid=$pid");
         await Process.run('taskkill', ['/PID', pid.toString(), '/F']);
       }
     }
@@ -295,8 +296,8 @@ class Windows {
           await Future.delayed(const Duration(milliseconds: 300));
         case HelperPingResult.unreachable:
           if (DateTime.now().isAfter(deadline)) {
-            commonPrint.log(
-                "[helper] not ready within ${timeout.inMilliseconds}ms");
+            commonPrint
+                .log("[helper] not ready within ${timeout.inMilliseconds}ms");
             return false;
           }
           await Future.delayed(const Duration(milliseconds: 300));

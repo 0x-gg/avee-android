@@ -3,7 +3,6 @@ import 'package:dropweb/enum/enum.dart';
 import 'package:flutter/material.dart';
 
 class CommonChip extends StatelessWidget {
-
   const CommonChip({
     super.key,
     required this.label,
@@ -28,8 +27,7 @@ class CommonChip extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         onDeleted: onPressed ?? () {},
-        side:
-            BorderSide(color: Theme.of(context).dividerColor.opacity15),
+        side: BorderSide(color: Theme.of(context).dividerColor.opacity15),
         labelStyle: Theme.of(context).textTheme.bodyMedium,
         label: Text(label),
       );

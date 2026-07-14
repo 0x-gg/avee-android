@@ -117,7 +117,9 @@ class GlobalState {
     if (ack == null || ack.isCompleted) return;
     ack.complete(error);
   }
+
   final navigatorKey = GlobalKey<NavigatorState>();
+
   /// When true, `vpnTip` notifications are suppressed. Set while a config setup
   /// is applying (see [AppController.setupClashConfig]) so the provider-driven
   /// tun.stack sync on a profile switch does not fire a spurious "restart VPN"
@@ -338,7 +340,8 @@ class GlobalState {
             commonPrint
                 .log('service.stopVpn() timed out during TUN-ack rollback');
           } catch (e) {
-            commonPrint.log('service.stopVpn() failed during TUN-ack rollback: $e');
+            commonPrint
+                .log('service.stopVpn() failed during TUN-ack rollback: $e');
           }
           showNotifier(ackError);
           return false;
@@ -458,8 +461,8 @@ class GlobalState {
       return res;
     } catch (e) {
       commonPrint.log("$e");
-      final message =
-          ErrorMapper.mapError(e.toString()) ?? appLocalizations.genericErrorMessage;
+      final message = ErrorMapper.mapError(e.toString()) ??
+          appLocalizations.genericErrorMessage;
       if (silence) {
         showNotifier(message);
       } else {
@@ -888,16 +891,14 @@ class GlobalState {
     } else {
       runtime = getJavascriptRuntime();
     }
-    final res = await runtime
-        .evaluateAsync("""
+    final res = await runtime.evaluateAsync("""
       ${currentScript.content}
       main($configJs)
-    """)
-        .guardWithTimeout(
-          timeout: evalTimeout,
-          message: 'script evaluation timed out (${evalTimeout.inSeconds}s)',
-          onTimeout: runtime.dispose,
-        );
+    """).guardWithTimeout(
+      timeout: evalTimeout,
+      message: 'script evaluation timed out (${evalTimeout.inSeconds}s)',
+      onTimeout: runtime.dispose,
+    );
     if (res.isError) {
       final error = res.stringResult;
       // A native QuickJS interrupt surfaces as an "interrupted" exception —

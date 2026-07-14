@@ -216,7 +216,8 @@ List<CountryPickerEntry> countryPickerEntries(
       flagged.add(CountryPickerEntry(
         key: node,
         flag: key,
-        label: stripped.isNotEmpty ? stripped : countryDisplayName(key, const []),
+        label:
+            stripped.isNotEmpty ? stripped : countryDisplayName(key, const []),
         flagged: true,
         proxyName: node,
       ));

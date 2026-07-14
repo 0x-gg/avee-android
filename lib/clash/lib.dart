@@ -16,7 +16,6 @@ import 'generated/clash_ffi.dart';
 import 'interface.dart';
 
 class ClashLib extends ClashHandlerInterface with AndroidClashInterface {
-
   factory ClashLib() {
     _instance ??= ClashLib._internal();
     return _instance!;
@@ -165,9 +164,9 @@ class ClashLib extends ClashHandlerInterface with AndroidClashInterface {
 
   @override
   Future<bool> updateDns(String value) => invoke<bool>(
-      method: ActionMethod.updateDns,
-      data: value,
-    );
+        method: ActionMethod.updateDns,
+        data: value,
+      );
 
   @override
   Future<DateTime?> getRunTime() async {
@@ -182,12 +181,11 @@ class ClashLib extends ClashHandlerInterface with AndroidClashInterface {
 
   @override
   Future<String> getCurrentProfileName() => invoke<String>(
-      method: ActionMethod.getCurrentProfileName,
-    );
+        method: ActionMethod.getCurrentProfileName,
+      );
 }
 
 class ClashLibHandler {
-
   factory ClashLibHandler() {
     _instance ??= ClashLibHandler._internal();
     return _instance!;

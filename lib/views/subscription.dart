@@ -74,7 +74,8 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage>
             child: Column(
               children: [
                 SizedBox(
-                    height: MediaQuery.of(context).padding.top + kToolbarHeight),
+                    height:
+                        MediaQuery.of(context).padding.top + kToolbarHeight),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: _GlassTabBar(
@@ -218,8 +219,7 @@ class SharedProfilesBody extends ConsumerWidget {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
-          child:
-              AddProfileCard(onTap: () => _openAdd(context), isDark: isDark),
+          child: AddProfileCard(onTap: () => _openAdd(context), isDark: isDark),
         ),
       );
     }

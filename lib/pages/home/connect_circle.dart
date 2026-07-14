@@ -255,82 +255,82 @@ class _ConnectCircleState extends ConsumerState<ConnectCircle>
     return ValueListenableBuilder<bool>(
       valueListenable: globalState.isConnecting,
       builder: (context, isConnecting, _) => RepaintBoundary(
-      key: _key,
-      child: Listener(
-        onPointerDown: (_) => _setPressed(true),
-        onPointerUp: (_) => _setPressed(false),
-        onPointerCancel: (_) => _setPressed(false),
-        child: TweenAnimationBuilder<double>(
-          tween: Tween<double>(end: _isPressed ? 1.0 : 0.0),
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          builder: (_, pressT, __) => AnimatedBuilder(
-            animation: Listenable.merge([_irisController, _auraController]),
-            builder: (_, __) {
-              final irisT = _irisController.value;
-              final auraT = _auraController.value;
-              // Connecting heartbeat for the perimeter glow.
-              final pulse = 0.5 + 0.5 * math.sin(auraT * 2 * math.pi * 2);
-              // Smoothly ramp dormant→alive via iris (0.2→0.59); the perimeter
-              // pulses while connecting, and press always intensifies.
-              final haloAlpha = (0.2 +
-                      0.39 * irisT +
-                      (isConnecting ? pulse * 0.16 : 0.0) +
-                      pressT * 0.18)
-                  .clamp(0.0, 1.0);
-              final haloBlur =
-                  16.0 + pressT * 10.0 + (isConnecting ? pulse * 6.0 : 0.0);
-              final perimeterGlow = BoxShadow(
-                color: accent.withValues(alpha: haloAlpha),
-                blurRadius: haloBlur,
-                spreadRadius: -1.0,
-              );
+        key: _key,
+        child: Listener(
+          onPointerDown: (_) => _setPressed(true),
+          onPointerUp: (_) => _setPressed(false),
+          onPointerCancel: (_) => _setPressed(false),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(end: _isPressed ? 1.0 : 0.0),
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            builder: (_, pressT, __) => AnimatedBuilder(
+              animation: Listenable.merge([_irisController, _auraController]),
+              builder: (_, __) {
+                final irisT = _irisController.value;
+                final auraT = _auraController.value;
+                // Connecting heartbeat for the perimeter glow.
+                final pulse = 0.5 + 0.5 * math.sin(auraT * 2 * math.pi * 2);
+                // Smoothly ramp dormant→alive via iris (0.2→0.59); the perimeter
+                // pulses while connecting, and press always intensifies.
+                final haloAlpha = (0.2 +
+                        0.39 * irisT +
+                        (isConnecting ? pulse * 0.16 : 0.0) +
+                        pressT * 0.18)
+                    .clamp(0.0, 1.0);
+                final haloBlur =
+                    16.0 + pressT * 10.0 + (isConnecting ? pulse * 6.0 : 0.0);
+                final perimeterGlow = BoxShadow(
+                  color: accent.withValues(alpha: haloAlpha),
+                  blurRadius: haloBlur,
+                  spreadRadius: -1.0,
+                );
 
-              return SizedBox.square(
-                dimension: buttonSize,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      perimeterGlow,
-                      const BoxShadow(
-                        color: Lumina.scrimHeavy,
-                        blurRadius: 4,
-                        offset: Offset(0, 1),
-                      ),
-                      const BoxShadow(
-                        color: Lumina.scrimSoft,
-                        blurRadius: 26,
-                        spreadRadius: -6,
-                        offset: Offset(0, 14),
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      CustomPaint(
-                        painter: _ConnectGlassPainter(
-                          pressT: pressT,
-                          isRunning: isRunning,
-                          accent: accent,
-                          irisT: irisT,
-                          auraT: auraT,
-                          isConnecting: isConnecting,
-                          orbPrimary: orbPrimary,
-                          orbSecondary: orbSecondary,
+                return SizedBox.square(
+                  dimension: buttonSize,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        perimeterGlow,
+                        const BoxShadow(
+                          color: Lumina.scrimHeavy,
+                          blurRadius: 4,
+                          offset: Offset(0, 1),
                         ),
-                      ),
-                      StartButton(iconSize: iconSize),
-                    ],
+                        const BoxShadow(
+                          color: Lumina.scrimSoft,
+                          blurRadius: 26,
+                          spreadRadius: -6,
+                          offset: Offset(0, 14),
+                        ),
+                      ],
+                    ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CustomPaint(
+                          painter: _ConnectGlassPainter(
+                            pressT: pressT,
+                            isRunning: isRunning,
+                            accent: accent,
+                            irisT: irisT,
+                            auraT: auraT,
+                            isConnecting: isConnecting,
+                            orbPrimary: orbPrimary,
+                            orbSecondary: orbSecondary,
+                          ),
+                        ),
+                        StartButton(iconSize: iconSize),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),
-    ),
     );
   }
 }
@@ -534,8 +534,7 @@ class _ConnectGlassPainter extends CustomPainter {
       // Triangular overshoot: 0 → +(peak-settled) at t=0.5 → 0 at t=1.
       final overshoot =
           (_irisPeakAlpha - _irisSettledAlpha) * 4 * irisT * (1 - irisT);
-      final irisAlpha =
-          (_irisSettledAlpha * irisT + overshoot).clamp(0.0, 1.0);
+      final irisAlpha = (_irisSettledAlpha * irisT + overshoot).clamp(0.0, 1.0);
       if (irisAlpha > 0.001) {
         final irisPaint = Paint()
           ..shader = RadialGradient(

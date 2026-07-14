@@ -62,12 +62,13 @@ class SideSheet extends StatefulWidget {
   @override
   State<SideSheet> createState() => _SideSheetState();
 
-  static AnimationController createAnimationController(TickerProvider vsync) => AnimationController(
-      duration: _bottomSheetEnterDuration,
-      reverseDuration: _bottomSheetExitDuration,
-      debugLabel: 'SideSheet',
-      vsync: vsync,
-    );
+  static AnimationController createAnimationController(TickerProvider vsync) =>
+      AnimationController(
+        duration: _bottomSheetEnterDuration,
+        reverseDuration: _bottomSheetExitDuration,
+        debugLabel: 'SideSheet',
+        vsync: vsync,
+      );
 }
 
 class _SideSheetState extends State<SideSheet> {
@@ -76,7 +77,8 @@ class _SideSheetState extends State<SideSheet> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final color = widget.backgroundColor ?? colorScheme.surface.withValues(alpha: 0.6);
+    final color =
+        widget.backgroundColor ?? colorScheme.surface.withValues(alpha: 0.6);
     final surfaceTintColor = colorScheme.surfaceTint;
     final shadowColor = widget.shadowColor ?? Colors.transparent;
     final elevation = widget.elevation ?? 0;
@@ -126,12 +128,14 @@ class _SideSheetLayoutWithSizeListener extends SingleChildRenderObjectWidget {
 
   @override
   _RenderSideSheetLayoutWithSizeListener createRenderObject(
-      BuildContext context) => _RenderSideSheetLayoutWithSizeListener(
-      onChildSizeChanged: onChildSizeChanged,
-      animationValue: animationValue,
-      isScrollControlled: isScrollControlled,
-      scrollControlDisabledMaxHeightRatio: scrollControlDisabledMaxHeightRatio,
-    );
+          BuildContext context) =>
+      _RenderSideSheetLayoutWithSizeListener(
+        onChildSizeChanged: onChildSizeChanged,
+        animationValue: animationValue,
+        isScrollControlled: isScrollControlled,
+        scrollControlDisabledMaxHeightRatio:
+            scrollControlDisabledMaxHeightRatio,
+      );
 
   @override
   void updateRenderObject(BuildContext context,
@@ -209,12 +213,12 @@ class _RenderSideSheetLayoutWithSizeListener extends RenderShiftedBox {
     markNeedsLayout();
   }
 
-  Size _getSize(BoxConstraints constraints) => constraints.constrain(constraints.biggest);
+  Size _getSize(BoxConstraints constraints) =>
+      constraints.constrain(constraints.biggest);
 
   @override
   double computeMinIntrinsicWidth(double height) {
-    final width =
-        _getSize(BoxConstraints.tightForFinite(height: height)).width;
+    final width = _getSize(BoxConstraints.tightForFinite(height: height)).width;
     if (width.isFinite) {
       return width;
     }
@@ -223,8 +227,7 @@ class _RenderSideSheetLayoutWithSizeListener extends RenderShiftedBox {
 
   @override
   double computeMaxIntrinsicWidth(double height) {
-    final width =
-        _getSize(BoxConstraints.tightForFinite(height: height)).width;
+    final width = _getSize(BoxConstraints.tightForFinite(height: height)).width;
     if (width.isFinite) {
       return width;
     }
@@ -233,8 +236,7 @@ class _RenderSideSheetLayoutWithSizeListener extends RenderShiftedBox {
 
   @override
   double computeMinIntrinsicHeight(double width) {
-    final height =
-        _getSize(BoxConstraints.tightForFinite(width: width)).height;
+    final height = _getSize(BoxConstraints.tightForFinite(width: width)).height;
     if (height.isFinite) {
       return height;
     }
@@ -243,8 +245,7 @@ class _RenderSideSheetLayoutWithSizeListener extends RenderShiftedBox {
 
   @override
   double computeMaxIntrinsicHeight(double width) {
-    final height =
-        _getSize(BoxConstraints.tightForFinite(width: width)).height;
+    final height = _getSize(BoxConstraints.tightForFinite(width: width)).height;
     if (height.isFinite) {
       return height;
     }
@@ -254,18 +255,19 @@ class _RenderSideSheetLayoutWithSizeListener extends RenderShiftedBox {
   @override
   Size computeDryLayout(BoxConstraints constraints) => _getSize(constraints);
 
-  BoxConstraints _getConstraintsForChild(BoxConstraints constraints) => BoxConstraints(
-      maxHeight: constraints.maxHeight,
-    );
+  BoxConstraints _getConstraintsForChild(BoxConstraints constraints) =>
+      BoxConstraints(
+        maxHeight: constraints.maxHeight,
+      );
 
-  Offset _getPositionForChild(Size size, Size childSize) => Offset(size.width - childSize.width * animationValue, 0.0);
+  Offset _getPositionForChild(Size size, Size childSize) =>
+      Offset(size.width - childSize.width * animationValue, 0.0);
 
   @override
   void performLayout() {
     size = _getSize(constraints);
     if (child != null) {
-      final childConstraints =
-          _getConstraintsForChild(constraints);
+      final childConstraints = _getConstraintsForChild(constraints);
       assert(childConstraints.debugAssertIsValid(isAppliedConstraint: true));
       child!.layout(
         childConstraints,
@@ -334,14 +336,14 @@ class _ModalSideSheetState<T> extends State<_ModalSideSheet<T>> {
     }
   }
 
-  EdgeInsets _getNewClipDetails(Size topLayerSize) => EdgeInsets.fromLTRB(0, 0, 0, topLayerSize.height);
+  EdgeInsets _getNewClipDetails(Size topLayerSize) =>
+      EdgeInsets.fromLTRB(0, 0, 0, topLayerSize.height);
 
   @override
   Widget build(BuildContext context) {
     assert(debugCheckHasMediaQuery(context));
     assert(debugCheckHasMaterialLocalizations(context));
-    final localizations =
-        MaterialLocalizations.of(context);
+    final localizations = MaterialLocalizations.of(context);
     final routeLabel = _getRouteLabel(localizations);
 
     return AnimatedBuilder(
@@ -499,7 +501,8 @@ class ModalSideSheetRoute<T> extends PopupRoute<T> {
           final colorScheme = Theme.of(context).colorScheme;
           return _ModalSideSheet<T>(
             route: this,
-            backgroundColor: backgroundColor ?? colorScheme.surface.withValues(alpha: 0.6),
+            backgroundColor:
+                backgroundColor ?? colorScheme.surface.withValues(alpha: 0.6),
             elevation: elevation ?? 0,
             shape: shape,
             clipBehavior: clipBehavior,
@@ -573,8 +576,7 @@ Future<T?> showModalSideSheet<T>({
   assert(debugCheckHasMediaQuery(context));
   assert(debugCheckHasMaterialLocalizations(context));
 
-  final navigator =
-      Navigator.of(context, rootNavigator: useRootNavigator);
+  final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
   final localizations = MaterialLocalizations.of(context);
   return navigator.push(ModalSideSheetRoute<T>(
     builder: builder,
@@ -600,5 +602,3 @@ Future<T?> showModalSideSheet<T>({
     useSafeArea: useSafeArea,
   ));
 }
-
-
