@@ -8,6 +8,10 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.appcompat.app.AppCompatDelegate
+import com.android.billingclient.api.BillingClient
+import com.android.billingclient.api.BillingClientStateListener
+import com.android.billingclient.api.BillingResult
+import com.android.billingclient.api.GetBillingConfigParams
 import app.dropweb.plugins.AppPlugin
 import app.dropweb.plugins.ServicePlugin
 import app.dropweb.plugins.TilePlugin
@@ -143,6 +147,45 @@ class MainActivity : FlutterActivity() {
                 } else {
                     result.notImplemented()
                 }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "avee/billing_region")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "getPlayCountry") {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                }
+                val billingClient = BillingClient.newBuilder(this)
+                    .enableAutoServiceReconnection()
+                    .build()
+                billingClient.startConnection(object : BillingClientStateListener {
+                    override fun onBillingSetupFinished(billingResult: BillingResult) {
+                        if (billingResult.responseCode != BillingClient.BillingResponseCode.OK) {
+                            result.success(mapOf("status" to "temporarilyUnavailable"))
+                            billingClient.endConnection()
+                            return
+                        }
+                        billingClient.getBillingConfigAsync(
+                            GetBillingConfigParams.newBuilder().build()
+                        ) { configResult, config ->
+                            val response = when {
+                                configResult.responseCode == BillingClient.BillingResponseCode.OK && config?.countryCode != null ->
+                                    mapOf("status" to "resolved", "countryCode" to config.countryCode)
+                                configResult.responseCode == BillingClient.BillingResponseCode.SERVICE_UNAVAILABLE ||
+                                    configResult.responseCode == BillingClient.BillingResponseCode.SERVICE_DISCONNECTED ->
+                                    mapOf("status" to "temporarilyUnavailable")
+                                else -> mapOf("status" to "unknown")
+                            }
+                            result.success(response)
+                            billingClient.endConnection()
+                        }
+                    }
+
+                    override fun onBillingServiceDisconnected() {
+                        result.success(mapOf("status" to "billingUnavailable"))
+                        billingClient.endConnection()
+                    }
+                })
             }
         flutterEngine.plugins.add(AppPlugin())
         flutterEngine.plugins.add(ServicePlugin)

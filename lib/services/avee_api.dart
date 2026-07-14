@@ -80,6 +80,10 @@ class AveeApi {
       _request('GET', '/accounts/${session.accountId}/state',
           token: session.token);
 
+  Future<Map<String, dynamic>> deleteAccount(AveeSession session) =>
+      _request('DELETE', '/accounts/${session.accountId}',
+          token: session.token, body: {'confirmation': 'DELETE'});
+
   Future<Map<String, dynamic>> startTrial(AveeSession session) =>
       _request('POST', '/accounts/${session.accountId}/trial',
           token: session.token);
@@ -143,6 +147,8 @@ class AveeApi {
     final response = switch (method) {
       'GET' => await client.get(uri, headers: headers),
       'POST' => await client.post(uri,
+          headers: headers, body: body == null ? null : jsonEncode(body)),
+      'DELETE' => await client.delete(uri,
           headers: headers, body: body == null ? null : jsonEncode(body)),
       _ => throw ArgumentError('Unsupported HTTP method: $method'),
     };

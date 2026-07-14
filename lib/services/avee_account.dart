@@ -112,6 +112,15 @@ class AveeAccountState extends ChangeNotifier {
     });
   }
 
+  Future<void> deleteAccount() async {
+    final current = session;
+    if (current == null) return;
+    await _run(() async {
+      await _api.deleteAccount(current);
+      await clear();
+    });
+  }
+
   Future<void> completeGooglePurchase({
     required String productId,
     required String purchaseToken,

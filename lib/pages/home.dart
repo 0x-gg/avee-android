@@ -308,6 +308,11 @@ class AveeAccountBanner extends StatelessWidget {
                             onPressed: aveeBillingService.restore,
                             child: const Text('Восстановить покупки'),
                           ),
+                        if (state.session != null)
+                          TextButton(
+                            onPressed: () => _confirmDeletion(context),
+                            child: const Text('Удалить аккаунт'),
+                          ),
                       ],
                     ),
                 ],
@@ -359,5 +364,27 @@ class AveeAccountBanner extends StatelessWidget {
     );
     accountController.dispose();
     codeController.dispose();
+  }
+
+  Future<void> _confirmDeletion(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Удалить аккаунт?'),
+        content: const Text(
+            'Сессии и устройства будут отозваны, доступ Remnawave отключён. Google Play подписка автоматически не отменяется.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await aveeAccountState.deleteAccount();
   }
 }

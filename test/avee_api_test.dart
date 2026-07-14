@@ -35,4 +35,27 @@ void main() {
                 expiresAt: DateTime.utc(2026, 7, 15))),
         throwsA(isA<AveeApiException>()));
   });
+
+  test('deletes an account with explicit confirmation and session header',
+      () async {
+    late http.Request request;
+    final client = MockClient((value) async {
+      request = value;
+      return http.Response('{"deleted":true}', 200);
+    });
+    final session = AveeSession(
+      accountId: 'a',
+      accountNumber: 'n',
+      deviceId: 'd',
+      token: 'secret',
+      expiresAt: DateTime.utc(2026, 7, 15),
+    );
+    final result =
+        await AveeApi(baseUrl: 'http://10.0.2.2:3000', client: client)
+            .deleteAccount(session);
+    expect(result['deleted'], isTrue);
+    expect(request.method, 'DELETE');
+    expect(request.headers['x-session-token'], 'secret');
+    expect(jsonDecode(request.body)['confirmation'], 'DELETE');
+  });
 }

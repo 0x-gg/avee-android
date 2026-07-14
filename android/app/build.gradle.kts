@@ -194,6 +194,7 @@ configurations.all {
 }
 
 dependencies {
+    implementation("com.android.billingclient:billing:8.0.0")
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
     implementation(project(":core"))
     implementation("androidx.core:core-splashscreen:1.0.1")

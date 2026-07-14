@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:flutter/services.dart';
 
 enum AveePlayCountryStatus {
   resolved,
@@ -20,26 +20,32 @@ class AveePlayCountry {
 }
 
 /// Uses Google Play Billing's storefront country. Locale, SIM and IP are not
-/// used for payment eligibility. The plugin delegates this to BillingClient's
-/// billing configuration API on Android.
+/// used for payment eligibility. The Android bridge reads BillingClient's
+/// billing configuration API directly.
 class AveePlayCountryService {
+  static const _channel = MethodChannel('avee/billing_region');
+
   Future<AveePlayCountry> resolve() async {
     if (!Platform.isAndroid) {
       return const AveePlayCountry(status: AveePlayCountryStatus.unknown);
     }
     try {
-      final store = InAppPurchase.instance;
-      if (!await store.isAvailable()) {
-        return const AveePlayCountry(
-            status: AveePlayCountryStatus.billingUnavailable);
-      }
-      final country = (await store.countryCode()).toUpperCase();
-      if (country.length != 2) {
-        return const AveePlayCountry(status: AveePlayCountryStatus.unknown);
-      }
+      final value =
+          await _channel.invokeMethod<Map<Object?, Object?>>('getPlayCountry');
+      final status = value?['status'] as String?;
+      final country = (value?['countryCode'] as String?)?.toUpperCase();
       return AveePlayCountry(
-          status: AveePlayCountryStatus.resolved, countryCode: country);
-    } on InAppPurchaseException {
+        status: switch (status) {
+          'resolved' when country?.length == 2 =>
+            AveePlayCountryStatus.resolved,
+          'billingUnavailable' => AveePlayCountryStatus.billingUnavailable,
+          'temporarilyUnavailable' =>
+            AveePlayCountryStatus.temporarilyUnavailable,
+          _ => AveePlayCountryStatus.unknown,
+        },
+        countryCode: country,
+      );
+    } on PlatformException {
       return const AveePlayCountry(
           status: AveePlayCountryStatus.temporarilyUnavailable);
     } catch (_) {
