@@ -249,9 +249,6 @@ class AveeAccountBanner extends StatelessWidget {
         listenable: aveeAccountState,
         builder: (context, _) {
           final state = aveeAccountState;
-          if (state.session != null && state.access) {
-            return const SizedBox.shrink();
-          }
           return Card(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -263,7 +260,9 @@ class AveeAccountBanner extends StatelessWidget {
                     child: Text(
                       state.session == null
                           ? 'AVEE: подключите аккаунт для управляемого доступа'
-                          : 'AVEE: активируйте пробный доступ',
+                          : state.access
+                              ? 'AVEE: доступ активен'
+                              : 'AVEE: активируйте пробный доступ',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -281,11 +280,16 @@ class AveeAccountBanner extends StatelessWidget {
                         TextButton(
                           onPressed: state.session == null
                               ? aveeAccountState.createAccount
-                              : aveeAccountState.startTrial,
+                              : state.access
+                                  ? aveeAccountState
+                                      .refreshManagedProfileForButton
+                                  : aveeAccountState.startTrial,
                           child: Text(
                             state.session == null
                                 ? 'Создать'
-                                : 'Пробный период',
+                                : state.access
+                                    ? 'Обновить профиль'
+                                    : 'Пробный период',
                           ),
                         ),
                         if (state.session == null)

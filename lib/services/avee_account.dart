@@ -5,6 +5,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:yaml/yaml.dart';
 
 import 'avee_api.dart';
 
@@ -23,6 +24,7 @@ class AveeAccountState extends ChangeNotifier {
   static const _sessionExpiresKey = 'avee.session_expires_at';
   static const _publicKeyKey = 'avee.device_public_key';
   static const _privateKeyKey = 'avee.device_private_key';
+  static const _managedProfileKey = 'avee.managed_profile';
 
   static String get _defaultBaseUrl {
     const configured = String.fromEnvironment('AVEE_API_URL');
@@ -39,6 +41,7 @@ class AveeAccountState extends ChangeNotifier {
   bool access = false;
   DateTime? accessExpiresAt;
   String? error;
+  DateTime? managedProfileUpdatedAt;
 
   Future<void> restore() async {
     final values = await Future.wait([
@@ -138,6 +141,35 @@ class AveeAccountState extends ChangeNotifier {
       );
       await refresh();
     });
+  }
+
+  Future<String?> refreshManagedProfile() async {
+    final current = session;
+    if (current == null || !access) return null;
+    try {
+      final yaml = await _api.managedMihomoProfile(current);
+      final parsed = loadYaml(yaml);
+      if (parsed is! YamlMap || parsed['proxies'] is! YamlList) {
+        throw const FormatException('Managed profile has no proxies');
+      }
+      await _storage.write(key: _managedProfileKey, value: yaml);
+      managedProfileUpdatedAt = DateTime.now();
+      error = null;
+      notifyListeners();
+      return yaml;
+    } catch (exception) {
+      // Keep the last-known-good profile in secure storage. A transient
+      // Remnawave outage must not erase the user's working configuration.
+      error = exception is AveeApiException
+          ? exception.message
+          : 'Profile refresh failed';
+      notifyListeners();
+      return _storage.read(key: _managedProfileKey);
+    }
+  }
+
+  Future<void> refreshManagedProfileForButton() async {
+    await refreshManagedProfile();
   }
 
   Future<void> refresh() async {
