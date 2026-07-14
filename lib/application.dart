@@ -55,7 +55,7 @@ class ApplicationState extends ConsumerState<Application> {
     // must never prevent the local VPN UI from starting.
     aveeAccountState.restore();
     if (Platform.isAndroid) {
-      aveeBillingService.initialize();
+      unawaited(aveeBillingService.initialize());
     }
 
     // Cap the global decoded-image cache to bound PSS from network logos/bg.
@@ -330,6 +330,7 @@ class ApplicationState extends ConsumerState<Application> {
     // super.dispose() late. Do all synchronous teardown inline, then kick the
     // async exit work off without awaiting it.
     linkManager.destroy();
+    unawaited(aveeBillingService.dispose());
     globalState.pauseGroupsPolling = null;
     globalState.resumeGroupsPolling = null;
     _autoUpdateGroupTaskTimer?.cancel();
