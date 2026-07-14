@@ -17,6 +17,7 @@ import 'controller.dart';
 import 'pages/pages.dart';
 import 'services/avee_account.dart';
 import 'services/avee_billing.dart';
+import 'services/avee_remote_config.dart';
 
 class Application extends ConsumerStatefulWidget {
   const Application({
@@ -54,6 +55,7 @@ class ApplicationState extends ConsumerState<Application> {
     // Restore the control-plane session in the background. A backend outage
     // must never prevent the local VPN UI from starting.
     aveeAccountState.restore();
+    unawaited(aveeRemoteConfig.refresh());
     if (Platform.isAndroid) {
       unawaited(aveeBillingService.initialize());
     }

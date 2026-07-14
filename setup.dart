@@ -739,10 +739,14 @@ class BuildCommand extends Command {
     required String env,
   }) async {
     await Build.getDistributor();
+    final configPublicKey = Platform.environment["AVEE_CONFIG_PUBLIC_KEY"];
+    final configDefine = configPublicKey == null || configPublicKey.isEmpty
+        ? ''
+        : ' --build-dart-define=AVEE_CONFIG_PUBLIC_KEY=$configPublicKey';
     await Build.exec(
       name: name,
       Build.getExecutable(
-        "flutter_distributor package --skip-clean --platform ${target.name} --targets $targets --flutter-build-args=verbose$args --build-dart-define=APP_ENV=$env",
+        "flutter_distributor package --skip-clean --platform ${target.name} --targets $targets --flutter-build-args=verbose$args --build-dart-define=APP_ENV=$env$configDefine",
       ),
     );
   }
@@ -851,6 +855,8 @@ class BuildCommand extends Command {
               "--release",
               "--dart-define=APP_ENV=$env",
               "--dart-define=CORE_VERSION=$coreVersion",
+              if ((Platform.environment["AVEE_CONFIG_PUBLIC_KEY"] ?? '').isNotEmpty)
+                "--dart-define=AVEE_CONFIG_PUBLIC_KEY=${Platform.environment["AVEE_CONFIG_PUBLIC_KEY"]}",
             ],
           );
           Build.copyFile(
