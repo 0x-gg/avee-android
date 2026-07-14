@@ -120,7 +120,11 @@ class AveeAccountState extends ChangeNotifier {
     if (current == null) return;
     await _run(() async {
       await _api.deleteAccount(current);
-      await clear();
+      // Account deletion revokes the device identity server-side. Remove the
+      // local key pair too, otherwise a subsequent fresh account on this
+      // device would reuse a public key that the backend correctly rejects as
+      // already registered.
+      await clear(removeDeviceKey: true);
     });
   }
 
@@ -229,17 +233,22 @@ class AveeAccountState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> clear() async {
+  Future<void> clear({bool removeDeviceKey = false}) async {
     session = null;
     recoveryCode = null;
     access = false;
-    await Future.wait([
+    final cleanup = <Future<void>>[
       _storage.delete(key: _accountIdKey),
       _storage.delete(key: _accountNumberKey),
       _storage.delete(key: _deviceIdKey),
       _storage.delete(key: _sessionTokenKey),
       _storage.delete(key: _sessionExpiresKey),
-    ]);
+    ];
+    if (removeDeviceKey) {
+      cleanup.add(_storage.delete(key: _publicKeyKey));
+      cleanup.add(_storage.delete(key: _privateKeyKey));
+    }
+    await Future.wait(cleanup);
     notifyListeners();
   }
 
