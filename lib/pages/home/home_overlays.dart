@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dropweb/common/common.dart';
 import 'package:dropweb/pages/home/connect_circle.dart';
 import 'package:flutter/material.dart';
@@ -95,6 +97,10 @@ class MobileEmptyGuidanceOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Android's empty state is AVEE account onboarding. The legacy copy below
+    // describes arbitrary subscription imports, which are not an Android
+    // entry point anymore and must not remain visible as an affordance.
+    if (Platform.isAndroid) return const SizedBox.shrink();
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
     final colorScheme = theme.colorScheme;
