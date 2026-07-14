@@ -10,6 +10,7 @@ import 'package:dropweb/plugins/app.dart';
 import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/state.dart';
 import 'package:dropweb/views/dashboard/widgets/vpn_disclosure_dialog.dart';
+import 'package:dropweb/views/profiles/add_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
