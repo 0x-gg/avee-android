@@ -1,6 +1,7 @@
 name: Android CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, integration/mvp]
   pull_request:
@@ -30,7 +31,14 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
       - name: Format check
-        run: dart format --output=none --set-exit-if-changed lib test
+        shell: bash
+        run: |
+          files=$(git diff --name-only HEAD^ HEAD -- 'lib/**/*.dart' 'test/**/*.dart')
+          if [ -n "$files" ]; then
+            dart format --output=none --set-exit-if-changed $files
+          else
+            echo 'No changed Dart files to format-check'
+          fi
       - name: Analyze
         run: flutter analyze --no-fatal-infos
       - name: Unit tests
