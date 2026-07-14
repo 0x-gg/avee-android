@@ -248,6 +248,37 @@ class AppController {
   Future<void> addProfile(Profile profile) =>
       _profileService.addProfile(profile);
 
+  /// Installs the backend-owned managed profile as the only AVEE-controlled
+  /// profile. It has no subscription URL, so the client cannot replace it
+  /// through Dropweb's generic import/update paths.
+  Future<void> installManagedProfile(String yaml) async {
+    const managedId = 'avee-managed-profile';
+    final existing = _ref.read(profilesProvider).getProfile(managedId);
+    final profile =
+        (existing ?? Profile.normal(label: 'AVEE Managed')).copyWith(
+      id: managedId,
+      label: 'AVEE Managed',
+      url: '',
+      autoUpdate: false,
+      workMode: WorkMode.standard,
+    );
+    final saved = await profile.saveFileWithString(yaml);
+    _ref.read(profilesProvider.notifier).setProfile(saved);
+    _ref.read(currentProfileIdProvider.notifier).value = managedId;
+    applyProfileDebounce(silence: true);
+  }
+
+  /// Removes the managed profile and its on-disk configuration after account
+  /// deletion or session revocation, so stale access cannot survive locally.
+  Future<void> removeManagedProfile() async {
+    const managedId = 'avee-managed-profile';
+    final profile = _ref.read(profilesProvider).getProfile(managedId);
+    if (profile == null) return;
+    final file = await profile.getFile();
+    if (await file.exists()) await file.delete();
+    await deleteProfile(managedId);
+  }
+
   /// Delegates to [ProfileService.deleteProfile].
   Future<void> deleteProfile(String id) => _profileService.deleteProfile(id);
 
@@ -1344,6 +1375,10 @@ class AppController {
   }
 
   Future<void> addProfileFormURL(String url) async {
+    if (Platform.isAndroid && kIsPlayBuild) {
+      commonPrint.log('[profile] arbitrary import blocked on Play build');
+      return;
+    }
     // SECURITY: restrict schemes — no file://, data:, javascript: reaching HTTP/YAML parser.
     final trimmed = url.trim();
     final uri = Uri.tryParse(trimmed);
@@ -1421,6 +1456,10 @@ class AppController {
   }
 
   Future<Null> addProfileFormFile() async {
+    if (Platform.isAndroid && kIsPlayBuild) {
+      commonPrint.log('[profile] arbitrary file import blocked on Play build');
+      return null;
+    }
     final platformFile = await globalState.safeRun(picker.pickerFile);
     final bytes = platformFile?.bytes;
     if (bytes == null) {
@@ -1444,6 +1483,10 @@ class AppController {
   }
 
   Future<void> addProfileFormQrCode() async {
+    if (Platform.isAndroid && kIsPlayBuild) {
+      commonPrint.log('[profile] arbitrary QR import blocked on Play build');
+      return;
+    }
     final url = await globalState.safeRun(picker.pickerConfigQRCode);
     if (url == null) return;
     addProfileFormURL(url);

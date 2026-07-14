@@ -139,6 +139,7 @@ class _StartButtonState extends ConsumerState<StartButton>
   }
 
   void _handleAddProfile() {
+    if (kIsPlayBuild && Platform.isAndroid) return;
     HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,

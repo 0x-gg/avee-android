@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:dropweb/common/common.dart';
 import 'package:dropweb/pages/scan.dart';
@@ -100,62 +101,70 @@ class _AddProfileViewState extends State<AddProfileView> {
   }
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<bool>(
-        future: system.isAndroidTV,
-        builder: (context, snapshot) {
-          final isTV = snapshot.data ?? false;
-          return ListView(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            children: [
-              // Clipboard row — ALWAYS present, a plain ListItem matching the
-              // QR/URL rows. With a candidate detected at sheet open it names
-              // the service («Добавить sub.example.com», one tap = import);
-              // without one it is a generic paste row that reads on tap. No
-              // subtitle: the title carries the whole intent.
-              Builder(builder: (context) {
-                final candidate = _clipboardCandidate;
-                final host =
-                    candidate != null ? Uri.tryParse(candidate)?.host : null;
-                return ListItem(
-                  leading: const HugeIcon(
-                      icon: HugeIcons.strokeRoundedClipboard, size: 24),
-                  title: Text(
-                    host != null && host.isNotEmpty
-                        ? appLocalizations.addNamedSubscription(host)
-                        : appLocalizations.onboardingClipboardImport,
-                  ),
-                  onTap: candidate != null
-                      ? _handleCandidateImport
-                      : _handlePasteFromClipboard,
-                );
-              }),
-              if (isTV)
-                ListItem(
-                  leading: const HugeIcon(
-                      icon: HugeIcons.strokeRoundedTv01, size: 24),
-                  title: Text(appLocalizations.addFromPhoneTitle),
-                  subtitle: Text(appLocalizations.addFromPhoneSubtitle),
-                  onTap: _handleReceiveFromPhone,
+  Widget build(BuildContext context) {
+    if (kIsPlayBuild && Platform.isAndroid) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Text('Ручной импорт профилей недоступен в AVEE Play'),
+      );
+    }
+    return FutureBuilder<bool>(
+      future: system.isAndroidTV,
+      builder: (context, snapshot) {
+        final isTV = snapshot.data ?? false;
+        return ListView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          children: [
+            // Clipboard row — ALWAYS present, a plain ListItem matching the
+            // QR/URL rows. With a candidate detected at sheet open it names
+            // the service («Добавить sub.example.com», one tap = import);
+            // without one it is a generic paste row that reads on tap. No
+            // subtitle: the title carries the whole intent.
+            Builder(builder: (context) {
+              final candidate = _clipboardCandidate;
+              final host =
+                  candidate != null ? Uri.tryParse(candidate)?.host : null;
+              return ListItem(
+                leading: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedClipboard, size: 24),
+                title: Text(
+                  host != null && host.isNotEmpty
+                      ? appLocalizations.addNamedSubscription(host)
+                      : appLocalizations.onboardingClipboardImport,
                 ),
-              if (system.supportsQrFromImage)
-                ListItem(
-                  leading: const HugeIcon(
-                      icon: HugeIcons.strokeRoundedQrCode, size: 24),
-                  title: Text(appLocalizations.qrcode),
-                  onTap: () => scanProfileQrCode(context),
-                ),
+                onTap: candidate != null
+                    ? _handleCandidateImport
+                    : _handlePasteFromClipboard,
+              );
+            }),
+            if (isTV)
+              ListItem(
+                leading:
+                    const HugeIcon(icon: HugeIcons.strokeRoundedTv01, size: 24),
+                title: Text(appLocalizations.addFromPhoneTitle),
+                subtitle: Text(appLocalizations.addFromPhoneSubtitle),
+                onTap: _handleReceiveFromPhone,
+              ),
+            if (system.supportsQrFromImage)
               ListItem(
                 leading: const HugeIcon(
-                    icon: HugeIcons.strokeRoundedCloudDownload, size: 24),
-                title: Text(appLocalizations.url),
-                onTap: () => showProfileUrlDialog(context),
+                    icon: HugeIcons.strokeRoundedQrCode, size: 24),
+                title: Text(appLocalizations.qrcode),
+                onTap: () => scanProfileQrCode(context),
               ),
-            ],
-          );
-        },
-      );
+            ListItem(
+              leading: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedCloudDownload, size: 24),
+              title: Text(appLocalizations.url),
+              onTap: () => showProfileUrlDialog(context),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 Future<void> addProfileFromUrl(String url) async {

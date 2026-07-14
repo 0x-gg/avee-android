@@ -1,4 +1,5 @@
 import 'package:dropweb/enum/enum.dart';
+import 'package:dropweb/common/common.dart';
 import 'package:dropweb/pages/home/connect_circle.dart';
 import 'package:dropweb/pages/home/home_overlays.dart';
 import 'package:dropweb/pages/home/navigation_bar.dart';
@@ -290,8 +291,7 @@ class AveeAccountBanner extends StatelessWidget {
                           onPressed: state.session == null
                               ? aveeAccountState.createAccount
                               : state.access
-                                  ? aveeAccountState
-                                      .refreshManagedProfileForButton
+                                  ? () => _refreshManagedProfile(context)
                                   : aveeAccountState.startTrial,
                           child: Text(
                             state.session == null
@@ -393,6 +393,22 @@ class AveeAccountBanner extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed == true) await aveeAccountState.deleteAccount();
+    if (confirmed == true) {
+      await aveeAccountState.deleteAccount();
+      await globalState.appController.removeManagedProfile();
+    }
+  }
+
+  Future<void> _refreshManagedProfile(BuildContext context) async {
+    final yaml = await aveeAccountState.refreshManagedProfile();
+    if (yaml == null) return;
+    try {
+      await globalState.appController.installManagedProfile(yaml);
+    } catch (error) {
+      commonPrint.log('[avee] managed profile install failed: $error');
+      if (context.mounted) {
+        globalState.showNotifier('Не удалось применить управляемый профиль');
+      }
+    }
   }
 }

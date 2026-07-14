@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dropweb/common/common.dart';
 import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/state.dart';
@@ -54,6 +56,16 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage>
 
   @override
   Widget build(BuildContext context) {
+    if (kIsPlayBuild && Platform.isAndroid) {
+      return const Scaffold(
+        body: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text('Профиль управляется AVEE и не редактируется вручную'),
+          ),
+        ),
+      );
+    }
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
