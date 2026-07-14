@@ -50,7 +50,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "app.dropweb"
+        applicationId = "com.avee.vpn"
         // hardcoded — flutter_secure_storage 10.x requires minSdk=24 (Android 7.0+),
         // and the core module already required ≥23. Bumped from 23 to 24 together
         // with the secure-storage migration in 2712935. Older Flutter SDKs in CI

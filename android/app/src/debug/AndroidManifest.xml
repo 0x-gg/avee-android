@@ -6,11 +6,11 @@
     -->
     <application
         android:icon="@mipmap/ic_launcher"
-        android:label="dropweb Debug"
+        android:label="AVEE Debug"
         tools:replace="android:label">
         <service
             android:name=".services.DropwebTileService"
-            android:label="dropweb Debug"
+            android:label="AVEE Debug"
             tools:replace="android:label"
             tools:targetApi="24" />
     </application>

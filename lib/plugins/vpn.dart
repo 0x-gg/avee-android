@@ -69,7 +69,7 @@ class Vpn {
   String _cachedServerName = "";
 
   /// Cached profile info for foreground notification
-  String _cachedProfileName = "dropweb";
+  String _cachedProfileName = "AVEE";
   String _cachedServiceName = "";
 
   /// Update cached server name (called from UI when proxy changes)
@@ -146,7 +146,7 @@ class Vpn {
       });
     } catch (e) {
       return json.encode({
-        "title": "dropweb",
+        "title": "AVEE",
         "server": "",
         "content": "",
       });

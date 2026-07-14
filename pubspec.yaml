@@ -42,14 +42,7 @@ dependencies:
   dio: ^5.9.0
   win32: ^5.15.0
   ffi: ^2.1.5
-  re_editor:
-    git:
-      url: https://github.com/enkinvsh/re-editor.git
-      # SECURITY: pin to a specific ref instead of tracking `main`, so
-      # `pub get` produces reproducible builds and an upstream force-push
-      # cannot silently pull new code into our release.
-      # TODO(dropweb): bump to a tag when the fork publishes one.
-      ref: main
+  re_editor: 0.9.0
   re_highlight: ^0.0.3
   lpinyin: ^2.0.3
   emoji_regex: ^0.0.5

@@ -101,7 +101,7 @@
         android:fullBackupContent="false"
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="dropweb"
+        android:label="AVEE"
         android:memtagMode="off"
         android:networkSecurityConfig="@xml/network_security_config"
         tools:targetApi="s">
@@ -165,7 +165,7 @@
             android:name=".services.DropwebTileService"
             android:exported="true"
             android:icon="@drawable/ic_launcher_monochrome"
-            android:label="dropweb"
+            android:label="AVEE"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
             tools:targetApi="n">
             <intent-filter>
@@ -180,7 +180,7 @@
         <receiver
             android:name=".widgets.DropwebWidgetProvider"
             android:exported="true"
-            android:label="dropweb VPN"
+            android:label="AVEE VPN"
             android:permission="android.permission.BIND_APPWIDGET">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

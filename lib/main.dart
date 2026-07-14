@@ -239,7 +239,7 @@ Future<void> _service(List<String> flags) async {
   );
 
   // Provide foreground notification params using data from globalState.config.
-  // Shows: title = selected server (else service name, else "dropweb"),
+  // Shows: title = selected server (else service name, else "AVEE"),
   // content = "↑ speed ↓ speed", subText = "uptime • total".
   vpn?.handleGetStartForegroundParams = () {
     try {
@@ -263,7 +263,7 @@ Future<void> _service(List<String> flags) async {
 
       // Title: panel profile title (Remnawave `profile-title`, the big
       // dashboard subscription-card title — may be `base64:`-prefixed), else
-      // selected server name, else provider service name, else "dropweb".
+      // selected server name, else provider service name, else "AVEE".
       final rawProfileTitle = profile?.providerHeaders['profile-title'];
       final profileTitle =
           (rawProfileTitle == null || rawProfileTitle.isEmpty)
@@ -275,7 +275,7 @@ Future<void> _service(List<String> flags) async {
           ? profileTitle
           : (serverDisplay.isNotEmpty
               ? serverDisplay
-              : (serviceName.isNotEmpty ? serviceName : "dropweb"));
+              : (serviceName.isNotEmpty ? serviceName : "AVEE"));
 
       // Content: "↑ speed  ↓ speed"
       final content =
@@ -303,7 +303,7 @@ Future<void> _service(List<String> flags) async {
         "content": content,
       });
     } catch (_) {
-      return json.encode({"title": "dropweb", "server": "", "content": ""});
+      return json.encode({"title": "AVEE", "server": "", "content": ""});
     }
   };
 
