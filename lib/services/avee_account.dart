@@ -143,6 +143,19 @@ class AveeAccountState extends ChangeNotifier {
 
   Future<Map<String, dynamic>> billingMethods() => _api.billingMethods();
 
+  Future<Map<String, dynamic>> createPlategaOrder({required String planCode}) {
+    final current = session;
+    if (current == null) throw StateError('Account session is missing');
+    return _api.createPlategaOrder(current,
+        planCode: planCode, currency: 'RUB');
+  }
+
+  Future<Map<String, dynamic>> plategaOrder(String orderId) {
+    final current = session;
+    if (current == null) throw StateError('Account session is missing');
+    return _api.getPlategaOrder(current, orderId);
+  }
+
   Future<void> restoreGooglePurchases() async {
     final current = session;
     if (current == null) return;

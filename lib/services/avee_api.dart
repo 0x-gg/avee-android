@@ -123,6 +123,19 @@ class AveeApi {
           token: session.token,
           extraHeaders: {'x-account-id': session.accountId});
 
+  Future<Map<String, dynamic>> createPlategaOrder(AveeSession session,
+          {required String planCode, required String currency}) =>
+      _request('POST', '/billing/platega/orders',
+          token: session.token,
+          extraHeaders: {'x-account-id': session.accountId},
+          body: {'planCode': planCode, 'currency': currency});
+
+  Future<Map<String, dynamic>> getPlategaOrder(
+          AveeSession session, String orderId) =>
+      _request('GET', '/billing/platega/orders/$orderId',
+          token: session.token,
+          extraHeaders: {'x-account-id': session.accountId});
+
   Future<String> managedMihomoProfile(AveeSession session,
       {String? hwid}) async {
     final response = await _request('GET', '/config/mihomo',
