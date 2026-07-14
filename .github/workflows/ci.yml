@@ -51,6 +51,12 @@ jobs:
           dart setup.dart android --arch amd64 --out core
       - name: Build debug APK
         run: flutter build apk --debug --android-skip-build-dependency-validation
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: avee-debug-apk-${{ github.run_number }}
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
       - name: Verify Play permission overlay
         shell: bash
         run: |
