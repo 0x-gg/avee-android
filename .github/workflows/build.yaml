@@ -212,6 +212,7 @@ jobs:
             [dropweb-armeabi-v7a.apk]=dropweb-$version-android-armeabi-v7a.apk
             [dropweb-x86_64.apk]=dropweb-$version-android-x86_64.apk
             [dropweb-universal.apk]=dropweb-$version-android-universal.apk
+            [dropweb-android-play.aab]=dropweb-$version-android-play.aab
             [dropweb-arm64.dmg]=dropweb-$version-macos-arm64.dmg
             [dropweb-amd64.dmg]=dropweb-$version-macos-amd64.dmg
             [dropweb-amd64-setup.exe]=dropweb-$version-windows-amd64-setup.exe

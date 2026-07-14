@@ -14,6 +14,7 @@
     <td>
       <a href="https://github.com/enkinvsh/dropweb/releases/download/vVERSION/dropweb-VERSION-android-arm64-v8a.apk"><img src="https://img.shields.io/badge/arm64--v8a-APK-eab308?style=for-the-badge&logo=android&logoColor=white" alt="arm64"></a>
       <a href="https://github.com/enkinvsh/dropweb/releases/download/vVERSION/dropweb-VERSION-android-universal.apk"><img src="https://img.shields.io/badge/universal-APK-30363d?style=for-the-badge&logo=android&logoColor=white" alt="universal"></a>
+      <a href="https://github.com/enkinvsh/dropweb/releases/download/vVERSION/dropweb-VERSION-android-play.aab"><img src="https://img.shields.io/badge/Google_Play-AAB-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Google Play AAB"></a>
       <a href="https://github.com/enkinvsh/dropweb/releases/download/vVERSION/dropweb-VERSION-android-armeabi-v7a.apk"><img src="https://img.shields.io/badge/armeabi--v7a-APK-30363d?style=for-the-badge&logo=android&logoColor=white" alt="armeabi-v7a"></a>
       <a href="https://github.com/enkinvsh/dropweb/releases/download/vVERSION/dropweb-VERSION-android-x86_64.apk"><img src="https://img.shields.io/badge/x86__64-APK-30363d?style=for-the-badge&logo=android&logoColor=white" alt="x86_64"></a>
     </td>

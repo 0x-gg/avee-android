@@ -864,6 +864,28 @@ class BuildCommand extends Command {
                 "app-release.apk"),
             join(Build.distPath, "${Build.appName}-universal.apk"),
           );
+
+          // Google Play consumes the signed Android App Bundle. Keep this
+          // artifact alongside the APKs so a stable tag always produces the
+          // review/upload artifact from the exact same source and defines.
+          await Build.exec(
+            name: "flutter build appbundle (Play)",
+            [
+              "flutter",
+              "build",
+              "appbundle",
+              "--release",
+              "--dart-define=APP_ENV=$env",
+              "--dart-define=CORE_VERSION=$coreVersion",
+              if ((Platform.environment["AVEE_CONFIG_PUBLIC_KEY"] ?? '').isNotEmpty)
+                "--dart-define=AVEE_CONFIG_PUBLIC_KEY=${Platform.environment["AVEE_CONFIG_PUBLIC_KEY"]}",
+            ],
+          );
+          Build.copyFile(
+            join(current, "build", "app", "outputs", "bundle", "release",
+                "app-release.aab"),
+            join(Build.distPath, "${Build.appName}-android-play.aab"),
+          );
         }
 
         return;
