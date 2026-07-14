@@ -1,0 +1,54 @@
+name: Android CI
+
+on:
+  push:
+    branches: [main, integration/mvp]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.0'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.41.6
+          cache: true
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Format check
+        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+      - name: Unit tests
+        run: flutter test
+      - name: Build native core for emulator ABI
+        shell: bash
+        run: |
+          export ANDROID_NDK="$ANDROID_SDK_ROOT/ndk/28.2.13676358"
+          dart setup.dart android --arch amd64 --out core
+      - name: Build debug APK
+        run: flutter build apk --debug --android-skip-build-dependency-validation
+      - name: Verify Play permission overlay
+        shell: bash
+        run: |
+          if grep -q 'REQUEST_INSTALL_PACKAGES' android/app/src/play/AndroidManifest.xml && \
+             ! grep -q 'tools:node="remove"' android/app/src/play/AndroidManifest.xml; then
+            echo 'Play manifest must remove REQUEST_INSTALL_PACKAGES'
+            exit 1
+          fi
+      - name: Dependency audit
+        run: flutter pub deps --json > /tmp/avee-pub-deps.json
