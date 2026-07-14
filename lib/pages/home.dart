@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/avee_account.dart';
 import '../../services/avee_billing.dart';
+import '../views/avee_account_sheet.dart';
 
 export 'package:dropweb/pages/home/connect_circle.dart'
     show connectButtonCenter;
@@ -289,13 +290,13 @@ class AveeAccountBanner extends StatelessWidget {
                       children: [
                         TextButton(
                           onPressed: state.session == null
-                              ? aveeAccountState.createAccount
+                              ? () => AveeAccountSheet.show(context)
                               : state.access
                                   ? () => _refreshManagedProfile(context)
                                   : aveeAccountState.startTrial,
                           child: Text(
                             state.session == null
-                                ? 'Создать'
+                                ? 'Аккаунт'
                                 : state.access
                                     ? 'Обновить профиль'
                                     : 'Пробный период',

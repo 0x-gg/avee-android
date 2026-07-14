@@ -1375,7 +1375,7 @@ class AppController {
   }
 
   Future<void> addProfileFormURL(String url) async {
-    if (Platform.isAndroid && kIsPlayBuild) {
+    if (Platform.isAndroid) {
       commonPrint.log('[profile] arbitrary import blocked on Play build');
       return;
     }
@@ -1456,7 +1456,7 @@ class AppController {
   }
 
   Future<Null> addProfileFormFile() async {
-    if (Platform.isAndroid && kIsPlayBuild) {
+    if (Platform.isAndroid) {
       commonPrint.log('[profile] arbitrary file import blocked on Play build');
       return null;
     }
@@ -1483,7 +1483,7 @@ class AppController {
   }
 
   Future<void> addProfileFormQrCode() async {
-    if (Platform.isAndroid && kIsPlayBuild) {
+    if (Platform.isAndroid) {
       commonPrint.log('[profile] arbitrary QR import blocked on Play build');
       return;
     }

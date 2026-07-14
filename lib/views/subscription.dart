@@ -56,7 +56,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage>
 
   @override
   Widget build(BuildContext context) {
-    if (kIsPlayBuild && Platform.isAndroid) {
+    if (Platform.isAndroid) {
       return const Scaffold(
         body: Center(
           child: Padding(

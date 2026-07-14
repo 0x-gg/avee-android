@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
@@ -25,6 +26,7 @@ class AveeAccountState extends ChangeNotifier {
   static const _publicKeyKey = 'avee.device_public_key';
   static const _privateKeyKey = 'avee.device_private_key';
   static const _managedProfileKey = 'avee.managed_profile';
+  static const _installationIdKey = 'avee.installation_id';
 
   static String get _defaultBaseUrl {
     const configured = String.fromEnvironment('AVEE_API_URL');
@@ -42,6 +44,10 @@ class AveeAccountState extends ChangeNotifier {
   DateTime? accessExpiresAt;
   String? error;
   String? recoveryCode;
+  String? accessReason;
+  int? trafficLimitBytes;
+  int? trafficUsedBytes;
+  int? trafficRemainingBytes;
   DateTime? managedProfileUpdatedAt;
 
   Future<void> restore() async {
@@ -75,6 +81,7 @@ class AveeAccountState extends ChangeNotifier {
       final info = await PackageInfo.fromPlatform();
       final created = await _api.createAccount(
         publicKey: base64UrlEncode(keyPair.publicKey.bytes),
+        installationId: await _ensureInstallationId(),
         deviceName: Platform.operatingSystem,
         appVersion: info.version,
       );
@@ -96,6 +103,7 @@ class AveeAccountState extends ChangeNotifier {
         accountNumber: accountNumber.trim(),
         recoveryCode: recoveryCode.trim(),
         publicKey: base64UrlEncode(keyPair.publicKey.bytes),
+        installationId: await _ensureInstallationId(),
         deviceName: Platform.operatingSystem,
         appVersion: info.version,
       );
@@ -232,6 +240,10 @@ class AveeAccountState extends ChangeNotifier {
       final state = await _api.accountState(current);
       reachable = true;
       access = state['access'] == true;
+      accessReason = state['accessReason'] as String?;
+      trafficLimitBytes = int.tryParse(state['trafficLimitBytes'] as String? ?? '');
+      trafficUsedBytes = int.tryParse(state['trafficUsedBytes'] as String? ?? '');
+      trafficRemainingBytes = int.tryParse(state['trafficRemainingBytes'] as String? ?? '');
       accessExpiresAt =
           DateTime.tryParse(state['entitlementExpiresAt'] as String? ?? '');
       error = null;
@@ -250,6 +262,10 @@ class AveeAccountState extends ChangeNotifier {
     session = null;
     recoveryCode = null;
     access = false;
+    accessReason = null;
+    trafficLimitBytes = null;
+    trafficUsedBytes = null;
+    trafficRemainingBytes = null;
     final cleanup = <Future<void>>[
       _storage.delete(key: _accountIdKey),
       _storage.delete(key: _accountNumberKey),
@@ -290,6 +306,15 @@ class AveeAccountState extends ChangeNotifier {
       type: KeyPairType.ed25519,
       publicKey: publicKey,
     );
+  }
+
+  Future<String> _ensureInstallationId() async {
+    final existing = await _storage.read(key: _installationIdKey);
+    if (existing != null && existing.length >= 16) return existing;
+    final bytes = List<int>.generate(24, (_) => Random.secure().nextInt(256));
+    final value = base64UrlEncode(bytes);
+    await _storage.write(key: _installationIdKey, value: value);
+    return value;
   }
 
   Future<void> _save(AveeSession value) async {

@@ -102,7 +102,7 @@ class _AddProfileViewState extends State<AddProfileView> {
 
   @override
   Widget build(BuildContext context) {
-    if (kIsPlayBuild && Platform.isAndroid) {
+    if (Platform.isAndroid) {
       return const Padding(
         padding: EdgeInsets.all(24),
         child: Text('Ручной импорт профилей недоступен в AVEE Play'),

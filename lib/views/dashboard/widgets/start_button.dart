@@ -10,13 +10,13 @@ import 'package:dropweb/plugins/app.dart';
 import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/state.dart';
 import 'package:dropweb/views/dashboard/widgets/vpn_disclosure_dialog.dart';
-import 'package:dropweb/views/profiles/add_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import '../../../services/avee_account.dart';
+import '../../../views/avee_account_sheet.dart';
 
 class StartButton extends ConsumerStatefulWidget {
   const StartButton({super.key, this.iconSize = 48.0});
@@ -77,7 +77,6 @@ class _StartButtonState extends ConsumerState<StartButton>
     // the Play artifact. The backend remains authoritative; this local guard
     // prevents a revoked/expired session from starting a stale tunnel.
     if (next &&
-        kIsPlayBuild &&
         Platform.isAndroid &&
         (aveeAccountState.session == null || !aveeAccountState.access)) {
       globalState.showNotifier('Активируйте AVEE-доступ перед подключением');
@@ -152,7 +151,11 @@ class _StartButtonState extends ConsumerState<StartButton>
   }
 
   void _handleAddProfile() {
-    if (kIsPlayBuild && Platform.isAndroid) return;
+    if (Platform.isAndroid) {
+      HapticFeedback.lightImpact();
+      AveeAccountSheet.show(context);
+      return;
+    }
     HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
