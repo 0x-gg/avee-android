@@ -228,7 +228,7 @@ class MessageLookup extends MessageLookupByLibrary {
         "direct": MessageLookupByLibrary.simpleMessage("ダイレクト"),
         "disclaimer": MessageLookupByLibrary.simpleMessage("免責事項"),
         "disclaimerDesc": MessageLookupByLibrary.simpleMessage(
-          "本ソフトウェアは学習交流や科学研究などの非営利目的でのみ使用されます。商用利用は厳禁です。いかなる商用活動も本ソフトウェアとは無関係です。",
+          "AVEE は Android の VPN 権限を使用してローカル VPN トンネルを作成します。接続と切断は利用者が管理し、通信は管理プロファイルとサービス規約に従って処理されます。",
         ),
         "discoverNewVersion": MessageLookupByLibrary.simpleMessage("新バージョンを発見"),
         "discovery": MessageLookupByLibrary.simpleMessage("新しいバージョンを発見"),

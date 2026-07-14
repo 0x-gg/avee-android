@@ -278,7 +278,7 @@ class MessageLookup extends MessageLookupByLibrary {
         "direct": MessageLookupByLibrary.simpleMessage("Direct"),
         "disclaimer": MessageLookupByLibrary.simpleMessage("Disclaimer"),
         "disclaimerDesc": MessageLookupByLibrary.simpleMessage(
-          "This software is only used for non-commercial purposes such as learning exchanges and scientific research. It is strictly prohibited to use this software for commercial purposes. Any commercial activity, if any, has nothing to do with this software.",
+          "AVEE uses Android's VPN permission to create a local VPN tunnel. You control when it connects and disconnects; traffic is handled according to the managed profile and service terms.",
         ),
         "discoverNewVersion":
             MessageLookupByLibrary.simpleMessage("New version"),

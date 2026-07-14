@@ -203,7 +203,7 @@ class MessageLookup extends MessageLookupByLibrary {
         "direct": MessageLookupByLibrary.simpleMessage("直连"),
         "disclaimer": MessageLookupByLibrary.simpleMessage("免责声明"),
         "disclaimerDesc": MessageLookupByLibrary.simpleMessage(
-          "本软件仅供学习交流、科研等非商业性质的用途，严禁将本软件用于商业目的。如有任何商业行为，均与本软件无关。",
+          "AVEE 使用 Android VPN 权限创建本地 VPN 隧道。您可以随时控制连接和断开；流量按照托管配置和服务条款处理。",
         ),
         "discoverNewVersion": MessageLookupByLibrary.simpleMessage("发现新版本"),
         "discovery": MessageLookupByLibrary.simpleMessage("发现新版本"),
