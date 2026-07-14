@@ -16,6 +16,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+import '../../../services/avee_account.dart';
+
 class StartButton extends ConsumerStatefulWidget {
   const StartButton({super.key, this.iconSize = 48.0});
 
@@ -70,6 +72,17 @@ class _StartButtonState extends ConsumerState<StartButton>
   Future<void> handleSwitchStart() async {
     final currentlyRunning = ref.read(runTimeProvider) != null;
     final next = !currentlyRunning;
+
+    // A cached managed profile must never outlive the backend entitlement on
+    // the Play artifact. The backend remains authoritative; this local guard
+    // prevents a revoked/expired session from starting a stale tunnel.
+    if (next &&
+        kIsPlayBuild &&
+        Platform.isAndroid &&
+        (aveeAccountState.session == null || !aveeAccountState.access)) {
+      globalState.showNotifier('Активируйте AVEE-доступ перед подключением');
+      return;
+    }
 
     // Disconnect keeps the existing feedback timing — play the power-off
     // cue immediately so the user gets a confirmation tick on tap. Feedback
