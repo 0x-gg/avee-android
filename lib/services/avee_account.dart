@@ -9,6 +9,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:yaml/yaml.dart';
 
 import 'avee_api.dart';
+import '../utils/device_info_service.dart';
 
 /// Thin client-side AVEE account state. The VPN profile remains owned by
 /// Dropweb; this service only owns the AVEE control-plane session and device
@@ -78,10 +79,12 @@ class AveeAccountState extends ChangeNotifier {
   Future<void> createAccount() async {
     await _run(() async {
       final keyPair = await _ensureDeviceKeyPair();
+      final fingerprint = (await DeviceInfoService().getDeviceDetails()).hwid;
       final info = await PackageInfo.fromPlatform();
       final created = await _api.createAccount(
         publicKey: base64UrlEncode(keyPair.publicKey.bytes),
         installationId: await _ensureInstallationId(),
+        deviceFingerprint: fingerprint,
         deviceName: Platform.operatingSystem,
         appVersion: info.version,
       );
@@ -98,12 +101,14 @@ class AveeAccountState extends ChangeNotifier {
   }) async {
     await _run(() async {
       final keyPair = await _ensureDeviceKeyPair();
+      final fingerprint = (await DeviceInfoService().getDeviceDetails()).hwid;
       final info = await PackageInfo.fromPlatform();
       final recovered = await _api.recoverAccount(
         accountNumber: accountNumber.trim(),
         recoveryCode: recoveryCode.trim(),
         publicKey: base64UrlEncode(keyPair.publicKey.bytes),
         installationId: await _ensureInstallationId(),
+        deviceFingerprint: fingerprint,
         deviceName: Platform.operatingSystem,
         appVersion: info.version,
       );

@@ -53,11 +53,13 @@ class AveeApi {
   Future<AveeSession> createAccount(
       {required String publicKey,
       String? installationId,
+      String? deviceFingerprint,
       String? deviceName,
       String? appVersion}) async {
     final response = await _request('POST', '/accounts', body: {
       'publicKey': publicKey,
       if (installationId != null) 'installationId': installationId,
+      if (deviceFingerprint != null) 'deviceFingerprint': deviceFingerprint,
       if (deviceName != null) 'deviceName': deviceName,
       if (appVersion != null) 'appVersion': appVersion
     });
@@ -69,6 +71,7 @@ class AveeApi {
     required String recoveryCode,
     required String publicKey,
     String? installationId,
+    String? deviceFingerprint,
     String? deviceName,
     String? appVersion,
   }) async {
@@ -77,6 +80,7 @@ class AveeApi {
       'recoveryCode': recoveryCode,
       'publicKey': publicKey,
       if (installationId != null) 'installationId': installationId,
+      if (deviceFingerprint != null) 'deviceFingerprint': deviceFingerprint,
       if (deviceName != null) 'deviceName': deviceName,
       if (appVersion != null) 'appVersion': appVersion,
     });
