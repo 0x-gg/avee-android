@@ -8,7 +8,10 @@ import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-export 'package:dropweb/pages/home/connect_circle.dart' show connectButtonCenter;
+import '../../services/avee_account.dart';
+
+export 'package:dropweb/pages/home/connect_circle.dart'
+    show connectButtonCenter;
 
 typedef OnSelected = void Function(int index);
 
@@ -222,6 +225,12 @@ class _HomePageViewState extends ConsumerState<_HomePageView> {
     return Stack(
       children: [
         pageView,
+        const Positioned(
+          top: 8,
+          left: 16,
+          right: 16,
+          child: AveeAccountBanner(),
+        ),
         MobileIndicatorOverlay(
           buttonSize: connectSize,
           currentIndex: currentIndex == -1 ? 0 : currentIndex,
@@ -230,4 +239,53 @@ class _HomePageViewState extends ConsumerState<_HomePageView> {
       ],
     );
   }
+}
+
+class AveeAccountBanner extends StatelessWidget {
+  const AveeAccountBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: aveeAccountState,
+        builder: (context, _) {
+          final state = aveeAccountState;
+          if (state.session != null && state.access) {
+            return const SizedBox.shrink();
+          }
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud_outlined, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      state.session == null
+                          ? 'AVEE: подключите аккаунт для управляемого доступа'
+                          : 'AVEE: активируйте пробный доступ',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (state.loading)
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    TextButton(
+                      onPressed: state.session == null
+                          ? aveeAccountState.createAccount
+                          : aveeAccountState.startTrial,
+                      child: Text(
+                          state.session == null ? 'Создать' : 'Пробный период'),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
 }

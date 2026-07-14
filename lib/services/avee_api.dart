@@ -67,6 +67,20 @@ class AveeApi {
       _request('POST', '/accounts/${session.accountId}/trial',
           token: session.token);
 
+  Future<
+      Map<String,
+          dynamic>> issueDeviceChallenge(AveeSession session) => _request(
+      'POST',
+      '/accounts/${session.accountId}/devices/${session.deviceId}/challenge',
+      token: session.token);
+
+  Future<Map<String, dynamic>> verifyDeviceChallenge(AveeSession session,
+          {required String challenge, required String signature}) =>
+      _request('POST',
+          '/accounts/${session.accountId}/devices/${session.deviceId}/challenge/verify',
+          token: session.token,
+          body: {'challenge': challenge, 'signature': signature});
+
   Future<Map<String, dynamic>> clientConfig() =>
       _request('GET', '/config/client');
 
