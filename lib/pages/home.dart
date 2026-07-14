@@ -300,6 +300,11 @@ class AveeAccountBanner extends StatelessWidget {
                           ),
                         if (state.session != null)
                           TextButton(
+                            onPressed: () => AveePaywall.show(context),
+                            child: const Text('Тарифы'),
+                          ),
+                        if (state.session != null)
+                          TextButton(
                             onPressed: aveeBillingService.restore,
                             child: const Text('Восстановить покупки'),
                           ),

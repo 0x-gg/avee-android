@@ -125,6 +125,8 @@ class AveeAccountState extends ChangeNotifier {
     });
   }
 
+  Future<Map<String, dynamic>> billingMethods() => _api.billingMethods();
+
   Future<void> restoreGooglePurchases() async {
     final current = session;
     if (current == null) return;
