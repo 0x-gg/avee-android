@@ -35,9 +35,6 @@
          CONTEXTUALLY (only after the user's first successful VPN start) and only
          once ever — never an app-launch nag — to stay Google Play compliant. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-    <!-- In-app self-update for the side-loaded build. The Play source-set
-         manifest overlay removes this permission from the Play artifact. -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!--
         Package visibility for per-app VPN access control and config-file
         sharing is scoped narrowly via the <queries> block below; the broad

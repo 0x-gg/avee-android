@@ -160,7 +160,7 @@ dropweb — клиент: серверную инфраструктуру при
 
 ## <img src="docs/icons/opensource.svg" width="24" alt="" /> Открытый код
 
-dropweb распространяется под лицензией **GPL-3.0** — исходный код полностью открыт и доступен для аудита. Проект основан на FlClashX (форк FlClash) и использует ядро mihomo (Clash.Meta); мы благодарны их авторам и сообществу.
+AVEE распространяется под лицензией **GPL-3.0** — исходный код полностью открыт и доступен для аудита. AVEE — производный клиент на базе Dropweb и использует ядро mihomo (Clash.Meta); upstream-уведомления и лицензии сохранены в соответствии с GPL.
 
 - FlClashX (© pluralplay) — https://github.com/pluralplay/FlClashX
 - FlClash (© chen08209) — https://github.com/chen08209/FlClash
