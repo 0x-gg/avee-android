@@ -54,12 +54,17 @@ class AveeApi {
       {required String publicKey,
       String? installationId,
       String? deviceFingerprint,
+      String? playIntegrityToken,
+      String? playIntegrityRequestHash,
       String? deviceName,
       String? appVersion}) async {
     final response = await _request('POST', '/accounts', body: {
       'publicKey': publicKey,
       if (installationId != null) 'installationId': installationId,
       if (deviceFingerprint != null) 'deviceFingerprint': deviceFingerprint,
+      if (playIntegrityToken != null) 'playIntegrityToken': playIntegrityToken,
+      if (playIntegrityRequestHash != null)
+        'playIntegrityRequestHash': playIntegrityRequestHash,
       if (deviceName != null) 'deviceName': deviceName,
       if (appVersion != null) 'appVersion': appVersion
     });
@@ -72,6 +77,8 @@ class AveeApi {
     required String publicKey,
     String? installationId,
     String? deviceFingerprint,
+    String? playIntegrityToken,
+    String? playIntegrityRequestHash,
     String? deviceName,
     String? appVersion,
   }) async {
@@ -81,6 +88,9 @@ class AveeApi {
       'publicKey': publicKey,
       if (installationId != null) 'installationId': installationId,
       if (deviceFingerprint != null) 'deviceFingerprint': deviceFingerprint,
+      if (playIntegrityToken != null) 'playIntegrityToken': playIntegrityToken,
+      if (playIntegrityRequestHash != null)
+        'playIntegrityRequestHash': playIntegrityRequestHash,
       if (deviceName != null) 'deviceName': deviceName,
       if (appVersion != null) 'appVersion': appVersion,
     });

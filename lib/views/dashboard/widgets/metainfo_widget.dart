@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dropweb/common/common.dart';
 import 'package:dropweb/models/models.dart';
@@ -393,7 +394,7 @@ class _MetainfoWidgetState extends ConsumerState<MetainfoWidget> {
     required String? renewUrl,
     required String? topUpUrl,
   }) {
-    if (!showRenew && !showTopUp) {
+    if (Platform.isAndroid || (!showRenew && !showTopUp)) {
       return const SizedBox.shrink();
     }
 

@@ -187,6 +187,8 @@ class _ProfileItemState extends State<ProfileItem> {
   Widget build(BuildContext context) {
     final displayName = widget.profile.serviceName;
     final fallbackLabel = widget.profile.label ?? widget.profile.id;
+    final managedAndroidProfile =
+        Platform.isAndroid && widget.profile.id == 'avee-managed-profile';
     return CommonCard(
       radius: Lumina.radiusLg,
       isSelected: widget.profile.id == widget.groupValue,
@@ -236,7 +238,8 @@ class _ProfileItemState extends State<ProfileItem> {
                     ),
                   ),
                 ),
-                SizedBox(
+                if (!managedAndroidProfile)
+                  SizedBox(
                   height: 40,
                   width: 40,
                   child: FadeThroughBox(
@@ -321,7 +324,7 @@ class _ProfileItemState extends State<ProfileItem> {
                             ),
                           ),
                   ),
-                ),
+                  ),
               ],
             ),
           ),
