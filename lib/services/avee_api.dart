@@ -101,6 +101,18 @@ class AveeApi {
   Future<Map<String, dynamic>> clientConfig() =>
       _request('GET', '/config/client');
 
+  Future<Map<String, dynamic>> completeGooglePurchase(AveeSession session,
+          {required String productId, required String purchaseToken}) =>
+      _request('POST', '/billing/google/complete',
+          token: session.token,
+          extraHeaders: {'x-account-id': session.accountId},
+          body: {'productId': productId, 'purchaseToken': purchaseToken});
+
+  Future<Map<String, dynamic>> restoreGooglePurchases(AveeSession session) =>
+      _request('POST', '/billing/google/restore',
+          token: session.token,
+          extraHeaders: {'x-account-id': session.accountId});
+
   Future<String> managedMihomoProfile(AveeSession session,
       {String? hwid}) async {
     final response = await _request('GET', '/config/mihomo',

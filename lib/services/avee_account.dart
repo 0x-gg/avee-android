@@ -112,6 +112,28 @@ class AveeAccountState extends ChangeNotifier {
     });
   }
 
+  Future<void> completeGooglePurchase({
+    required String productId,
+    required String purchaseToken,
+  }) async {
+    final current = session;
+    if (current == null) return;
+    await _run(() async {
+      await _api.completeGooglePurchase(current,
+          productId: productId, purchaseToken: purchaseToken);
+      await refresh();
+    });
+  }
+
+  Future<void> restoreGooglePurchases() async {
+    final current = session;
+    if (current == null) return;
+    await _run(() async {
+      await _api.restoreGooglePurchases(current);
+      await refresh();
+    });
+  }
+
   Future<void> verifyDevice() async {
     final current = session;
     if (current == null) return;
