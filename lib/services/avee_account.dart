@@ -41,6 +41,7 @@ class AveeAccountState extends ChangeNotifier {
   bool access = false;
   DateTime? accessExpiresAt;
   String? error;
+  String? recoveryCode;
   DateTime? managedProfileUpdatedAt;
 
   Future<void> restore() async {
@@ -78,6 +79,7 @@ class AveeAccountState extends ChangeNotifier {
         appVersion: info.version,
       );
       await _save(created);
+      recoveryCode = created.recoveryCode;
       await verifyDevice();
       await refresh();
     });
@@ -98,6 +100,7 @@ class AveeAccountState extends ChangeNotifier {
         appVersion: info.version,
       );
       await _save(recovered);
+      this.recoveryCode = recovered.recoveryCode;
       await verifyDevice();
       await refresh();
     });
@@ -228,6 +231,7 @@ class AveeAccountState extends ChangeNotifier {
 
   Future<void> clear() async {
     session = null;
+    recoveryCode = null;
     access = false;
     await Future.wait([
       _storage.delete(key: _accountIdKey),

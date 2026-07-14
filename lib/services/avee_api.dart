@@ -18,13 +18,15 @@ class AveeSession {
       required this.accountNumber,
       required this.deviceId,
       required this.token,
-      required this.expiresAt});
+      required this.expiresAt,
+      this.recoveryCode});
 
   final String accountId;
   final String accountNumber;
   final String deviceId;
   final String token;
   final DateTime expiresAt;
+  final String? recoveryCode;
 
   factory AveeSession.fromJson(Map<String, dynamic> json) {
     final account = json['account'] as Map<String, dynamic>;
@@ -35,7 +37,8 @@ class AveeSession {
         accountNumber: account['accountNumber'] as String,
         deviceId: device['id'] as String,
         token: session['token'] as String,
-        expiresAt: DateTime.parse(session['expiresAt'] as String));
+        expiresAt: DateTime.parse(session['expiresAt'] as String),
+        recoveryCode: json['recoveryCode'] as String?);
   }
 }
 

@@ -258,14 +258,22 @@ class AveeAccountBanner extends StatelessWidget {
                   const Icon(Icons.cloud_outlined, size: 20),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      state.session == null
-                          ? 'AVEE: подключите аккаунт для управляемого доступа'
-                          : state.access
-                              ? 'AVEE: доступ активен'
-                              : 'AVEE: активируйте пробный доступ',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          state.session == null
+                              ? 'AVEE: подключите аккаунт для управляемого доступа'
+                              : state.access
+                                  ? 'AVEE: доступ активен'
+                                  : 'AVEE: активируйте пробный доступ',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (state.recoveryCode != null)
+                          SelectableText(
+                              'Код восстановления: ${state.recoveryCode}'),
+                      ],
                     ),
                   ),
                   if (state.loading)
