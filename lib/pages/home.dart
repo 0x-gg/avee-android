@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/avee_account.dart';
+import '../../services/avee_billing.dart';
 
 export 'package:dropweb/pages/home/connect_circle.dart'
     show connectButtonCenter;
@@ -296,6 +297,11 @@ class AveeAccountBanner extends StatelessWidget {
                           TextButton(
                             onPressed: () => _showRecoveryDialog(context),
                             child: const Text('Восстановить'),
+                          ),
+                        if (state.session != null)
+                          TextButton(
+                            onPressed: aveeBillingService.restore,
+                            child: const Text('Восстановить покупки'),
                           ),
                       ],
                     ),

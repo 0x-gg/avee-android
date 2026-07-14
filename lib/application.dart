@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'controller.dart';
 import 'pages/pages.dart';
 import 'services/avee_account.dart';
+import 'services/avee_billing.dart';
 
 class Application extends ConsumerStatefulWidget {
   const Application({
@@ -53,6 +54,9 @@ class ApplicationState extends ConsumerState<Application> {
     // Restore the control-plane session in the background. A backend outage
     // must never prevent the local VPN UI from starting.
     aveeAccountState.restore();
+    if (Platform.isAndroid) {
+      aveeBillingService.initialize();
+    }
 
     // Cap the global decoded-image cache to bound PSS from network logos/bg.
     PaintingBinding.instance.imageCache.maximumSizeBytes = 50 << 20;
