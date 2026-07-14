@@ -24,8 +24,9 @@ class AveePlayCountry {
 /// billing configuration API on Android.
 class AveePlayCountryService {
   Future<AveePlayCountry> resolve() async {
-    if (!Platform.isAndroid)
+    if (!Platform.isAndroid) {
       return const AveePlayCountry(status: AveePlayCountryStatus.unknown);
+    }
     try {
       final store = InAppPurchase.instance;
       if (!await store.isAvailable()) {
