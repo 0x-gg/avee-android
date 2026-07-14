@@ -59,6 +59,23 @@ class AveeApi {
     return AveeSession.fromJson(response);
   }
 
+  Future<AveeSession> recoverAccount({
+    required String accountNumber,
+    required String recoveryCode,
+    required String publicKey,
+    String? deviceName,
+    String? appVersion,
+  }) async {
+    final response = await _request('POST', '/accounts/recover', body: {
+      'accountNumber': accountNumber,
+      'recoveryCode': recoveryCode,
+      'publicKey': publicKey,
+      if (deviceName != null) 'deviceName': deviceName,
+      if (appVersion != null) 'appVersion': appVersion,
+    });
+    return AveeSession.fromJson(response);
+  }
+
   Future<Map<String, dynamic>> accountState(AveeSession session) =>
       _request('GET', '/accounts/${session.accountId}/state',
           token: session.token);

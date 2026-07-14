@@ -275,12 +275,25 @@ class AveeAccountBanner extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   else
-                    TextButton(
-                      onPressed: state.session == null
-                          ? aveeAccountState.createAccount
-                          : aveeAccountState.startTrial,
-                      child: Text(
-                          state.session == null ? 'Создать' : 'Пробный период'),
+                    Wrap(
+                      spacing: 4,
+                      children: [
+                        TextButton(
+                          onPressed: state.session == null
+                              ? aveeAccountState.createAccount
+                              : aveeAccountState.startTrial,
+                          child: Text(
+                            state.session == null
+                                ? 'Создать'
+                                : 'Пробный период',
+                          ),
+                        ),
+                        if (state.session == null)
+                          TextButton(
+                            onPressed: () => _showRecoveryDialog(context),
+                            child: const Text('Восстановить'),
+                          ),
+                      ],
                     ),
                 ],
               ),
@@ -288,4 +301,48 @@ class AveeAccountBanner extends StatelessWidget {
           );
         },
       );
+
+  Future<void> _showRecoveryDialog(BuildContext context) async {
+    final accountController = TextEditingController();
+    final codeController = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Восстановить AVEE'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: accountController,
+              decoration: const InputDecoration(labelText: 'Account number'),
+              textCapitalization: TextCapitalization.characters,
+            ),
+            TextField(
+              controller: codeController,
+              decoration: const InputDecoration(labelText: 'Recovery code'),
+              obscureText: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              await aveeAccountState.recoverAccount(
+                accountNumber: accountController.text,
+                recoveryCode: codeController.text,
+              );
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
+            },
+            child: const Text('Войти'),
+          ),
+        ],
+      ),
+    );
+    accountController.dispose();
+    codeController.dispose();
+  }
 }

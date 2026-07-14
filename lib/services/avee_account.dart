@@ -80,6 +80,26 @@ class AveeAccountState extends ChangeNotifier {
     });
   }
 
+  Future<void> recoverAccount({
+    required String accountNumber,
+    required String recoveryCode,
+  }) async {
+    await _run(() async {
+      final keyPair = await _ensureDeviceKeyPair();
+      final info = await PackageInfo.fromPlatform();
+      final recovered = await _api.recoverAccount(
+        accountNumber: accountNumber.trim(),
+        recoveryCode: recoveryCode.trim(),
+        publicKey: base64UrlEncode(keyPair.publicKey.bytes),
+        deviceName: Platform.operatingSystem,
+        appVersion: info.version,
+      );
+      await _save(recovered);
+      await verifyDevice();
+      await refresh();
+    });
+  }
+
   Future<void> startTrial() async {
     final current = session;
     if (current == null) return;
