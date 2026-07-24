@@ -2,16 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'avee_account.dart';
-import 'avee_play_country.dart';
+import '../ui/avee_design.dart';
 
 class AveeBillingOffers {
-  const AveeBillingOffers({required this.google, required this.platega});
+  const AveeBillingOffers({required this.google});
 
   final ProductDetailsResponse google;
-  final List<Map<String, dynamic>> platega;
 }
 
 /// Google Play purchase boundary. Store state never grants access locally;
@@ -60,42 +58,10 @@ class AveeBillingService {
       try {
         google = await products(planCodes);
       } catch (_) {
-        // A Play catalog outage must not hide a backend-enabled SBP offer.
+        // A Play catalog outage is reported by the paywall.
       }
     }
-    final country = await aveePlayCountryService.resolve();
-    final methods = (catalog['methods'] as List<dynamic>? ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map((method) => method['provider'])
-        .whereType<String>()
-        .toSet();
-    final platega = country.isRussia && methods.contains('PLATEGA_SBP')
-        ? plans
-            .where((plan) => plan['currency'] == 'RUB')
-            .toList(growable: false)
-        : const <Map<String, dynamic>>[];
-    return AveeBillingOffers(google: google, platega: platega);
-  }
-
-  Future<bool> buyPlatega(String planCode) async {
-    final country = await aveePlayCountryService.resolve();
-    if (!country.isRussia) return false;
-    final catalog = await account.billingMethods();
-    final methods = (catalog['methods'] as List<dynamic>? ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map((method) => method['provider'])
-        .whereType<String>()
-        .toSet();
-    if (!methods.contains('PLATEGA_SBP')) return false;
-    final order = await account.createPlategaOrder(planCode: planCode);
-    final checkout = order['checkoutUrl'] as String?;
-    final uri = checkout == null ? null : Uri.tryParse(checkout);
-    if (uri == null || uri.scheme != 'https') {
-      throw StateError('Backend returned an invalid payment URL');
-    }
-    final launched = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
-    if (launched) await account.refresh();
-    return launched;
+    return AveeBillingOffers(google: google);
   }
 
   Future<bool> buy(ProductDetails product) => store.buyNonConsumable(
@@ -118,15 +84,19 @@ class AveeBillingService {
       if (purchase.status == PurchaseStatus.purchased ||
           purchase.status == PurchaseStatus.restored) {
         final token = purchase.verificationData.serverVerificationData;
+        var verified = false;
         if (token.isNotEmpty) {
-          await account.completeGooglePurchase(
+          verified = await account.completeGooglePurchase(
             productId: purchase.productID,
             purchaseToken: token,
           );
         }
-      }
-      if (purchase.pendingCompletePurchase) {
-        await store.completePurchase(purchase);
+        // Acknowledge/complete only after the backend has verified the token
+        // and the account state reflects the entitlement. If the API is down,
+        // leave the Play purchase pending so it can be retried/restored.
+        if (verified && purchase.pendingCompletePurchase) {
+          await store.completePurchase(purchase);
+        }
       }
     }
   }
@@ -140,51 +110,64 @@ class AveePaywall extends StatelessWidget {
   static Future<void> show(BuildContext context) => showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
+        backgroundColor: AveeColors.surface,
+        barrierColor: Colors.black87,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
         builder: (_) => const AveePaywall(),
       );
 
   @override
   Widget build(BuildContext context) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           child: FutureBuilder<AveeBillingOffers>(
             future: aveeBillingService.offers(),
             builder: (context, snapshot) {
               if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator());
+                return const Center(
+                    child:
+                        CircularProgressIndicator(color: AveeColors.primary));
               }
               if (snapshot.hasError || snapshot.data == null) {
-                return const Text('Тарифы временно недоступны');
+                return const Text('Plans are temporarily unavailable',
+                    style: TextStyle(color: AveeColors.secondaryText));
               }
               final products = snapshot.data!.google.productDetails;
-              final platega = snapshot.data!.platega;
-              if (products.isEmpty && platega.isEmpty) {
-                return const Text('Тарифы пока не настроены');
+              if (products.isEmpty) {
+                return const Text('Plans are not configured yet',
+                    style: TextStyle(color: AveeColors.secondaryText));
               }
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Выберите тариф',
-                      style: Theme.of(context).textTheme.titleLarge),
+                  const Row(children: [
+                    Icon(Icons.workspace_premium_outlined,
+                        color: AveeColors.primary),
+                    SizedBox(width: 10),
+                    Text('Choose a plan',
+                        style: TextStyle(
+                            color: AveeColors.text,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800)),
+                  ]),
+                  const SizedBox(height: 6),
+                  const Text('One subscription. Every available AVEE location.',
+                      style: TextStyle(color: AveeColors.secondaryText)),
                   const SizedBox(height: 12),
                   for (final product in products)
-                    FilledButton(
-                      onPressed: () async {
-                        await aveeBillingService.buy(product);
-                        if (context.mounted) Navigator.pop(context);
-                      },
-                      child: Text('${product.title} — ${product.price}'),
-                    ),
-                  for (final plan in platega)
-                    OutlinedButton(
-                      onPressed: () async {
-                        final opened = await aveeBillingService
-                            .buyPlatega(plan['code'] as String);
-                        if (opened && context.mounted) Navigator.pop(context);
-                      },
-                      child: Text(
-                          'СБП · ${plan['name'] ?? plan['code']} — ${plan['priceMinor'] ~/ 100} ₽'),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: AveePrimaryButton(
+                        icon: Icons.arrow_forward_rounded,
+                        label: '${product.title}  ·  ${product.price}',
+                        onPressed: () async {
+                          await aveeBillingService.buy(product);
+                          if (context.mounted) Navigator.pop(context);
+                        },
+                      ),
                     ),
                 ],
               );
