@@ -1,20 +1,21 @@
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/pages/home/connect_circle.dart';
-import 'package:dropweb/pages/home/home_overlays.dart';
-import 'package:dropweb/pages/home/navigation_bar.dart';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/widgets/widgets.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/pages/home/connect_circle.dart';
+import 'package:avee/pages/home/home_overlays.dart';
+import 'package:avee/pages/home/navigation_bar.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/widgets.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/avee_account.dart';
 import '../../services/avee_billing.dart';
 import '../views/avee_account_sheet.dart';
+import 'avee_mobile_shell.dart';
 
-export 'package:dropweb/pages/home/connect_circle.dart'
-    show connectButtonCenter;
+export 'package:avee/pages/home/connect_circle.dart' show connectButtonCenter;
 
 typedef OnSelected = void Function(int index);
 
@@ -27,6 +28,14 @@ class HomePage extends StatelessWidget {
           builder: (_, ref, child) {
             final state = ref.watch(homeStateProvider);
             final viewMode = state.viewMode;
+            // Android always uses the AVEE mobile shell. The legacy
+            // CommonScaffold dashboard is kept for desktop builds only;
+            // allowing it to win on Android caused the old UI to reappear
+            // when a persisted view mode was restored after an upgrade.
+            if (viewMode == ViewMode.mobile ||
+                defaultTargetPlatform == TargetPlatform.android) {
+              return const AveeMobileShell();
+            }
             final navigationItems = state.navigationItems;
             final pageLabel = state.pageLabel;
             final index = navigationItems.lastIndexWhere(
@@ -234,6 +243,23 @@ class _HomePageViewState extends ConsumerState<_HomePageView> {
           right: 16,
           child: AveeAccountBanner(),
         ),
+        if (!hasProfiles)
+          Positioned(
+            top: 92,
+            left: 16,
+            right: 16,
+            bottom: 142,
+            child: AveeWelcomeCard(
+              onAccount: () => AveeAccountSheet.show(context),
+              onTrial: () async {
+                if (aveeAccountState.session == null) {
+                  await AveeAccountSheet.show(context);
+                } else {
+                  await aveeAccountState.startTrial();
+                }
+              },
+            ),
+          ),
         MobileIndicatorOverlay(
           buttonSize: connectSize,
           currentIndex: currentIndex == -1 ? 0 : currentIndex,
@@ -242,6 +268,249 @@ class _HomePageViewState extends ConsumerState<_HomePageView> {
       ],
     );
   }
+}
+
+class AveeWelcomeCard extends StatelessWidget {
+  const AveeWelcomeCard({
+    required this.onAccount,
+    required this.onTrial,
+    super.key,
+  });
+
+  final VoidCallback onAccount;
+  final Future<void> Function() onTrial;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: aveeAccountState,
+        builder: (context, _) {
+          final state = aveeAccountState;
+          final accent = Theme.of(context).colorScheme.primary;
+          final surface = Theme.of(context).colorScheme.surface;
+          return Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: accent.withValues(alpha: .24)),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color.alphaBlend(accent.withValues(alpha: .10), surface),
+                  surface.withValues(alpha: .92),
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withValues(alpha: .08),
+                  blurRadius: 26,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: .14),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(Icons.shield_outlined, color: accent),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'AVEE VPN',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -.4,
+                            ),
+                          ),
+                        ),
+                        Icon(Icons.auto_awesome, color: accent),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      state.session == null
+                          ? 'Приватное подключение в одно касание'
+                          : 'Ваш доступ готов к активации',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      state.session == null
+                          ? 'Создайте AVEE-аккаунт и получите 1 ГБ пробного доступа на 3 дня.'
+                          : 'Активируйте пробный период, выберите локацию и подключитесь через защищённый туннель.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                            height: 1.35,
+                          ),
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: const [
+                        _AveeFeatureChip(Icons.bolt, 'Быстрый старт'),
+                        _AveeFeatureChip(
+                            Icons.visibility_off_outlined, 'Без журналов'),
+                        _AveeFeatureChip(Icons.public, 'Умные локации'),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    _AveeRouteSignal(accent: accent),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: state.loading
+                            ? null
+                            : (state.session == null ? onAccount : onTrial),
+                        icon: Icon(state.session == null
+                            ? Icons.person_add_alt_1
+                            : Icons.play_arrow_rounded),
+                        label: Text(state.session == null
+                            ? 'Создать аккаунт'
+                            : 'Активировать 1 ГБ пробного доступа'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        'P2P и торрент-трафик запрещены',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+}
+
+class _AveeRouteSignal extends StatelessWidget {
+  const _AveeRouteSignal({required this.accent});
+
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          _AveeRouteNode(label: 'Устройство', accent: accent),
+          Expanded(child: _AveeRouteLine(accent: accent)),
+          _AveeRouteNode(label: 'AVEE', accent: accent, active: true),
+          Expanded(child: _AveeRouteLine(accent: accent)),
+          _AveeRouteNode(label: 'Интернет', accent: accent),
+        ],
+      );
+}
+
+class _AveeRouteNode extends StatelessWidget {
+  const _AveeRouteNode({
+    required this.label,
+    required this.accent,
+    this.active = false,
+  });
+
+  final String label;
+  final Color accent;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: [
+          Container(
+            width: active ? 12 : 9,
+            height: active ? 12 : 9,
+            decoration: BoxDecoration(
+              color: active ? accent : accent.withValues(alpha: .45),
+              shape: BoxShape.circle,
+              boxShadow: active
+                  ? [
+                      BoxShadow(
+                        color: accent.withValues(alpha: .45),
+                        blurRadius: 10,
+                      )
+                    ]
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(label, style: Theme.of(context).textTheme.labelSmall),
+        ],
+      );
+}
+
+class _AveeRouteLine extends StatelessWidget {
+  const _AveeRouteLine({required this.accent});
+
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 18),
+        child: CustomPaint(
+          painter: _AveeRouteLinePainter(accent),
+          size: const Size(double.infinity, 8),
+        ),
+      );
+}
+
+class _AveeRouteLinePainter extends CustomPainter {
+  const _AveeRouteLinePainter(this.accent);
+
+  final Color accent;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = accent.withValues(alpha: .35)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+    final path = Path()
+      ..moveTo(0, size.height / 2)
+      ..lineTo(size.width * .42, size.height / 2)
+      ..lineTo(size.width * .55, 1)
+      ..lineTo(size.width, 1);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _AveeRouteLinePainter oldDelegate) =>
+      oldDelegate.accent != accent;
+}
+
+class _AveeFeatureChip extends StatelessWidget {
+  const _AveeFeatureChip(this.icon, this.label);
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Chip(
+        avatar: Icon(icon, size: 15),
+        label: Text(label),
+        visualDensity: VisualDensity.compact,
+      );
 }
 
 class AveeAccountBanner extends StatelessWidget {
@@ -275,6 +544,15 @@ class AveeAccountBanner extends StatelessWidget {
                         if (state.recoveryCode != null)
                           SelectableText(
                               'Код восстановления: ${state.recoveryCode}'),
+                        if (state.antiAbuseNotice != null)
+                          Text(
+                            state.antiAbuseNotice!,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                                fontSize: 12),
+                          ),
                       ],
                     ),
                   ),
