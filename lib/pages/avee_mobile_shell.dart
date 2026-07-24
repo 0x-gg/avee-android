@@ -405,45 +405,24 @@ class _SignalOrbState extends State<_SignalOrb>
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, _) => SizedBox(
-            height: 360,
+            height: 292,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 CustomPaint(
-                  size: const Size(double.infinity, 360),
+                  size: const Size(double.infinity, 292),
                   painter: _SignalOrbPainter(
                     progress: _controller.value,
                     active: widget.running,
                     connecting: widget.connecting,
                   ),
                 ),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        AveeColors.surfaceRaised,
-                        AveeColors.highlight.withValues(alpha: .14),
-                        AveeColors.background,
-                      ],
-                    ),
-                    border: Border.all(color: AveeColors.highlight, width: 1.4),
-                    boxShadow: const [
-                      BoxShadow(
-                          color: Color(0x559CA8B5),
-                          blurRadius: 34,
-                          spreadRadius: 4),
-                      BoxShadow(
-                          color: Color(0x55FFA516),
-                          blurRadius: 20,
-                          spreadRadius: 1),
-                    ],
-                  ),
-                  child: const SizedBox(
-                    width: 190,
-                    height: 190,
+                const SizedBox(
+                  width: 148,
+                  height: 148,
+                  child: Center(
                     child: Icon(Icons.power_settings_new_rounded,
-                        color: AveeColors.primary, size: 78),
+                        color: AveeColors.primary, size: 70),
                   ),
                 ),
                 Opacity(
@@ -523,66 +502,38 @@ class _ConnectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final location = _locationName(state);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const SizedBox(height: 18),
-      Center(
-        child: Column(children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AveeColors.signal.withValues(alpha: .14),
-                  AveeColors.highlight.withValues(alpha: .10),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(30),
-              border:
-                  Border.all(color: AveeColors.signal.withValues(alpha: .5)),
-              boxShadow: const [
-                BoxShadow(color: Color(0x339CA8B5), blurRadius: 18),
-              ],
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.circle,
-                  size: 10,
-                  color: running ? AveeColors.primary : AveeColors.signal),
-              const SizedBox(width: 10),
-              Text(
-                  running
-                      ? 'CONNECTED'
-                      : connecting
-                          ? 'CONNECTING'
-                          : 'DISCONNECTED',
-                  style: const TextStyle(
-                      color: AveeColors.signal,
-                      fontSize: 14,
-                      letterSpacing: 4,
-                      fontWeight: FontWeight.w500)),
-            ]),
+      const SizedBox(height: 28),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            running
+                ? 'ЗАЩИЩЕНО'
+                : connecting
+                    ? 'ПОДКЛЮЧЕНИЕ'
+                    : 'ГОТОВО К ПОДКЛЮЧЕНИЮ',
+            style: const TextStyle(
+                color: AveeColors.mutedText,
+                fontSize: 12,
+                letterSpacing: 2.2,
+                fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 16),
-          Text(running ? 'Protected connection' : 'Ready to connect',
-              style: const TextStyle(
-                  color: AveeColors.secondaryText,
-                  fontSize: 22,
-                  letterSpacing: .4)),
-        ]),
+          Icon(Icons.circle,
+              size: 8, color: running ? AveeColors.primary : AveeColors.signal),
+        ],
       ),
+      const SizedBox(height: 5),
+      Text(running ? 'Соединение активно' : 'Один шаг до приватного доступа',
+          style: const TextStyle(
+              color: AveeColors.text,
+              fontSize: 22,
+              fontWeight: FontWeight.w700)),
       _SignalOrb(running: running, connecting: connecting),
       Container(
-        height: 64,
+        height: 58,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AveeColors.primary.withValues(alpha: .24),
-              AveeColors.highlight.withValues(alpha: .14),
-            ],
-          ),
-          border: Border.all(color: AveeColors.primary, width: 1.2),
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: const [
-            BoxShadow(color: Color(0x339CA8B5), blurRadius: 18)
-          ],
+          color: AveeColors.primary,
+          borderRadius: BorderRadius.circular(3),
         ),
         child: Stack(
           children: [
@@ -592,73 +543,46 @@ class _ConnectionCard extends StatelessWidget {
             ),
             IgnorePointer(
               child: Center(
-                child: Text(running ? 'DISCONNECT' : 'CONNECT',
+                child: Text(running ? 'ОТКЛЮЧИТЬ' : 'ПОДКЛЮЧИТЬ',
                     style: const TextStyle(
-                      color: AveeColors.text,
-                      fontSize: 17,
+                      color: AveeColors.background,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      letterSpacing: 3.5,
+                      letterSpacing: 2.2,
                     )),
               ),
             ),
           ],
         ),
       ),
-      const SizedBox(height: 8),
+      const SizedBox(height: 24),
       InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(2),
         onTap: () => Navigator.of(context)
             .push(MaterialPageRoute(builder: (_) => const AveeLocationsPage())),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AveeColors.surface.withValues(alpha: .82),
-                AveeColors.highlight.withValues(alpha: .08),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AveeColors.outline),
-            boxShadow: const [
-              BoxShadow(
-                  color: Color(0x22000000),
-                  blurRadius: 18,
-                  offset: Offset(0, 8)),
-            ],
-          ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 18),
           child: Row(children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AveeColors.primary.withValues(alpha: .09),
-                border: Border.all(
-                    color: AveeColors.primary.withValues(alpha: .45)),
-              ),
-              child: const Icon(Icons.location_on_outlined,
-                  color: AveeColors.primary),
-            ),
-            const SizedBox(width: 14),
+            const Icon(Icons.public, color: AveeColors.primary, size: 22),
+            const SizedBox(width: 16),
             Expanded(
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  const Text('LOCATION',
+                  const Text('ЛОКАЦИЯ',
                       style: TextStyle(
                           color: AveeColors.mutedText,
                           fontSize: 13,
-                          letterSpacing: 3)),
+                          letterSpacing: 2.2)),
                   const SizedBox(height: 3),
-                  Text(location == 'AVEE' ? 'Smart Location' : location,
-                      style: const TextStyle(
-                          color: AveeColors.text, fontWeight: FontWeight.w700)),
+                  Text(location == 'AVEE' ? 'Автоматический выбор' : location,
+                      style: const TextStyle(color: AveeColors.text)),
                 ])),
             const Icon(Icons.chevron_right, color: AveeColors.primary),
           ]),
         ),
       ),
+      const Divider(color: AveeColors.outline, height: 1),
       _AveeDataLine(
           icon: Icons.show_chart_rounded,
           label: 'DATA USAGE',
@@ -677,30 +601,10 @@ class _AveeDataLine extends StatelessWidget {
   final String value;
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 28),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AveeColors.surface.withValues(alpha: .72),
-              AveeColors.highlight.withValues(alpha: .06),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AveeColors.outline),
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 18),
         child: Row(children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AveeColors.highlight.withValues(alpha: .10),
-              border:
-                  Border.all(color: AveeColors.highlight.withValues(alpha: .5)),
-            ),
-            child: Icon(icon, color: AveeColors.highlight, size: 26),
-          ),
-          const SizedBox(width: 26),
+          Icon(icon, color: AveeColors.secondaryText, size: 22),
+          const SizedBox(width: 16),
           Expanded(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -709,44 +613,22 @@ class _AveeDataLine extends StatelessWidget {
                     style: const TextStyle(
                         color: AveeColors.mutedText,
                         fontSize: 13,
-                        letterSpacing: 3)),
-                const SizedBox(height: 8),
-                Text(value,
-                    style: const TextStyle(
-                        color: AveeColors.text,
-                        fontSize: 20,
-                        letterSpacing: .5)),
+                        letterSpacing: 2.2)),
+                const SizedBox(height: 4),
+                Text(value, style: const TextStyle(color: AveeColors.text)),
               ])),
-          const Icon(Icons.chevron_right_rounded,
-              color: AveeColors.primary, size: 32),
         ]),
       );
 }
 
-class _NeonBrandHeader extends StatelessWidget {
-  const _NeonBrandHeader({required this.onMenu});
+class _AveeBrandHeader extends StatelessWidget {
+  const _AveeBrandHeader({required this.onMenu});
   final VoidCallback onMenu;
 
   @override
   Widget build(BuildContext context) => Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [AveeColors.primary, AveeColors.highlight],
-            ).createShader(bounds),
-            child: const Text(
-              'A',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 62,
-                height: .9,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -5,
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
           const AveeLogo(compact: true, horizontal: true),
           const Spacer(),
           IconButton(
@@ -778,7 +660,7 @@ class AveeHomeDashboard extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
             children: [
-              _NeonBrandHeader(onMenu: onMenu),
+              _AveeBrandHeader(onMenu: onMenu),
               _ConnectionCard(
                 state: state,
                 running: running,
