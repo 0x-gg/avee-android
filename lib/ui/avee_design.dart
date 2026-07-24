@@ -3,19 +3,19 @@ import 'package:flutter/material.dart';
 /// AVEE's mobile visual language. Screens consume these tokens instead of
 /// embedding one-off colors, radii, and spacing values.
 class AveeColors {
-  // AVEE Signal: cool graphite surfaces and one warm action colour.
-  static const background = Color(0xFF05070B);
-  static const surface = Color(0xFF0C1118);
-  static const surfaceRaised = Color(0xFF151C25);
-  static const outline = Color(0xFF26313B);
-  static const primary = Color(0xFFF7A928);
-  static const highlight = Color(0xFF9CA8B5);
-  static const signal = Color(0xFFFF6048);
-  static const text = Color(0xFFF6F7FA);
-  static const secondaryText = Color(0xFFB8C0CE);
-  static const mutedText = Color(0xFF718097);
-  static const warning = Color(0xFFFFC247);
-  static const error = Color(0xFFFF6048);
+  // AVEE Solar Editorial: warm coral action, soft peach highlight, graphite base.
+  static const background = Color(0xFF0B0C0D);
+  static const surface = Color(0xFF141516);
+  static const surfaceRaised = Color(0xFF202021);
+  static const outline = Color(0xFF353536);
+  static const primary = Color(0xFFFF7A59);
+  static const highlight = Color(0xFFFFC9B8);
+  static const signal = Color(0xFFFF5742);
+  static const text = Color(0xFFFFF8F4);
+  static const secondaryText = Color(0xFFD1C5C0);
+  static const mutedText = Color(0xFF9B8F8A);
+  static const warning = Color(0xFFFFB36B);
+  static const error = Color(0xFFFF5742);
 }
 
 class AveeSpace {
@@ -46,8 +46,8 @@ class AveePage extends StatelessWidget {
 }
 
 class AveeTopBar extends StatelessWidget {
-  const AveeTopBar({required this.onMenu, super.key});
-  final VoidCallback onMenu;
+  const AveeTopBar({required this.onSettings, super.key});
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -58,9 +58,9 @@ class AveeTopBar extends StatelessWidget {
               child: Center(child: AveeLogo(compact: true, horizontal: true)),
             ),
             IconButton(
-              tooltip: 'Меню',
-              onPressed: onMenu,
-              icon: const Icon(Icons.menu_rounded),
+              tooltip: 'Settings',
+              onPressed: onSettings,
+              icon: const Icon(Icons.settings_outlined),
               color: AveeColors.primary,
               iconSize: 27,
             ),

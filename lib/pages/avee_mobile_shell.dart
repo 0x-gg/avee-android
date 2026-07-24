@@ -20,6 +20,8 @@ class AveeMobileShell extends ConsumerStatefulWidget {
 class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
   int tab = 0;
 
+  void _openSettings() => setState(() => tab = 3);
+
   void _openMenu() {
     showModalBottomSheet<void>(
       context: context,
@@ -46,29 +48,19 @@ class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
                           letterSpacing: 1.4)),
                 ),
                 const SizedBox(height: 18),
-                _menuItem(sheetContext, Icons.home_outlined, 'Главная', 0),
-                _menuItem(sheetContext, Icons.person_outline,
-                    'Профиль и устройства', 2),
+                _menuItem(sheetContext, Icons.home_outlined, 'Home', 0),
+                _menuItem(
+                    sheetContext, Icons.person_outline, 'Account & devices', 2),
                 ListTile(
                   leading: const Icon(Icons.workspace_premium_outlined,
                       color: AveeColors.primary),
-                  title: const Text('Подписка'),
+                  title: const Text('Subscription'),
                   subtitle: Text(aveeAccountState.access
-                      ? 'Доступ активен'
-                      : 'Выбрать тариф'),
+                      ? 'Access is active'
+                      : 'Choose a plan'),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     AveePaywall.show(context);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.tune_outlined,
-                      color: AveeColors.secondaryText),
-                  title: const Text('Настройки подключения'),
-                  subtitle: const Text('Always-on, DNS и режимы защиты'),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    setState(() => tab = 2);
                   },
                 ),
               ],
@@ -104,14 +96,15 @@ class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
             return AveePage(child: AveeGuestOnboarding(onRecovery: _recover));
           }
           final pages = <Widget>[
-            AveeHomeDashboard(onMenu: _openMenu),
+            AveeHomeDashboard(onSettings: _openSettings),
             AveeLocationsPage(),
             AveeAccountPage(),
+            AveeConnectionSettingsPage(),
           ];
           return AveePage(
             child: Column(
               children: [
-                if (tab != 0) AveeTopBar(onMenu: _openMenu),
+                if (tab != 0) AveeTopBar(onSettings: _openSettings),
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 240),
@@ -173,13 +166,13 @@ class AveeGuestOnboarding extends StatelessWidget {
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     onPressed: onRecovery,
-                    child: const Text('Восстановить'),
+                    child: const Text('Recover'),
                   ),
                 ],
               ),
               const SizedBox(height: 56),
               Text(
-                'Безопасный интернет.\nОдин понятный шаг.',
+                'Private internet.\nOne clear step.',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: AveeColors.text,
                       fontWeight: FontWeight.w800,
@@ -188,7 +181,7 @@ class AveeGuestOnboarding extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Создайте аккаунт и подключайтесь без ручной настройки.',
+                'Create an account and connect without manual setup.',
                 style: TextStyle(color: AveeColors.secondaryText, fontSize: 16),
               ),
               const SizedBox(height: 24),
@@ -205,21 +198,21 @@ class AveeGuestOnboarding extends StatelessWidget {
               ],
               AveePrimaryButton(
                 label: aveeAccountState.loading
-                    ? 'Создаём аккаунт…'
-                    : 'Создать аккаунт',
+                    ? 'Creating account…'
+                    : 'Create account',
                 icon: Icons.add_rounded,
                 onPressed:
                     aveeAccountState.loading ? null : () => _create(context),
               ),
               const SizedBox(height: 12),
               AveeSecondaryButton(
-                label: 'Восстановить аккаунт',
+                label: 'Recover account',
                 icon: Icons.key_rounded,
                 onPressed: onRecovery,
               ),
               const SizedBox(height: 22),
               const Text(
-                'Минимум данных для работы сервиса. Содержимое трафика не записывается.',
+                'Only the data needed to run the service. Traffic content is not recorded.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: AveeColors.mutedText, fontSize: 12, height: 1.4),
@@ -508,10 +501,10 @@ class _ConnectionCard extends StatelessWidget {
         children: [
           Text(
             running
-                ? 'ЗАЩИЩЕНО'
+                ? 'PROTECTED'
                 : connecting
-                    ? 'ПОДКЛЮЧЕНИЕ'
-                    : 'ГОТОВО К ПОДКЛЮЧЕНИЮ',
+                    ? 'CONNECTING'
+                    : 'READY TO CONNECT',
             style: const TextStyle(
                 color: AveeColors.mutedText,
                 fontSize: 12,
@@ -523,7 +516,7 @@ class _ConnectionCard extends StatelessWidget {
         ],
       ),
       const SizedBox(height: 5),
-      Text(running ? 'Соединение активно' : 'Один шаг до приватного доступа',
+      Text(running ? 'Connection is active' : 'One step to private access',
           style: const TextStyle(
               color: AveeColors.text,
               fontSize: 22,
@@ -543,7 +536,7 @@ class _ConnectionCard extends StatelessWidget {
             ),
             IgnorePointer(
               child: Center(
-                child: Text(running ? 'ОТКЛЮЧИТЬ' : 'ПОДКЛЮЧИТЬ',
+                child: Text(running ? 'DISCONNECT' : 'CONNECT',
                     style: const TextStyle(
                       color: AveeColors.background,
                       fontSize: 14,
@@ -569,13 +562,13 @@ class _ConnectionCard extends StatelessWidget {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  const Text('ЛОКАЦИЯ',
+                  const Text('LOCATION',
                       style: TextStyle(
                           color: AveeColors.mutedText,
                           fontSize: 13,
                           letterSpacing: 2.2)),
                   const SizedBox(height: 3),
-                  Text(location == 'AVEE' ? 'Автоматический выбор' : location,
+                  Text(location == 'AVEE' ? 'Smart Location' : location,
                       style: const TextStyle(color: AveeColors.text)),
                 ])),
             const Icon(Icons.chevron_right, color: AveeColors.primary),
@@ -622,8 +615,8 @@ class _AveeDataLine extends StatelessWidget {
 }
 
 class _AveeBrandHeader extends StatelessWidget {
-  const _AveeBrandHeader({required this.onMenu});
-  final VoidCallback onMenu;
+  const _AveeBrandHeader({required this.onSettings});
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -632,9 +625,9 @@ class _AveeBrandHeader extends StatelessWidget {
           const AveeLogo(compact: true, horizontal: true),
           const Spacer(),
           IconButton(
-            onPressed: onMenu,
-            tooltip: 'Меню',
-            icon: const Icon(Icons.menu_rounded),
+            onPressed: onSettings,
+            tooltip: 'Settings',
+            icon: const Icon(Icons.settings_outlined),
             color: AveeColors.primary,
             iconSize: 28,
           ),
@@ -643,8 +636,8 @@ class _AveeBrandHeader extends StatelessWidget {
 }
 
 class AveeHomeDashboard extends ConsumerWidget {
-  const AveeHomeDashboard({required this.onMenu, super.key});
-  final VoidCallback onMenu;
+  const AveeHomeDashboard({required this.onSettings, super.key});
+  final VoidCallback onSettings;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final running = ref.watch(runTimeProvider.select((value) => value != null));
@@ -660,7 +653,7 @@ class AveeHomeDashboard extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
             children: [
-              _AveeBrandHeader(onMenu: onMenu),
+              _AveeBrandHeader(onSettings: onSettings),
               _ConnectionCard(
                 state: state,
                 running: running,
@@ -682,7 +675,7 @@ String _bytesEnglish(int value) => value >= 1000000000
         ? '${(value / 1000000).toStringAsFixed(0)} MB'
         : '${(value / 1000).toStringAsFixed(0)} KB';
 String _friendlyError(String error) => error == 'Backend unavailable'
-    ? 'Сервер AVEE временно недоступен. Попробуйте ещё раз.'
+    ? 'AVEE server is temporarily unavailable. Try again.'
     : error;
 
 class AveeLocationsPage extends StatefulWidget {
@@ -705,12 +698,12 @@ class _AveeLocationsPageState extends State<AveeLocationsPage> {
           onRefresh: aveeAccountState.refreshLocations,
           child: ListView(padding: const EdgeInsets.all(16), children: [
             const SizedBox(height: 16),
-            Text('Локации',
+            Text('Locations',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     color: AveeColors.text, fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
             const Text(
-                'Статус обновляется по данным AVEE. Без выдуманных ping и нагрузки.',
+                'Status is based on AVEE data. No invented ping or load values.',
                 style: TextStyle(color: AveeColors.secondaryText)),
             const SizedBox(height: 20),
             if (aveeAccountState.locationsLoading)
@@ -721,22 +714,22 @@ class _AveeLocationsPageState extends State<AveeLocationsPage> {
                           CircularProgressIndicator(color: AveeColors.primary)))
             else if (aveeAccountState.locations.isEmpty)
               const AveePanel(
-                  child: Text('Локации пока недоступны.',
+                  child: Text('Locations are currently unavailable.',
                       style: TextStyle(color: AveeColors.secondaryText)))
             else
               ...aveeAccountState.locations.map(_locationRow)
           ])));
   Widget _locationRow(Map<String, dynamic> item) {
-    final name = item['name'] ?? item['code'] ?? 'Локация';
+    final name = item['name'] ?? item['code'] ?? 'Location';
     final status = item['status'] ?? 'unknown';
     final label = status == 'available' || status == 'online'
-        ? 'Доступна'
+        ? 'Available'
         : status == 'degraded'
-            ? 'Высокая нагрузка'
-            : 'Недоступна';
-    final color = label == 'Доступна'
+            ? 'High load'
+            : 'Unavailable';
+    final color = label == 'Available'
         ? AveeColors.primary
-        : label == 'Высокая нагрузка'
+        : label == 'High load'
             ? AveeColors.warning
             : AveeColors.error;
     return Container(
@@ -763,7 +756,7 @@ class _AveeLocationsPageState extends State<AveeLocationsPage> {
                 style: const TextStyle(
                     color: AveeColors.text, fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
-            const Text('Проверено по данным AVEE',
+            const Text('Verified from AVEE data',
                 style: TextStyle(color: AveeColors.mutedText, fontSize: 11)),
           ]),
         ),
@@ -781,7 +774,7 @@ class AveeAccountPage extends StatelessWidget {
       builder: (context, _) =>
           ListView(padding: const EdgeInsets.all(16), children: [
             const SizedBox(height: 16),
-            Text('Аккаунт',
+            Text('Account',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     color: AveeColors.text, fontWeight: FontWeight.w800)),
             const SizedBox(height: 20),
@@ -789,7 +782,7 @@ class AveeAccountPage extends StatelessWidget {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  const Text('Номер AVEE-аккаунта',
+                  const Text('AVEE account number',
                       style: TextStyle(color: AveeColors.secondaryText)),
                   const SizedBox(height: 8),
                   SelectableText(aveeAccountState.session?.accountNumber ?? '—',
@@ -808,8 +801,8 @@ class AveeAccountPage extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                         aveeAccountState.access
-                            ? 'Доступ активен'
-                            : 'Нужна подписка',
+                            ? 'Access is active'
+                            : 'Subscription required',
                         style: const TextStyle(
                             color: AveeColors.text,
                             fontWeight: FontWeight.w600)),
@@ -817,12 +810,12 @@ class AveeAccountPage extends StatelessWidget {
                 ])),
             const SizedBox(height: 16),
             AveePrimaryButton(
-                label: 'Открыть тарифы',
+                label: 'View plans',
                 icon: Icons.workspace_premium_outlined,
                 onPressed: () => AveePaywall.show(context)),
             const SizedBox(height: 12),
             AveeSecondaryButton(
-                label: 'Восстановить покупки',
+                label: 'Restore purchases',
                 icon: Icons.restore,
                 onPressed: aveeAccountState.loading
                     ? null
@@ -833,18 +826,18 @@ class AveeAccountPage extends StatelessWidget {
                 icon: Icons.lock_outline,
                 onPressed: () => _openAlwaysOn(context)),
             const SizedBox(height: 32),
-            const Text('Аккаунт и безопасность',
+            const Text('Account & security',
                 style: TextStyle(
                     color: AveeColors.text,
                     fontSize: 18,
                     fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             const Text(
-                'Храните recovery-код в безопасном месте. Он нужен для восстановления аккаунта на новом устройстве. AVEE не сохраняет содержимое вашего трафика.',
+                'Keep your recovery code in a safe place. It is required to restore your account on a new device. AVEE does not record traffic content.',
                 style: TextStyle(color: AveeColors.secondaryText, height: 1.4)),
             const SizedBox(height: 32),
             AveeSecondaryButton(
-                label: 'Удалить аккаунт',
+                label: 'Delete account',
                 icon: Icons.delete_outline,
                 onPressed: () => _delete(context))
           ]));
@@ -852,15 +845,15 @@ class AveeAccountPage extends StatelessWidget {
     final ok = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-                title: const Text('Удалить аккаунт?'),
-                content: const Text('Доступ и локальные данные будут удалены.'),
+                title: const Text('Delete account?'),
+                content: const Text('Access and local data will be removed.'),
                 actions: [
                   TextButton(
                       onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Отмена')),
+                      child: const Text('Cancel')),
                   FilledButton(
                       onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Удалить'))
+                      child: const Text('Delete'))
                 ]));
     if (ok == true) await aveeAccountState.deleteAccount();
   }
@@ -870,13 +863,101 @@ class AveeAccountPage extends StatelessWidget {
     if (!context.mounted) return;
     if (!opened) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Не удалось открыть настройки Always-on VPN')));
+          content: Text('Could not open Always-on VPN settings')));
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text(
-            'Включите Always-on VPN и «Блокировать подключения без VPN»')));
+        content:
+            Text('Enable Always-on VPN and “Block connections without VPN”')));
   }
+}
+
+class AveeConnectionSettingsPage extends StatelessWidget {
+  const AveeConnectionSettingsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) => ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+        children: [
+          Text('Connection settings',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: AveeColors.text, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          const Text('Control how AVEE protects your connection.',
+              style: TextStyle(color: AveeColors.secondaryText)),
+          const SizedBox(height: 24),
+          const AveePanel(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text('Security',
+                    style: TextStyle(
+                        color: AveeColors.text,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700)),
+                SizedBox(height: 8),
+                Text(
+                    'Always-on VPN reconnects when the tunnel drops. Android controls the final system policy.',
+                    style: TextStyle(
+                        color: AveeColors.secondaryText, height: 1.4)),
+              ])),
+          const SizedBox(height: 16),
+          AveePrimaryButton(
+              label: 'Open Android VPN settings',
+              icon: Icons.settings_outlined,
+              onPressed: () => _openAlwaysOnVpn(context)),
+          const SizedBox(height: 12),
+          const AveePanel(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text('Connection defaults',
+                    style: TextStyle(
+                        color: AveeColors.text,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700)),
+                SizedBox(height: 14),
+                _AveeSettingLine(label: 'Protocol', value: 'Automatic'),
+                _AveeSettingLine(label: 'DNS protection', value: 'Enabled'),
+                _AveeSettingLine(
+                    label: 'IPv6 leak protection', value: 'Enabled'),
+              ])),
+        ],
+      );
+}
+
+class _AveeSettingLine extends StatelessWidget {
+  const _AveeSettingLine({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label,
+                style: const TextStyle(color: AveeColors.secondaryText)),
+            Text(value,
+                style: const TextStyle(
+                    color: AveeColors.primary, fontWeight: FontWeight.w700)),
+          ],
+        ),
+      );
+}
+
+Future<void> _openAlwaysOnVpn(BuildContext context) async {
+  final opened = await app?.openVpnSettings() ?? false;
+  if (!context.mounted) return;
+  if (!opened) {
+    ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open Always-on VPN settings')));
+    return;
+  }
+  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content:
+          Text('Enable Always-on VPN and “Block connections without VPN”')));
 }
 
 class AveeRecoveryPage extends StatefulWidget {
@@ -904,23 +985,23 @@ class _AveeRecoveryPageState extends State<AveeRecoveryPage> {
           title: const AveeLogo(compact: true)),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         const SizedBox(height: 28),
-        Text('Восстановить аккаунт',
+        Text('Recover account',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 color: AveeColors.text, fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
-        const Text('Введите номер AVEE-аккаунта и recovery-код.',
+        const Text('Enter your AVEE account number and recovery code.',
             style: TextStyle(color: AveeColors.secondaryText)),
         const SizedBox(height: 28),
         TextField(
             controller: account,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Номер аккаунта')),
+            decoration: const InputDecoration(labelText: 'Account number')),
         const SizedBox(height: 16),
         TextField(
             controller: code,
             obscureText: obscure,
             decoration: InputDecoration(
-                labelText: 'Recovery-код',
+                labelText: 'Recovery code',
                 suffixIcon: IconButton(
                     onPressed: () => setState(() => obscure = !obscure),
                     icon: Icon(
@@ -932,7 +1013,7 @@ class _AveeRecoveryPageState extends State<AveeRecoveryPage> {
                   style: const TextStyle(color: AveeColors.error))),
         const SizedBox(height: 28),
         AveePrimaryButton(
-            label: aveeAccountState.loading ? 'Проверяем…' : 'Восстановить',
+            label: aveeAccountState.loading ? 'Checking…' : 'Recover',
             onPressed: aveeAccountState.loading
                 ? null
                 : () async {
@@ -965,18 +1046,18 @@ class _AveeRecoveryCodePageState extends State<AveeRecoveryCodePage> {
         const SizedBox(height: 38),
         const AveeLogo(),
         const SizedBox(height: 42),
-        Text('Сохраните данные аккаунта',
+        Text('Save your account details',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 color: AveeColors.text, fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
         const Text(
-            'Recovery-код показывается один раз. Без него восстановить доступ будет нельзя.',
+            'Your recovery code is shown once. Without it, access cannot be restored.',
             style: TextStyle(color: AveeColors.secondaryText, height: 1.4)),
         const SizedBox(height: 26),
         AveePanel(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Номер аккаунта',
+          const Text('Account number',
               style: TextStyle(color: AveeColors.secondaryText)),
           const SizedBox(height: 6),
           SelectableText(widget.account,
@@ -985,7 +1066,7 @@ class _AveeRecoveryCodePageState extends State<AveeRecoveryCodePage> {
                   fontSize: 18,
                   fontWeight: FontWeight.w700)),
           const SizedBox(height: 18),
-          const Text('Recovery-код',
+          const Text('Recovery code',
               style: TextStyle(color: AveeColors.secondaryText)),
           const SizedBox(height: 6),
           SelectableText(widget.code,
@@ -998,22 +1079,21 @@ class _AveeRecoveryCodePageState extends State<AveeRecoveryCodePage> {
               onPressed: () => Clipboard.setData(
                   ClipboardData(text: '${widget.account}\n${widget.code}')),
               icon: const Icon(Icons.copy),
-              label: const Text('Скопировать'))
+              label: const Text('Copy'))
         ])),
         const SizedBox(height: 18),
-        const Text(
-            'Не отправляйте код посторонним и не храните его в открытом виде.',
+        const Text('Do not share the code or store it in plain sight.',
             style: TextStyle(color: AveeColors.warning)),
         const SizedBox(height: 20),
         CheckboxListTile(
             value: saved,
             onChanged: (value) => setState(() => saved = value ?? false),
             contentPadding: EdgeInsets.zero,
-            title: const Text('Я сохранил код',
+            title: const Text('I saved the code',
                 style: TextStyle(color: AveeColors.text))),
         const SizedBox(height: 14),
         AveePrimaryButton(
-            label: 'Продолжить',
+            label: 'Continue',
             onPressed: saved ? () => Navigator.pop(context) : null)
       ])));
 }
