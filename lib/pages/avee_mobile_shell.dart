@@ -393,6 +393,157 @@ String _date(DateTime value) => '${value.day.toString().padLeft(2, '0')}.'
     '${value.month.toString().padLeft(2, '0')}.'
     '${value.year}';
 
+String _formatTimeRemaining(DateTime expiresAt) {
+  final diff = expiresAt.difference(DateTime.now());
+  if (diff.isNegative) return 'Expired';
+  if (diff.inDays >= 2) return '${diff.inDays} days left';
+  if (diff.inDays == 1) return '1 day left';
+  if (diff.inHours >= 2) return '${diff.inHours} hours left';
+  if (diff.inHours == 1) return '1 hour left';
+  return '${diff.inMinutes.clamp(1, 59)} min left';
+}
+
+String _subscriptionSourceLabel(String? source) {
+  switch (source) {
+    case 'GOOGLE_PLAY':
+      return 'Google Play subscription';
+    case 'ADMIN_GRANT':
+      return 'Granted access';
+    default:
+      return 'Paid subscription';
+  }
+}
+
+class AveeAccessStatusPanel extends StatelessWidget {
+  const AveeAccessStatusPanel({
+    this.onSubscribe,
+    this.compact = false,
+    super.key,
+  });
+
+  final VoidCallback? onSubscribe;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = aveeAccountState;
+    if (!state.access) return const SizedBox.shrink();
+
+    final isTrial = state.isTrialAccess;
+    final expiresAt = state.accessExpiresAt;
+    final timeLabel =
+        expiresAt == null ? null : _formatTimeRemaining(expiresAt);
+    final untilLabel =
+        expiresAt == null ? null : 'Until ${_date(expiresAt)}';
+    final traffic = state.trafficRemainingBytes;
+
+    return AveePanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isTrial
+                    ? Icons.card_giftcard_outlined
+                    : Icons.workspace_premium_outlined,
+                color: isTrial ? AveeColors.warning : AveeColors.primary,
+                size: 22,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isTrial ? 'Free trial' : _subscriptionSourceLabel(
+                      state.subscriptionSource),
+                  style: const TextStyle(
+                    color: AveeColors.text,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (timeLabel != null) ...[
+            const SizedBox(height: 10),
+            _accessDetailRow(
+              Icons.schedule_outlined,
+              compact ? timeLabel : 'Time remaining: $timeLabel',
+            ),
+            if (!compact && untilLabel != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, left: 30),
+                child: Text(
+                  untilLabel,
+                  style: const TextStyle(
+                    color: AveeColors.mutedText,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+          ],
+          if (isTrial && traffic != null) ...[
+            const SizedBox(height: 8),
+            _accessDetailRow(
+              Icons.data_usage_outlined,
+              'Data remaining: ${_bytesEnglish(traffic)}',
+            ),
+          ],
+          if (isTrial) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AveeColors.background,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AveeColors.warning.withValues(
+                  alpha: 0.35,
+                )),
+              ),
+              child: Text(
+                compact
+                    ? 'Purchase a subscription before trial ends.'
+                    : 'When your trial ends, purchase a subscription to keep using AVEE VPN.',
+                style: const TextStyle(
+                  color: AveeColors.secondaryText,
+                  fontSize: 13,
+                  height: 1.35,
+                ),
+              ),
+            ),
+            if (onSubscribe != null) ...[
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: onSubscribe,
+                child: const Text('View subscription plans'),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _accessDetailRow(IconData icon, String text) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: AveeColors.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: AveeColors.text,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      );
+}
+
 class AveeHomeDashboard extends ConsumerWidget {
   const AveeHomeDashboard({
     required this.onSettings,
@@ -553,6 +704,14 @@ class AveeHomeDashboard extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 28),
+                    AveeAccessStatusPanel(
+                      compact: true,
+                      onSubscribe: () => _pushAveePage(
+                        context,
+                        const AveeSubscriptionPage(),
+                      ),
+                    ),
+                    if (aveeAccountState.access) const SizedBox(height: 16),
                     AveePanel(
                       onTap: onOpenLocations,
                       padding: const EdgeInsets.symmetric(
@@ -979,6 +1138,20 @@ class _AveeLocationsPageState extends ConsumerState<AveeLocationsPage> {
   }
 }
 
+String _accountAccessHeadline(AveeAccountState state) {
+  if (!state.access) return 'No active access';
+  if (state.isTrialAccess) {
+    final time = state.accessExpiresAt == null
+        ? null
+        : _formatTimeRemaining(state.accessExpiresAt!);
+    return time == null ? 'Trial active' : 'Trial · $time';
+  }
+  final time = state.accessExpiresAt == null
+      ? null
+      : _formatTimeRemaining(state.accessExpiresAt!);
+  return time == null ? 'Subscription active' : 'Subscription · $time';
+}
+
 class AveeAccountPage extends StatelessWidget {
   const AveeAccountPage({super.key});
 
@@ -1028,9 +1201,7 @@ class AveeAccountPage extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    aveeAccountState.access
-                                        ? 'Access active'
-                                        : 'No active access',
+                                    _accountAccessHeadline(aveeAccountState),
                                     style: TextStyle(
                                       color: aveeAccountState.access
                                           ? AveeColors.primary
@@ -1043,6 +1214,16 @@ class AveeAccountPage extends StatelessWidget {
                             ),
                           ],
                         ),
+                        if (aveeAccountState.access) ...[
+                          const SizedBox(height: 16),
+                          AveeAccessStatusPanel(
+                            onSubscribe: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const AveeSubscriptionPage(),
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 24),
                         AveePrimaryButton(
                           label: 'View plans',
@@ -1165,30 +1346,10 @@ class AveeSubscriptionPage extends StatelessWidget {
                   builder: (context, _) => ListView(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
                     children: [
-                      if (aveeAccountState.access)
-                        AveePanel(
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.verified_rounded,
-                                color: AveeColors.primary,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  aveeAccountState.accessExpiresAt == null
-                                      ? 'Access is active'
-                                      : 'Access is active until ${_date(aveeAccountState.accessExpiresAt!)}',
-                                  style: const TextStyle(
-                                    color: AveeColors.text,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else ...[
+                      if (aveeAccountState.access) ...[
+                        const AveeAccessStatusPanel(),
+                        const SizedBox(height: 16),
+                      ] else ...[
                         _trialOffer(context),
                         const SizedBox(height: 16),
                       ],

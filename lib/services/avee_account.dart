@@ -45,6 +45,9 @@ class AveeAccountState extends ChangeNotifier {
   bool reachable = false;
   bool access = false;
   DateTime? accessExpiresAt;
+  /// `TRIAL` or `SUBSCRIPTION` when [access] is true.
+  String? accessType;
+  String? subscriptionSource;
   String? error;
   String? recoveryCode;
   String? accessReason;
@@ -147,6 +150,16 @@ class AveeAccountState extends ChangeNotifier {
     if (proxyName == null || proxyName.isEmpty) return;
     await selectLocation(proxyName);
   }
+
+  bool get isTrialAccess =>
+      access &&
+      (accessType == 'TRIAL' ||
+          (accessType == null && trafficLimitBytes != null));
+
+  bool get isSubscriptionAccess =>
+      access &&
+      (accessType == 'SUBSCRIPTION' ||
+          (accessType == null && trafficLimitBytes == null));
 
   Map<String, dynamic>? get selectedLocationItem {
     for (final item in locations) {
@@ -352,6 +365,8 @@ class AveeAccountState extends ChangeNotifier {
           int.tryParse(state['trafficRemainingBytes'] as String? ?? '');
       accessExpiresAt =
           DateTime.tryParse(state['entitlementExpiresAt'] as String? ?? '');
+      accessType = state['accessType'] as String?;
+      subscriptionSource = state['subscriptionSource'] as String?;
       error = null;
     } on AveeApiException catch (exception) {
       reachable = true;
@@ -368,6 +383,8 @@ class AveeAccountState extends ChangeNotifier {
     session = null;
     recoveryCode = null;
     access = false;
+    accessType = null;
+    subscriptionSource = null;
     accessReason = null;
     trialAvailable = true;
     trialUnavailableReason = null;
