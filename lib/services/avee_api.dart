@@ -129,6 +129,8 @@ class AveeApi {
   Future<Map<String, dynamic>> billingMethods() =>
       _request('GET', '/config/billing/methods');
 
+  Future<Map<String, dynamic>> locations() => _request('GET', '/locations');
+
   Future<Map<String, dynamic>> completeGooglePurchase(AveeSession session,
           {required String productId, required String purchaseToken}) =>
       _request('POST', '/billing/google/complete',

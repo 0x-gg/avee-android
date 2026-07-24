@@ -114,11 +114,16 @@ class MainActivity : FlutterActivity() {
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "app.dropweb/navigation")
             .setMethodCallHandler { call, result ->
-                if (call.method == "getInitialRoute") {
-                    result.success(initialRoute)
-                    initialRoute = null
-                } else {
-                    result.notImplemented()
+                when (call.method) {
+                    "getInitialRoute" -> {
+                        result.success(initialRoute)
+                        initialRoute = null
+                    }
+                    "requestBatteryExemption" -> {
+                        maybeRequestBatteryExemption()
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
                 }
             }
 

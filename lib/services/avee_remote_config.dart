@@ -14,10 +14,12 @@ class AveeRemoteConfig extends ChangeNotifier {
         _storage = storage ?? const FlutterSecureStorage();
 
   static const _cacheKey = 'avee.remote_config.last_known_good';
-  static const _publicKey = String.fromEnvironment('AVEE_CONFIG_PUBLIC_KEY');
+  static const _publicKey = String.fromEnvironment(
+    'AVEE_CONFIG_PUBLIC_KEY',
+    defaultValue: '5geuxf4dBZj0aYHr1gvKNLAKZxOcc1G53ISz_YNVNKs',
+  );
 
-  static String get _defaultBaseUrl =>
-      'http://${defaultTargetPlatform == TargetPlatform.android ? '10.0.2.2' : '127.0.0.1'}:3000';
+  static const _defaultBaseUrl = 'https://api.aveevpn.app';
 
   final AveeApi _api;
   final FlutterSecureStorage _storage;

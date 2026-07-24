@@ -1,15 +1,79 @@
+import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:avee/providers/providers.dart';
-import 'package:avee/plugins/app.dart';
-import 'package:avee/services/avee_account.dart';
-import 'package:avee/services/avee_billing.dart';
-import 'package:avee/state.dart';
-import 'package:avee/ui/avee_design.dart';
-import 'package:avee/views/dashboard/widgets/start_button.dart';
+import 'package:dropweb/providers/providers.dart';
+import 'package:dropweb/services/avee_account.dart';
+import 'package:dropweb/services/avee_billing.dart';
+import 'package:dropweb/services/avee_remote_config.dart';
+import 'package:dropweb/state.dart';
+import 'package:dropweb/ui/avee_design.dart';
+import 'package:dropweb/views/dashboard/widgets/start_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+Future<void> openAveeMenu(BuildContext context) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: AveeColors.surface,
+    showDragHandle: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (sheetContext) => SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(12, 4, 12, 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: AveeLogo(compact: true, horizontal: true),
+              ),
+            ),
+            _aveeMenuTile(
+              sheetContext,
+              Icons.person_outline,
+              'Account',
+              () => _pushAveePage(context, const AveeAccountPage()),
+            ),
+            _aveeMenuTile(
+              sheetContext,
+              Icons.workspace_premium_outlined,
+              'Subscription',
+              () => _pushAveePage(context, const AveeSubscriptionPage()),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _aveeMenuTile(
+  BuildContext sheetContext,
+  IconData icon,
+  String label,
+  VoidCallback action,
+) =>
+    ListTile(
+      leading: Icon(icon, color: AveeColors.primary),
+      title: Text(label, style: const TextStyle(color: AveeColors.text)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      onTap: () {
+        Navigator.pop(sheetContext);
+        action();
+      },
+    );
+
+Future<void> _pushAveePage(BuildContext context, Widget page) async {
+  // Replace stacked sub-screens so Back always returns to Home.
+  final navigator = Navigator.of(context);
+  navigator.popUntil((route) => route.isFirst);
+  await navigator.push<void>(MaterialPageRoute(builder: (_) => page));
+}
 
 class AveeMobileShell extends ConsumerStatefulWidget {
   const AveeMobileShell({super.key});
@@ -18,207 +82,194 @@ class AveeMobileShell extends ConsumerStatefulWidget {
 }
 
 class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
-  int tab = 0;
-
-  void _openSettings() => setState(() => tab = 3);
-
-  void _openMenu() {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AveeColors.surface,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
-          child: ListenableBuilder(
-            listenable: aveeAccountState,
-            builder: (context, _) => Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('AVEE',
-                      style: TextStyle(
-                          color: AveeColors.text,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.4)),
-                ),
-                const SizedBox(height: 18),
-                _menuItem(sheetContext, Icons.home_outlined, 'Home', 0),
-                _menuItem(
-                    sheetContext, Icons.person_outline, 'Account & devices', 2),
-                ListTile(
-                  leading: const Icon(Icons.workspace_premium_outlined,
-                      color: AveeColors.primary),
-                  title: const Text('Subscription'),
-                  subtitle: Text(aveeAccountState.access
-                      ? 'Access is active'
-                      : 'Choose a plan'),
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    AveePaywall.show(context);
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _menuItem(BuildContext sheetContext, IconData icon, String label,
-          int destination) =>
-      ListTile(
-        leading: Icon(icon,
-            color: destination == tab
-                ? AveeColors.primary
-                : AveeColors.secondaryText),
-        title: Text(label),
-        selected: destination == tab,
-        selectedTileColor: AveeColors.primary.withValues(alpha: .08),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        onTap: () {
-          Navigator.pop(sheetContext);
-          setState(() => tab = destination);
-        },
-      );
+  bool _syncingManagedProfile = false;
+  bool _removingManagedProfile = false;
+  bool? _lastAccess;
+  String? _lastAccountId;
+  Timer? _accountRefreshTimer;
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-        listenable: aveeAccountState,
-        builder: (context, _) {
-          if (aveeAccountState.session == null) {
-            return AveePage(child: AveeGuestOnboarding(onRecovery: _recover));
-          }
-          final pages = <Widget>[
-            AveeHomeDashboard(onSettings: _openSettings),
-            AveeLocationsPage(),
-            AveeAccountPage(),
-            AveeConnectionSettingsPage(),
-          ];
-          return AveePage(
-            child: Column(
-              children: [
-                if (tab != 0) AveeTopBar(onSettings: _openSettings),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 240),
-                    reverseDuration: const Duration(milliseconds: 160),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    layoutBuilder: (currentChild, previousChildren) => Stack(
-                      alignment: Alignment.topCenter,
-                      children: [
-                        ...previousChildren,
-                        if (currentChild != null) currentChild,
-                      ],
-                    ),
-                    child: KeyedSubtree(
-                      key: ValueKey(tab),
-                      child: pages[tab],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      );
+  void initState() {
+    super.initState();
+    aveeAccountState.addListener(_accountChanged);
+    unawaited(aveeAccountState.refreshLocations());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _accountChanged());
+    _accountRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted &&
+          aveeAccountState.session != null &&
+          !aveeAccountState.loading) {
+        unawaited(aveeAccountState.refresh());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _accountRefreshTimer?.cancel();
+    aveeAccountState.removeListener(_accountChanged);
+    super.dispose();
+  }
+
+  void _accountChanged() {
+    final accountId = aveeAccountState.session?.accountId;
+    final accessChanged =
+        _lastAccess != aveeAccountState.access || _lastAccountId != accountId;
+    _lastAccess = aveeAccountState.access;
+    _lastAccountId = accountId;
+    if (aveeAccountState.session == null || !aveeAccountState.access) {
+      if (!_removingManagedProfile &&
+          (accessChanged || ref.read(currentProfileProvider) != null)) {
+        unawaited(_removeManagedProfile());
+      }
+      return;
+    }
+    if (_syncingManagedProfile ||
+        (!accessChanged && ref.read(currentProfileProvider) != null)) {
+      return;
+    }
+    unawaited(_syncManagedProfile());
+  }
+
+  Future<void> _removeManagedProfile() async {
+    _removingManagedProfile = true;
+    try {
+      await globalState.appController.removeManagedProfile();
+    } finally {
+      _removingManagedProfile = false;
+    }
+  }
+
+  Future<void> _syncManagedProfile() async {
+    _syncingManagedProfile = true;
+    try {
+      final yaml = await aveeAccountState.refreshManagedProfile();
+      if (yaml != null) {
+        await globalState.appController.installManagedProfile(yaml);
+      }
+    } catch (_) {
+      // Account state exposes profile/API failures to the UI. Keep listener
+      // callbacks from becoming unhandled asynchronous errors.
+    } finally {
+      _syncingManagedProfile = false;
+    }
+  }
 
   Future<void> _recover() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(builder: (_) => const AveeRecoveryPage()),
     );
   }
-}
-
-class AveeGuestOnboarding extends StatelessWidget {
-  const AveeGuestOnboarding({required this.onRecovery, super.key});
-  final VoidCallback onRecovery;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
         listenable: aveeAccountState,
-        builder: (context, _) => SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Flexible(
-                    child: FittedBox(
-                      alignment: Alignment.centerLeft,
-                      fit: BoxFit.scaleDown,
-                      child: AveeLogo(compact: true, horizontal: true),
-                    ),
-                  ),
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    onPressed: onRecovery,
-                    child: const Text('Recover'),
-                  ),
-                ],
+        builder: (context, _) {
+          if (aveeAccountState.session == null) {
+            return AveePage(
+              child: AveeGuestOnboarding(
+                onRecovery: _recover,
+                onSettings: () => openAveeMenu(context),
               ),
-              const SizedBox(height: 56),
-              Text(
-                'Private internet.\nOne clear step.',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: AveeColors.text,
-                      fontWeight: FontWeight.w800,
-                      height: 1.1,
+            );
+          }
+          return AveePage(
+            child: AveeHomeDashboard(
+              onSettings: () => openAveeMenu(context),
+              onPrepareProfile: _syncManagedProfile,
+              onOpenLocations: () =>
+                  _pushAveePage(context, const AveeLocationsPage()),
+            ),
+          );
+        },
+      );
+}
+
+class AveeGuestOnboarding extends StatelessWidget {
+  const AveeGuestOnboarding({
+    required this.onRecovery,
+    required this.onSettings,
+    super.key,
+  });
+  final VoidCallback onRecovery;
+  final VoidCallback onSettings;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: aveeAccountState,
+        builder: (context, _) => Column(
+          children: [
+            AveeAppBar(
+              title: 'AVEE VPN',
+              onMenu: onSettings,
+              actionIcon: Icons.settings_outlined,
+              actionTooltip: 'Settings',
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 28),
+                    Text(
+                      'Private internet.\nOne clear step.',
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                color: AveeColors.text,
+                                fontWeight: FontWeight.w700,
+                                height: 1.1,
+                              ),
                     ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Create an account and connect without manual setup.',
-                style: TextStyle(color: AveeColors.secondaryText, fontSize: 16),
-              ),
-              const SizedBox(height: 24),
-              const _AveePulse(),
-              const SizedBox(height: 18),
-              if (aveeAccountState.error != null) ...[
-                AveePanel(
-                  child: Text(
-                    _friendlyError(aveeAccountState.error!),
-                    style: const TextStyle(color: AveeColors.error),
-                  ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Create an account and connect without manual setup.',
+                      style: TextStyle(
+                        color: AveeColors.secondaryText,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    const _AveePulse(),
+                    const SizedBox(height: 20),
+                    if (aveeAccountState.error != null) ...[
+                      AveePanel(
+                        child: Text(
+                          _friendlyError(aveeAccountState.error!),
+                          style: const TextStyle(color: AveeColors.error),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    AveePrimaryButton(
+                      label: aveeAccountState.loading
+                          ? 'Creating account…'
+                          : 'Create account',
+                      icon: Icons.add_rounded,
+                      onPressed: aveeAccountState.loading
+                          ? null
+                          : () => _create(context),
+                    ),
+                    const SizedBox(height: 12),
+                    AveeSecondaryButton(
+                      label: 'Recover account',
+                      icon: Icons.key_rounded,
+                      onPressed: onRecovery,
+                    ),
+                    const SizedBox(height: 22),
+                    const Text(
+                      'Only the data needed to run the service. Traffic content is not recorded.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AveeColors.mutedText,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-              ],
-              AveePrimaryButton(
-                label: aveeAccountState.loading
-                    ? 'Creating account…'
-                    : 'Create account',
-                icon: Icons.add_rounded,
-                onPressed:
-                    aveeAccountState.loading ? null : () => _create(context),
               ),
-              const SizedBox(height: 12),
-              AveeSecondaryButton(
-                label: 'Recover account',
-                icon: Icons.key_rounded,
-                onPressed: onRecovery,
-              ),
-              const SizedBox(height: 22),
-              const Text(
-                'Only the data needed to run the service. Traffic content is not recorded.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: AveeColors.mutedText, fontSize: 12, height: 1.4),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
 
@@ -267,8 +318,11 @@ class _AveePulseState extends State<_AveePulse>
             builder: (context, _) => CustomPaint(
               painter: _PulsePainter(progress: _controller.value),
               child: const Center(
-                child: Icon(Icons.power_settings_new_rounded,
-                    color: AveeColors.primary, size: 58),
+                child: Icon(
+                  Icons.power_settings_new_rounded,
+                  color: AveeColors.primary,
+                  size: 58,
+                ),
               ),
             ),
           ),
@@ -316,65 +370,262 @@ class _PulsePainter extends CustomPainter {
       oldDelegate.progress != progress;
 }
 
-class _AveeDataRow extends StatelessWidget {
-  const _AveeDataRow(
-      {required this.label, required this.value, this.accent, this.icon});
-  final String label;
-  final String value;
-  final Color? accent;
-  final IconData? icon;
+String _formatRuntime(int? elapsedMilliseconds) {
+  final value = (elapsedMilliseconds ?? 0) ~/ 1000;
+  final h = (value ~/ 3600).toString().padLeft(2, '0');
+  final m = ((value % 3600) ~/ 60).toString().padLeft(2, '0');
+  final s = (value % 60).toString().padLeft(2, '0');
+  return '$h:$m:$s';
+}
+
+String _friendlyError(String error) => error == 'Backend unavailable'
+    ? 'AVEE server is temporarily unavailable. Try again.'
+    : error;
+
+String _bytesEnglish(int value) => value >= 1000000000
+    ? '${(value / 1000000000).toStringAsFixed(1)} GB'
+    : value >= 1000000
+        ? '${(value / 1000000).toStringAsFixed(0)} MB'
+        : '${(value / 1000).toStringAsFixed(0)} KB';
+
+String _date(DateTime value) => '${value.day.toString().padLeft(2, '0')}.'
+    '${value.month.toString().padLeft(2, '0')}.'
+    '${value.year}';
+
+class AveeHomeDashboard extends ConsumerWidget {
+  const AveeHomeDashboard({
+    required this.onSettings,
+    required this.onPrepareProfile,
+    required this.onOpenLocations,
+    super.key,
+  });
+
+  final VoidCallback onSettings;
+  final Future<void> Function() onPrepareProfile;
+  final VoidCallback onOpenLocations;
 
   @override
-  Widget build(BuildContext context) => Container(
-        constraints: const BoxConstraints(minHeight: 58),
-        decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: AveeColors.outline))),
-        child: Row(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final runSeconds = ref.watch(runTimeProvider);
+    final running = runSeconds != null;
+    final connecting = globalState.isConnecting.value;
+    final hasProfile = ref.watch(currentProfileProvider) != null;
+
+    return ListenableBuilder(
+      listenable: aveeAccountState,
+      builder: (context, _) {
+        final locationItem = aveeAccountState.selectedLocationItem;
+        final location = locationItem?['name']?.toString() ??
+            (aveeAccountState.locations.isEmpty
+                ? 'No locations available'
+                : 'Choose location');
+        final flag = locationItem?['flag']?.toString();
+        final locationStatus = locationItem?['status'] == 'offline'
+            ? 'Unavailable'
+            : locationItem == null
+                ? 'Remnawave Hosts'
+                : 'Available';
+        return Column(
           children: [
-            if (icon != null) ...[
-              Icon(icon, size: 18, color: AveeColors.mutedText),
-              const SizedBox(width: 10)
-            ],
+            AveeAppBar(
+              title: 'AVEE VPN',
+              onMenu: onSettings,
+              actionIcon: Icons.settings_outlined,
+              actionTooltip: 'Settings',
+            ),
             Expanded(
-                child: Text(label,
-                    style: const TextStyle(color: AveeColors.secondaryText))),
-            Flexible(
-                child: Text(value,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                        color: accent ?? AveeColors.text,
-                        fontWeight: FontWeight.w700))),
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  await aveeAccountState.refresh();
+                  await aveeAccountState.refreshLocations();
+                },
+                color: AveeColors.primary,
+                backgroundColor: AveeColors.surface,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                  children: [
+                    const SizedBox(height: 28),
+                    Text(
+                      running
+                          ? 'YOUR CONNECTION IS Protected.'
+                          : connecting
+                              ? 'YOUR CONNECTION IS Connecting…'
+                              : 'YOUR CONNECTION IS Ready.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AveeColors.secondaryText,
+                        fontSize: 14,
+                        letterSpacing: 0.6,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _SignalOrb(
+                      running: running,
+                      connecting: connecting,
+                      canConnect: aveeAccountState.access && hasProfile,
+                      onUnavailable: () async {
+                        if (!aveeAccountState.access) {
+                          if (!aveeAccountState.trialAvailable) {
+                            showDialog<void>(
+                              context: context,
+                              builder: (dialogContext) => AlertDialog(
+                                backgroundColor: AveeColors.surface,
+                                title: const Text(
+                                  'Trial already used',
+                                  style: TextStyle(color: AveeColors.text),
+                                ),
+                                content: const Text(
+                                  'This device already activated a trial on another AVEE account. Recover that account to continue.',
+                                  style: TextStyle(
+                                    color: AveeColors.secondaryText,
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext),
+                                    child: const Text('Close'),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () {
+                                      Navigator.pop(dialogContext);
+                                      Navigator.of(context).push<void>(
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const AveeRecoveryPage(),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text('Recover account'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            return;
+                          }
+                          _pushAveePage(
+                            context,
+                            const AveeSubscriptionPage(),
+                          );
+                          return;
+                        }
+                        await onPrepareProfile();
+                        if (!context.mounted) return;
+                        if (ref.read(currentProfileProvider) != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'VPN profile is ready. Tap Connect again.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              aveeAccountState.error ??
+                                  'Could not prepare the VPN profile.',
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    Text(
+                      running
+                          ? 'Tap to Disconnect'
+                          : connecting
+                              ? 'Connecting…'
+                              : 'Tap to Connect',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AveeColors.text,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _formatRuntime(runSeconds),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AveeColors.primary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    AveePanel(
+                      onTap: onOpenLocations,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      child: Row(
+                        children: [
+                          if (flag != null && flag.isNotEmpty)
+                            Text(flag, style: const TextStyle(fontSize: 28))
+                          else
+                            const Icon(
+                              Icons.public_outlined,
+                              color: AveeColors.primary,
+                              size: 28,
+                            ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  location,
+                                  style: const TextStyle(
+                                    color: AveeColors.text,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  locationStatus,
+                                  style: const TextStyle(
+                                    color: AveeColors.mutedText,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: AveeColors.mutedText,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
-        ),
-      );
-}
-
-String _locationName(AveeAccountState state) {
-  for (final item in state.locations) {
-    final status = '${item['status'] ?? ''}';
-    if (status == 'available' || status == 'online') {
-      return '${item['name'] ?? item['code'] ?? 'AVEE'}';
-    }
+        );
+      },
+    );
   }
-  return 'AVEE';
-}
-
-String _flagForLocation(String value) {
-  final name = value.toLowerCase();
-  if (name.contains('united kingdom') ||
-      name.contains('uk') ||
-      name.contains('англ')) return '🇬🇧';
-  if (name.contains('france') || name.contains('франц')) return '🇫🇷';
-  if (name.contains('germany') || name.contains('герм')) return '🇩🇪';
-  if (name.contains('australia') || name.contains('австрал')) return '🇦🇺';
-  if (name.contains('armenia') || name.contains('арм')) return '🇦🇲';
-  return '🌐';
 }
 
 class _SignalOrb extends StatefulWidget {
-  const _SignalOrb({required this.running, required this.connecting});
+  const _SignalOrb({
+    required this.running,
+    required this.connecting,
+    required this.canConnect,
+    required this.onUnavailable,
+  });
   final bool running;
   final bool connecting;
+  final bool canConnect;
+  final VoidCallback onUnavailable;
 
   @override
   State<_SignalOrb> createState() => _SignalOrbState();
@@ -398,30 +649,40 @@ class _SignalOrbState extends State<_SignalOrb>
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, _) => SizedBox(
-            height: 292,
+            height: 280,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 CustomPaint(
-                  size: const Size(double.infinity, 292),
+                  size: const Size(double.infinity, 280),
                   painter: _SignalOrbPainter(
                     progress: _controller.value,
                     active: widget.running,
                     connecting: widget.connecting,
                   ),
                 ),
-                const SizedBox(
-                  width: 148,
-                  height: 148,
-                  child: Center(
-                    child: Icon(Icons.power_settings_new_rounded,
-                        color: AveeColors.primary, size: 70),
+                Icon(
+                  Icons.power_settings_new_rounded,
+                  color: widget.running || widget.connecting
+                      ? AveeColors.primary
+                      : AveeColors.highlight,
+                  size: 64,
+                ),
+                if (widget.canConnect)
+                  Opacity(
+                    opacity: 0,
+                    child: SizedBox.expand(child: StartButton(iconSize: 58)),
+                  )
+                else
+                  Positioned.fill(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: widget.onUnavailable,
+                      ),
+                    ),
                   ),
-                ),
-                Opacity(
-                  opacity: 0,
-                  child: SizedBox.expand(child: StartButton(iconSize: 58)),
-                ),
               ],
             ),
           ),
@@ -443,35 +704,43 @@ class _SignalOrbPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = math.min(size.width, size.height) * .34;
+    final accent =
+        active || connecting ? AveeColors.primary : AveeColors.outline;
     final glow = Paint()
       ..shader = RadialGradient(
         colors: [
-          AveeColors.highlight.withValues(alpha: .24),
-          AveeColors.primary.withValues(alpha: .14),
+          AveeColors.primary.withValues(alpha: active ? .28 : .12),
           Colors.transparent,
         ],
-      ).createShader(Rect.fromCircle(center: center, radius: radius * 1.55));
-    canvas.drawCircle(center, radius * 1.5, glow);
+      ).createShader(Rect.fromCircle(center: center, radius: radius * 2.2));
+    canvas.drawCircle(center, radius * 2.0, glow);
+
     final ring = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = connecting ? 2.4 : 1.5
-      ..color = AveeColors.highlight.withValues(alpha: connecting ? .68 : .38);
-    for (var i = 1; i <= 3; i++) {
-      canvas.drawCircle(center, radius * (.82 + i * .16), ring);
+      ..strokeWidth = 3.2
+      ..color = accent.withValues(alpha: .85);
+    canvas.drawCircle(center, radius, ring);
+
+    final soft = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..color = AveeColors.highlight.withValues(alpha: .25);
+    canvas.drawCircle(center, radius * 1.18, soft);
+
+    if (active || connecting) {
+      final sweep = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4
+        ..strokeCap = StrokeCap.round
+        ..color = AveeColors.primary;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        progress * math.pi * 2,
+        math.pi * (connecting ? .7 : 1.4),
+        false,
+        sweep,
+      );
     }
-    final sweep = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0
-      ..strokeCap = StrokeCap.round
-      ..color = AveeColors.primary.withValues(alpha: active ? .92 : .72);
-    final sweepRect = Rect.fromCircle(center: center, radius: radius * 1.14);
-    canvas.drawArc(
-        sweepRect, progress * math.pi * 2, math.pi * .42, false, sweep);
-    final rim = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..color = AveeColors.primary.withValues(alpha: active ? .9 : .7);
-    canvas.drawCircle(center, radius * .72, rim);
   }
 
   @override
@@ -481,483 +750,570 @@ class _SignalOrbPainter extends CustomPainter {
       oldDelegate.connecting != connecting;
 }
 
-class _ConnectionCard extends StatelessWidget {
-  const _ConnectionCard({
-    required this.state,
-    required this.running,
-    required this.connecting,
-  });
-  final AveeAccountState state;
-  final bool running;
-  final bool connecting;
-
-  @override
-  Widget build(BuildContext context) {
-    final location = _locationName(state);
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const SizedBox(height: 28),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            running
-                ? 'PROTECTED'
-                : connecting
-                    ? 'CONNECTING'
-                    : 'READY TO CONNECT',
-            style: const TextStyle(
-                color: AveeColors.mutedText,
-                fontSize: 12,
-                letterSpacing: 2.2,
-                fontWeight: FontWeight.w600),
-          ),
-          Icon(Icons.circle,
-              size: 8, color: running ? AveeColors.primary : AveeColors.signal),
-        ],
-      ),
-      const SizedBox(height: 5),
-      Text(running ? 'Connection is active' : 'One step to private access',
-          style: const TextStyle(
-              color: AveeColors.text,
-              fontSize: 22,
-              fontWeight: FontWeight.w700)),
-      _SignalOrb(running: running, connecting: connecting),
-      Container(
-        height: 58,
-        decoration: BoxDecoration(
-          color: AveeColors.primary,
-          borderRadius: BorderRadius.circular(3),
-        ),
-        child: Stack(
-          children: [
-            Opacity(
-              opacity: 0,
-              child: SizedBox.expand(child: StartButton(iconSize: 24)),
-            ),
-            IgnorePointer(
-              child: Center(
-                child: Text(running ? 'DISCONNECT' : 'CONNECT',
-                    style: const TextStyle(
-                      color: AveeColors.background,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2.2,
-                    )),
-              ),
-            ),
-          ],
-        ),
-      ),
-      const SizedBox(height: 24),
-      InkWell(
-        borderRadius: BorderRadius.circular(2),
-        onTap: () => Navigator.of(context)
-            .push(MaterialPageRoute(builder: (_) => const AveeLocationsPage())),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          child: Row(children: [
-            const Icon(Icons.public, color: AveeColors.primary, size: 22),
-            const SizedBox(width: 16),
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  const Text('LOCATION',
-                      style: TextStyle(
-                          color: AveeColors.mutedText,
-                          fontSize: 13,
-                          letterSpacing: 2.2)),
-                  const SizedBox(height: 3),
-                  Text(location == 'AVEE' ? 'Smart Location' : location,
-                      style: const TextStyle(color: AveeColors.text)),
-                ])),
-            const Icon(Icons.chevron_right, color: AveeColors.primary),
-          ]),
-        ),
-      ),
-      const Divider(color: AveeColors.outline, height: 1),
-      _AveeDataLine(
-          icon: Icons.show_chart_rounded,
-          label: 'DATA USAGE',
-          value: state.trafficUsedBytes == null
-              ? '0 B'
-              : _bytesEnglish(state.trafficUsedBytes!)),
-    ]);
-  }
-}
-
-class _AveeDataLine extends StatelessWidget {
-  const _AveeDataLine(
-      {required this.icon, required this.label, required this.value});
-  final IconData icon;
-  final String label;
-  final String value;
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        child: Row(children: [
-          Icon(icon, color: AveeColors.secondaryText, size: 22),
-          const SizedBox(width: 16),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text(label,
-                    style: const TextStyle(
-                        color: AveeColors.mutedText,
-                        fontSize: 13,
-                        letterSpacing: 2.2)),
-                const SizedBox(height: 4),
-                Text(value, style: const TextStyle(color: AveeColors.text)),
-              ])),
-        ]),
-      );
-}
-
-class _AveeBrandHeader extends StatelessWidget {
-  const _AveeBrandHeader({required this.onSettings});
-  final VoidCallback onSettings;
-
-  @override
-  Widget build(BuildContext context) => Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const AveeLogo(compact: true, horizontal: true),
-          const Spacer(),
-          IconButton(
-            onPressed: onSettings,
-            tooltip: 'Settings',
-            icon: const Icon(Icons.settings_outlined),
-            color: AveeColors.primary,
-            iconSize: 28,
-          ),
-        ],
-      );
-}
-
-class AveeHomeDashboard extends ConsumerWidget {
-  const AveeHomeDashboard({required this.onSettings, super.key});
-  final VoidCallback onSettings;
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final running = ref.watch(runTimeProvider.select((value) => value != null));
-    final connecting = globalState.isConnecting.value;
-    return ListenableBuilder(
-      listenable: aveeAccountState,
-      builder: (context, _) {
-        final state = aveeAccountState;
-        return RefreshIndicator(
-          onRefresh: state.refresh,
-          color: AveeColors.primary,
-          backgroundColor: AveeColors.surface,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-            children: [
-              _AveeBrandHeader(onSettings: onSettings),
-              _ConnectionCard(
-                state: state,
-                running: running,
-                connecting: connecting,
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-String _date(DateTime value) =>
-    '${value.day.toString().padLeft(2, '0')}.${value.month.toString().padLeft(2, '0')}';
-String _bytesEnglish(int value) => value >= 1000000000
-    ? '${(value / 1000000000).toStringAsFixed(1)} GB'
-    : value >= 1000000
-        ? '${(value / 1000000).toStringAsFixed(0)} MB'
-        : '${(value / 1000).toStringAsFixed(0)} KB';
-String _friendlyError(String error) => error == 'Backend unavailable'
-    ? 'AVEE server is temporarily unavailable. Try again.'
-    : error;
-
-class AveeLocationsPage extends StatefulWidget {
+class AveeLocationsPage extends ConsumerStatefulWidget {
   const AveeLocationsPage({super.key});
   @override
-  State<AveeLocationsPage> createState() => _AveeLocationsPageState();
+  ConsumerState<AveeLocationsPage> createState() => _AveeLocationsPageState();
 }
 
-class _AveeLocationsPageState extends State<AveeLocationsPage> {
+class _AveeLocationsPageState extends ConsumerState<AveeLocationsPage> {
+  final _search = TextEditingController();
+
   @override
   void initState() {
     super.initState();
-    aveeAccountState.refreshLocations();
+    unawaited(aveeAccountState.refreshLocations());
+    unawaited(_refreshManagedProfile());
   }
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-      listenable: aveeAccountState,
-      builder: (context, _) => RefreshIndicator(
-          onRefresh: aveeAccountState.refreshLocations,
-          child: ListView(padding: const EdgeInsets.all(16), children: [
-            const SizedBox(height: 16),
-            Text('Locations',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: AveeColors.text, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 6),
-            const Text(
-                'Status is based on AVEE data. No invented ping or load values.',
-                style: TextStyle(color: AveeColors.secondaryText)),
-            const SizedBox(height: 20),
-            if (aveeAccountState.locationsLoading)
-              const Center(
-                  child: Padding(
-                      padding: EdgeInsets.all(32),
-                      child:
-                          CircularProgressIndicator(color: AveeColors.primary)))
-            else if (aveeAccountState.locations.isEmpty)
-              const AveePanel(
-                  child: Text('Locations are currently unavailable.',
-                      style: TextStyle(color: AveeColors.secondaryText)))
-            else
-              ...aveeAccountState.locations.map(_locationRow)
-          ])));
-  Widget _locationRow(Map<String, dynamic> item) {
-    final name = item['name'] ?? item['code'] ?? 'Location';
-    final status = item['status'] ?? 'unknown';
-    final label = status == 'available' || status == 'online'
-        ? 'Available'
-        : status == 'degraded'
-            ? 'High load'
-            : 'Unavailable';
-    final color = label == 'Available'
-        ? AveeColors.primary
-        : label == 'High load'
-            ? AveeColors.warning
-            : AveeColors.error;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 2),
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AveeColors.outline)),
-      ),
-      child: Row(children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: AveeColors.surfaceRaised,
-            borderRadius: BorderRadius.circular(12),
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: AveeColors.background,
+        body: SafeArea(
+          child: ListenableBuilder(
+            listenable: aveeAccountState,
+            builder: (context, _) {
+              final query = _search.text.trim().toLowerCase();
+              final items = aveeAccountState.locations.where((item) {
+                final name = '${item['name']}'.toLowerCase();
+                final code = '${item['countryCode'] ?? ''}'.toLowerCase();
+                return query.isEmpty ||
+                    name.contains(query) ||
+                    code.contains(query);
+              }).toList();
+
+              return Column(
+                children: [
+                  const AveeAppBar(title: 'Locations', showBack: true),
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: aveeAccountState.refreshLocations,
+                      color: AveeColors.primary,
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                        children: [
+                          TextField(
+                            controller: _search,
+                            onChanged: (_) => setState(() {}),
+                            style: const TextStyle(color: AveeColors.text),
+                            decoration: InputDecoration(
+                              hintText: 'Search locations',
+                              hintStyle: const TextStyle(
+                                color: AveeColors.mutedText,
+                              ),
+                              prefixIcon: const Icon(
+                                Icons.search,
+                                color: AveeColors.mutedText,
+                              ),
+                              filled: true,
+                              fillColor: AveeColors.surface,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          if (aveeAccountState.locationsLoading)
+                            const Padding(
+                              padding: EdgeInsets.all(32),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: AveeColors.primary,
+                                ),
+                              ),
+                            )
+                          else if (aveeAccountState.locationsError != null)
+                            AveePanel(
+                              child: Text(
+                                aveeAccountState.locationsError!,
+                                style: const TextStyle(
+                                  color: AveeColors.error,
+                                ),
+                              ),
+                            )
+                          else if (items.isEmpty)
+                            const AveePanel(
+                              child: Text(
+                                'No Remnawave Hosts are available.',
+                                style: TextStyle(
+                                  color: AveeColors.secondaryText,
+                                ),
+                              ),
+                            )
+                          else
+                            ...items.map(_locationRow),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
-          child: const Icon(Icons.public, color: AveeColors.primary, size: 20),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('$name',
-                style: const TextStyle(
-                    color: AveeColors.text, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            const Text('Verified from AVEE data',
-                style: TextStyle(color: AveeColors.mutedText, fontSize: 11)),
-          ]),
+      );
+
+  Widget _locationRow(Map<String, dynamic> item) {
+    final name = '${item['name'] ?? 'Location'}';
+    final proxyName = '${item['proxyName'] ?? name}';
+    final flag = item['flag']?.toString();
+    final offline = item['status'] == 'offline';
+    final selected = aveeAccountState.selectedLocation == proxyName;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: selected
+            ? AveeColors.primary.withValues(alpha: .10)
+            : AveeColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: offline ? null : () => _selectLocation(item),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            child: Row(
+              children: [
+                if (flag != null && flag.isNotEmpty)
+                  Text(flag, style: const TextStyle(fontSize: 26))
+                else
+                  const Icon(
+                    Icons.public_outlined,
+                    color: AveeColors.primary,
+                    size: 26,
+                  ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          color:
+                              offline ? AveeColors.mutedText : AveeColors.text,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        offline ? 'Unavailable' : 'Available',
+                        style: TextStyle(
+                          color:
+                              offline ? AveeColors.error : AveeColors.mutedText,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (selected)
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    color: AveeColors.primary,
+                  )
+                else
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AveeColors.mutedText,
+                  ),
+              ],
+            ),
+          ),
         ),
-        AveeStatusPill(label: label, color: color),
-      ]),
+      ),
     );
+  }
+
+  Future<void> _selectLocation(Map<String, dynamic> item) async {
+    final proxyName = item['proxyName']?.toString();
+    if (proxyName == null || proxyName.isEmpty) return;
+
+    await aveeAccountState.selectLocation(proxyName);
+    var groupName = _findGroupName(proxyName);
+    if (groupName == null) {
+      await _refreshManagedProfile();
+      groupName = _findGroupName(proxyName);
+    }
+
+    if (groupName != null) {
+      globalState.appController.updateCurrentSelectedMap(
+        groupName,
+        proxyName,
+      );
+      globalState.appController.changeProxyDebounce(groupName, proxyName);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'The VPN profile is still syncing. Try again in a moment.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (mounted) Navigator.pop(context);
+  }
+
+  String? _findGroupName(String proxyName) {
+    final groups = ref.read(groupsProvider);
+    final currentGroupName = ref.read(currentProfileProvider)?.currentGroupName;
+    for (final group in groups) {
+      if (group.name == currentGroupName &&
+          group.all.any((proxy) => proxy.name == proxyName)) {
+        return group.name;
+      }
+    }
+    for (final group in groups) {
+      if (group.all.any((proxy) => proxy.name == proxyName)) return group.name;
+    }
+    return null;
+  }
+
+  Future<void> _refreshManagedProfile() async {
+    try {
+      final yaml = await aveeAccountState.refreshManagedProfile();
+      if (yaml != null) {
+        await globalState.appController.installManagedProfile(yaml);
+      }
+    } catch (_) {
+      // The locations list remains usable; selection shows a sync error if
+      // the refreshed Remnawave profile is temporarily unavailable.
+    }
   }
 }
 
 class AveeAccountPage extends StatelessWidget {
   const AveeAccountPage({super.key});
-  @override
-  Widget build(BuildContext context) => ListenableBuilder(
-      listenable: aveeAccountState,
-      builder: (context, _) =>
-          ListView(padding: const EdgeInsets.all(16), children: [
-            const SizedBox(height: 16),
-            Text('Account',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: AveeColors.text, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 20),
-            AveePanel(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  const Text('AVEE account number',
-                      style: TextStyle(color: AveeColors.secondaryText)),
-                  const SizedBox(height: 8),
-                  SelectableText(aveeAccountState.session?.accountNumber ?? '—',
-                      style: const TextStyle(
-                          color: AveeColors.text,
-                          fontSize: 22,
-                          letterSpacing: 1.2,
-                          fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 16),
-                  Row(children: [
-                    Icon(Icons.circle,
-                        size: 8,
-                        color: aveeAccountState.access
-                            ? AveeColors.primary
-                            : AveeColors.warning),
-                    const SizedBox(width: 8),
-                    Text(
-                        aveeAccountState.access
-                            ? 'Access is active'
-                            : 'Subscription required',
-                        style: const TextStyle(
-                            color: AveeColors.text,
-                            fontWeight: FontWeight.w600)),
-                  ])
-                ])),
-            const SizedBox(height: 16),
-            AveePrimaryButton(
-                label: 'View plans',
-                icon: Icons.workspace_premium_outlined,
-                onPressed: () => AveePaywall.show(context)),
-            const SizedBox(height: 12),
-            AveeSecondaryButton(
-                label: 'Restore purchases',
-                icon: Icons.restore,
-                onPressed: aveeAccountState.loading
-                    ? null
-                    : () => aveeAccountState.restoreGooglePurchases()),
-            const SizedBox(height: 12),
-            AveeSecondaryButton(
-                label: 'Always-on / Kill switch',
-                icon: Icons.lock_outline,
-                onPressed: () => _openAlwaysOn(context)),
-            const SizedBox(height: 32),
-            const Text('Account & security',
-                style: TextStyle(
-                    color: AveeColors.text,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            const Text(
-                'Keep your recovery code in a safe place. It is required to restore your account on a new device. AVEE does not record traffic content.',
-                style: TextStyle(color: AveeColors.secondaryText, height: 1.4)),
-            const SizedBox(height: 32),
-            AveeSecondaryButton(
-                label: 'Delete account',
-                icon: Icons.delete_outline,
-                onPressed: () => _delete(context))
-          ]));
-  Future<void> _delete(BuildContext context) async {
-    final ok = await showDialog<bool>(
-        context: context,
-        builder: (_) => AlertDialog(
-                title: const Text('Delete account?'),
-                content: const Text('Access and local data will be removed.'),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel')),
-                  FilledButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Delete'))
-                ]));
-    if (ok == true) await aveeAccountState.deleteAccount();
-  }
-
-  Future<void> _openAlwaysOn(BuildContext context) async {
-    final opened = await app?.openVpnSettings() ?? false;
-    if (!context.mounted) return;
-    if (!opened) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Could not open Always-on VPN settings')));
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content:
-            Text('Enable Always-on VPN and “Block connections without VPN”')));
-  }
-}
-
-class AveeConnectionSettingsPage extends StatelessWidget {
-  const AveeConnectionSettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context) => ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-        children: [
-          Text('Connection settings',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: AveeColors.text, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          const Text('Control how AVEE protects your connection.',
-              style: TextStyle(color: AveeColors.secondaryText)),
-          const SizedBox(height: 24),
-          const AveePanel(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text('Security',
-                    style: TextStyle(
-                        color: AveeColors.text,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700)),
-                SizedBox(height: 8),
-                Text(
-                    'Always-on VPN reconnects when the tunnel drops. Android controls the final system policy.',
-                    style: TextStyle(
-                        color: AveeColors.secondaryText, height: 1.4)),
-              ])),
-          const SizedBox(height: 16),
-          AveePrimaryButton(
-              label: 'Open Android VPN settings',
-              icon: Icons.settings_outlined,
-              onPressed: () => _openAlwaysOnVpn(context)),
-          const SizedBox(height: 12),
-          const AveePanel(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text('Connection defaults',
-                    style: TextStyle(
-                        color: AveeColors.text,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700)),
-                SizedBox(height: 14),
-                _AveeSettingLine(label: 'Protocol', value: 'Automatic'),
-                _AveeSettingLine(label: 'DNS protection', value: 'Enabled'),
-                _AveeSettingLine(
-                    label: 'IPv6 leak protection', value: 'Enabled'),
-              ])),
-        ],
-      );
-}
-
-class _AveeSettingLine extends StatelessWidget {
-  const _AveeSettingLine({required this.label, required this.value});
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label,
-                style: const TextStyle(color: AveeColors.secondaryText)),
-            Text(value,
-                style: const TextStyle(
-                    color: AveeColors.primary, fontWeight: FontWeight.w700)),
-          ],
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: AveeColors.background,
+        body: SafeArea(
+          child: ListenableBuilder(
+            listenable: aveeAccountState,
+            builder: (context, _) {
+              final account = aveeAccountState.session?.accountNumber ?? '—';
+              final initial =
+                  account.isNotEmpty ? account.substring(0, 1) : 'A';
+              return Column(
+                children: [
+                  const AveeAppBar(title: 'Account', showBack: true),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 28,
+                              backgroundColor: AveeColors.primary,
+                              child: Text(
+                                initial,
+                                style: const TextStyle(
+                                  color: AveeColors.background,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 22,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SelectableText(
+                                    'Account #$account',
+                                    style: const TextStyle(
+                                      color: AveeColors.text,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    aveeAccountState.access
+                                        ? 'Access active'
+                                        : 'No active access',
+                                    style: TextStyle(
+                                      color: aveeAccountState.access
+                                          ? AveeColors.primary
+                                          : AveeColors.warning,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        AveePrimaryButton(
+                          label: 'View plans',
+                          icon: Icons.workspace_premium_outlined,
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const AveeSubscriptionPage(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        AveeSecondaryButton(
+                          label: 'Restore purchases',
+                          icon: Icons.restore,
+                          onPressed: aveeAccountState.loading
+                              ? null
+                              : aveeBillingService.restore,
+                        ),
+                        const SizedBox(height: 12),
+                        AveeSecondaryButton(
+                          label: 'Delete account',
+                          icon: Icons.delete_outline,
+                          onPressed: () => _delete(context),
+                        ),
+                        const SizedBox(height: 28),
+                        TextButton.icon(
+                          onPressed: () async {
+                            await globalState.appController
+                                .removeManagedProfile();
+                            await aveeAccountState.logOut();
+                            if (context.mounted) Navigator.pop(context);
+                          },
+                          icon: const Icon(Icons.logout_rounded,
+                              color: AveeColors.error),
+                          label: const Text(
+                            'Log Out',
+                            style: TextStyle(
+                              color: AveeColors.error,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       );
+
+  Future<void> _delete(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AveeColors.surface,
+        title: const Text('Delete account?'),
+        content: const Text('Access and local data will be removed.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await aveeAccountState.deleteAccount();
+      if (aveeAccountState.session == null) {
+        await globalState.appController.removeManagedProfile();
+        if (context.mounted) Navigator.pop(context);
+      }
+    }
+  }
 }
 
-Future<void> _openAlwaysOnVpn(BuildContext context) async {
-  final opened = await app?.openVpnSettings() ?? false;
-  if (!context.mounted) return;
-  if (!opened) {
-    ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open Always-on VPN settings')));
-    return;
+class AveeSubscriptionPage extends StatelessWidget {
+  const AveeSubscriptionPage({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: AveeColors.background,
+        body: SafeArea(
+          child: Column(
+            children: [
+              const AveeAppBar(title: 'Subscription', showBack: true),
+              Expanded(
+                child: ListenableBuilder(
+                  listenable: Listenable.merge([
+                    aveeAccountState,
+                    aveeRemoteConfig,
+                  ]),
+                  builder: (context, _) => ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                    children: [
+                      if (aveeAccountState.access)
+                        AveePanel(
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.verified_rounded,
+                                color: AveeColors.primary,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  aveeAccountState.accessExpiresAt == null
+                                      ? 'Access is active'
+                                      : 'Access is active until ${_date(aveeAccountState.accessExpiresAt!)}',
+                                  style: const TextStyle(
+                                    color: AveeColors.text,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else ...[
+                        _trialOffer(context),
+                        const SizedBox(height: 16),
+                      ],
+                      FutureBuilder<AveeBillingOffers>(
+                        future: aveeBillingService.offers(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState !=
+                              ConnectionState.done) {
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(28),
+                                child: CircularProgressIndicator(
+                                  color: AveeColors.primary,
+                                ),
+                              ),
+                            );
+                          }
+                          final products =
+                              snapshot.data?.google.productDetails ?? const [];
+                          if (products.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          return Column(
+                            children: [
+                              for (final product in products)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: AveePanel(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        Text(
+                                          product.title,
+                                          style: const TextStyle(
+                                            color: AveeColors.text,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          product.price,
+                                          style: const TextStyle(
+                                            color: AveeColors.primary,
+                                            fontSize: 26,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                        if (product.description.isNotEmpty) ...[
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            product.description,
+                                            style: const TextStyle(
+                                              color: AveeColors.secondaryText,
+                                            ),
+                                          ),
+                                        ],
+                                        const SizedBox(height: 14),
+                                        AveePrimaryButton(
+                                          label: 'Continue',
+                                          onPressed: () =>
+                                              aveeBillingService.buy(product),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+  Widget _trialOffer(BuildContext context) {
+    final trial = aveeRemoteConfig.value?['trial'];
+    final value = trial is Map ? Map<String, dynamic>.from(trial) : const {};
+    if (value['enabled'] != true || !aveeAccountState.trialAvailable) {
+      return const SizedBox.shrink();
+    }
+    final days = value['durationDays'] as int? ?? 0;
+    final bytes = int.tryParse('${value['trafficLimitBytes'] ?? ''}');
+    final details = [
+      if (days > 0) '$days days',
+      if (bytes != null) _bytesEnglish(bytes),
+    ].join(' · ');
+    return AveePanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Free trial',
+            style: TextStyle(
+              color: AveeColors.text,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (details.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              details,
+              style: const TextStyle(color: AveeColors.secondaryText),
+            ),
+          ],
+          const SizedBox(height: 14),
+          AveePrimaryButton(
+            label:
+                aveeAccountState.loading ? 'Activating…' : 'Start free trial',
+            onPressed: aveeAccountState.loading
+                ? null
+                : () async {
+                    await aveeAccountState.startTrial();
+                    if (!context.mounted) return;
+                    final message = aveeAccountState.access
+                        ? 'Trial activated'
+                        : _friendlyError(
+                            aveeAccountState.error ?? 'Could not start trial',
+                          );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(message)),
+                    );
+                  },
+          ),
+        ],
+      ),
+    );
   }
-  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content:
-          Text('Enable Always-on VPN and “Block connections without VPN”')));
 }
 
 class AveeRecoveryPage extends StatefulWidget {
@@ -970,6 +1326,7 @@ class _AveeRecoveryPageState extends State<AveeRecoveryPage> {
   final account = TextEditingController();
   final code = TextEditingController();
   bool obscure = true;
+
   @override
   void dispose() {
     account.dispose();
@@ -979,57 +1336,124 @@ class _AveeRecoveryPageState extends State<AveeRecoveryPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      backgroundColor: AveeColors.background,
-      appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          title: const AveeLogo(compact: true)),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
-        const SizedBox(height: 28),
-        Text('Recover account',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: AveeColors.text, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 8),
-        const Text('Enter your AVEE account number and recovery code.',
-            style: TextStyle(color: AveeColors.secondaryText)),
-        const SizedBox(height: 28),
-        TextField(
-            controller: account,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Account number')),
-        const SizedBox(height: 16),
-        TextField(
-            controller: code,
-            obscureText: obscure,
-            decoration: InputDecoration(
-                labelText: 'Recovery code',
-                suffixIcon: IconButton(
-                    onPressed: () => setState(() => obscure = !obscure),
-                    icon: Icon(
-                        obscure ? Icons.visibility : Icons.visibility_off)))),
-        if (aveeAccountState.error != null)
-          Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Text(_friendlyError(aveeAccountState.error!),
-                  style: const TextStyle(color: AveeColors.error))),
-        const SizedBox(height: 28),
-        AveePrimaryButton(
-            label: aveeAccountState.loading ? 'Checking…' : 'Recover',
-            onPressed: aveeAccountState.loading
-                ? null
-                : () async {
-                    if (account.text.trim().isEmpty || code.text.trim().isEmpty)
-                      return;
-                    await aveeAccountState.recoverAccount(
-                        accountNumber: account.text, recoveryCode: code.text);
-                    if (mounted && aveeAccountState.session != null)
-                      Navigator.pop(context);
-                  })
-      ]));
+        backgroundColor: AveeColors.background,
+        body: SafeArea(
+          child: Column(
+            children: [
+              const AveeAppBar(title: 'Account Recovery', showBack: true),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+                  children: [
+                    Text(
+                      'Recover Your Account',
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                color: AveeColors.text,
+                                fontWeight: FontWeight.w800,
+                              ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Enter your AVEE account number and recovery code to restore access on this device.',
+                      style: TextStyle(
+                        color: AveeColors.secondaryText,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    TextField(
+                      controller: account,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(color: AveeColors.text),
+                      decoration: InputDecoration(
+                        labelText: 'Account number',
+                        prefixIcon: const Icon(Icons.badge_outlined),
+                        filled: true,
+                        fillColor: AveeColors.surface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: code,
+                      obscureText: obscure,
+                      style: const TextStyle(color: AveeColors.text),
+                      decoration: InputDecoration(
+                        labelText: 'Recovery code',
+                        prefixIcon: const Icon(Icons.vpn_key_outlined),
+                        suffixIcon: IconButton(
+                          onPressed: () => setState(() => obscure = !obscure),
+                          icon: Icon(
+                            obscure ? Icons.visibility : Icons.visibility_off,
+                          ),
+                        ),
+                        filled: true,
+                        fillColor: AveeColors.surface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    if (aveeAccountState.error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: Text(
+                          _friendlyError(aveeAccountState.error!),
+                          style: const TextStyle(color: AveeColors.error),
+                        ),
+                      ),
+                    const SizedBox(height: 28),
+                    AveePrimaryButton(
+                      label: aveeAccountState.loading
+                          ? 'Checking…'
+                          : 'Recover Account',
+                      onPressed: aveeAccountState.loading
+                          ? null
+                          : () async {
+                              if (account.text.trim().isEmpty ||
+                                  code.text.trim().isEmpty) {
+                                return;
+                              }
+                              await aveeAccountState.recoverAccount(
+                                accountNumber: account.text,
+                                recoveryCode: code.text,
+                              );
+                              if (mounted && aveeAccountState.session != null) {
+                                Navigator.pop(context);
+                              }
+                            },
+                    ),
+                    const SizedBox(height: 24),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        'Back to create account',
+                        style: TextStyle(
+                          color: AveeColors.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
 }
 
 class AveeRecoveryCodePage extends StatefulWidget {
-  const AveeRecoveryCodePage(
-      {required this.account, required this.code, super.key});
+  const AveeRecoveryCodePage({
+    required this.account,
+    required this.code,
+    super.key,
+  });
   final String account;
   final String code;
   @override
@@ -1038,62 +1462,110 @@ class AveeRecoveryCodePage extends StatefulWidget {
 
 class _AveeRecoveryCodePageState extends State<AveeRecoveryCodePage> {
   bool saved = false;
+
   @override
   Widget build(BuildContext context) => Scaffold(
-      backgroundColor: AveeColors.background,
-      body: SafeArea(
-          child: ListView(padding: const EdgeInsets.all(16), children: [
-        const SizedBox(height: 38),
-        const AveeLogo(),
-        const SizedBox(height: 42),
-        Text('Save your account details',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: AveeColors.text, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 8),
-        const Text(
-            'Your recovery code is shown once. Without it, access cannot be restored.',
-            style: TextStyle(color: AveeColors.secondaryText, height: 1.4)),
-        const SizedBox(height: 26),
-        AveePanel(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Account number',
-              style: TextStyle(color: AveeColors.secondaryText)),
-          const SizedBox(height: 6),
-          SelectableText(widget.account,
-              style: const TextStyle(
-                  color: AveeColors.text,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700)),
-          const SizedBox(height: 18),
-          const Text('Recovery code',
-              style: TextStyle(color: AveeColors.secondaryText)),
-          const SizedBox(height: 6),
-          SelectableText(widget.code,
-              style: const TextStyle(
-                  color: AveeColors.primary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700)),
-          const SizedBox(height: 14),
-          TextButton.icon(
-              onPressed: () => Clipboard.setData(
-                  ClipboardData(text: '${widget.account}\n${widget.code}')),
-              icon: const Icon(Icons.copy),
-              label: const Text('Copy'))
-        ])),
-        const SizedBox(height: 18),
-        const Text('Do not share the code or store it in plain sight.',
-            style: TextStyle(color: AveeColors.warning)),
-        const SizedBox(height: 20),
-        CheckboxListTile(
-            value: saved,
-            onChanged: (value) => setState(() => saved = value ?? false),
-            contentPadding: EdgeInsets.zero,
-            title: const Text('I saved the code',
-                style: TextStyle(color: AveeColors.text))),
-        const SizedBox(height: 14),
-        AveePrimaryButton(
-            label: 'Continue',
-            onPressed: saved ? () => Navigator.pop(context) : null)
-      ])));
+        backgroundColor: AveeColors.background,
+        body: SafeArea(
+          child: Column(
+            children: [
+              AveeAppBar(
+                title: 'Save Recovery Code',
+                showBack: true,
+                onBack: saved ? () => Navigator.pop(context) : null,
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+                  children: [
+                    Text(
+                      'Save your account details',
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                color: AveeColors.text,
+                                fontWeight: FontWeight.w800,
+                              ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Your recovery code is shown once. Without it, access cannot be restored.',
+                      style: TextStyle(
+                        color: AveeColors.secondaryText,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 26),
+                    AveePanel(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Account number',
+                            style: TextStyle(color: AveeColors.secondaryText),
+                          ),
+                          const SizedBox(height: 6),
+                          SelectableText(
+                            widget.account,
+                            style: const TextStyle(
+                              color: AveeColors.text,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          const Text(
+                            'Recovery code',
+                            style: TextStyle(color: AveeColors.secondaryText),
+                          ),
+                          const SizedBox(height: 6),
+                          SelectableText(
+                            widget.code,
+                            style: const TextStyle(
+                              color: AveeColors.primary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          TextButton.icon(
+                            onPressed: () => Clipboard.setData(
+                              ClipboardData(
+                                text: '${widget.account}\n${widget.code}',
+                              ),
+                            ),
+                            icon: const Icon(Icons.copy),
+                            label: const Text('Copy'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Do not share the code or store it in plain sight.',
+                      style: TextStyle(color: AveeColors.warning),
+                    ),
+                    const SizedBox(height: 20),
+                    CheckboxListTile(
+                      value: saved,
+                      onChanged: (value) =>
+                          setState(() => saved = value ?? false),
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AveeColors.primary,
+                      title: const Text(
+                        'I saved the code',
+                        style: TextStyle(color: AveeColors.text),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    AveePrimaryButton(
+                      label: 'Continue',
+                      onPressed: saved ? () => Navigator.pop(context) : null,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
 }

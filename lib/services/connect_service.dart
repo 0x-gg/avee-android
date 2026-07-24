@@ -11,6 +11,7 @@ import 'package:dropweb/models/models.dart';
 import 'package:dropweb/plugins/vpn.dart';
 import 'package:dropweb/providers/providers.dart';
 import 'package:dropweb/state.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../common/common.dart';
@@ -269,6 +270,11 @@ class ConnectService {
       // true => connected. Only now is it honest to show the connected icon.
       await StatusBarManager.updateIcon(isConnected: true);
       if (Platform.isAndroid) {
+        unawaited(
+          const MethodChannel('app.dropweb/navigation')
+              .invokeMethod<void>('requestBatteryExemption')
+              .catchError((Object _) {}),
+        );
         // FlClashX parity: the long-lived mihomo executor (DNS resolver, fake-ip
         // pool, providers) survives stop→start and degrades over long sessions —
         // force a full profile re-setup on every Android connect.

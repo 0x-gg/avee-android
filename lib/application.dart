@@ -18,6 +18,7 @@ import 'pages/pages.dart';
 import 'services/avee_account.dart';
 import 'services/avee_billing.dart';
 import 'services/avee_remote_config.dart';
+import 'ui/avee_design.dart';
 
 class Application extends ConsumerStatefulWidget {
   const Application({
@@ -290,8 +291,25 @@ class ApplicationState extends ConsumerState<Application> {
       labelSmall: TextStyle(fontFamily: 'Onest'),
     );
     var scheme = pureBlack ? colorScheme.toPureBlack(true) : colorScheme;
-    // LUMINA: override surfaces for dark theme — tactile void
-    if (brightness == Brightness.dark) {
+    // Android AVEE shell: force charcoal + coral so Material chrome cannot
+    // silently keep the old Lumina green look after a redesign.
+    if (Platform.isAndroid) {
+      scheme = scheme.copyWith(
+        primary: AveeColors.primary,
+        onPrimary: AveeColors.background,
+        secondary: AveeColors.highlight,
+        surface: AveeColors.background,
+        onSurface: AveeColors.text,
+        surfaceContainerLowest: AveeColors.background,
+        surfaceContainerLow: AveeColors.surface,
+        surfaceContainer: AveeColors.surface,
+        surfaceContainerHigh: AveeColors.surfaceRaised,
+        surfaceContainerHighest: AveeColors.surfaceRaised,
+        outline: AveeColors.outline,
+        error: AveeColors.error,
+      );
+    } else if (brightness == Brightness.dark) {
+      // Desktop keeps Lumina surfaces.
       scheme = scheme.copyWith(
         surface: Lumina.void_,
         surfaceContainerLowest: Lumina.surface1,
@@ -305,19 +323,26 @@ class ApplicationState extends ConsumerState<Application> {
       useMaterial3: true,
       pageTransitionsTheme: _pageTransitionsTheme,
       colorScheme: scheme,
+      scaffoldBackgroundColor:
+          Platform.isAndroid ? AveeColors.background : scheme.surface,
       textTheme: onest,
       visualDensity: VisualDensity.adaptivePlatformDensity,
-      // LUMINA: cards use void-level elevation
       cardTheme: CardThemeData(
-        color: brightness == Brightness.dark
-            ? Colors.white.withValues(alpha: Lumina.glassOpacity)
-            : null,
+        color: Platform.isAndroid
+            ? AveeColors.surface
+            : brightness == Brightness.dark
+                ? Colors.white.withValues(alpha: Lumina.glassOpacity)
+                : null,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Lumina.radiusLg),
+          borderRadius: BorderRadius.circular(
+            Platform.isAndroid ? AveeRadius.card : Lumina.radiusLg,
+          ),
           side: brightness == Brightness.dark
               ? BorderSide(
-                  color:
-                      Colors.white.withValues(alpha: Lumina.glassBorderOpacity))
+                  color: Platform.isAndroid
+                      ? AveeColors.outline
+                      : Colors.white
+                          .withValues(alpha: Lumina.glassBorderOpacity))
               : BorderSide.none,
         ),
       ),

@@ -117,7 +117,7 @@ const viewModeColumnsMap = {
   ViewMode.desktop: [4, 3],
 };
 
-const defaultPrimaryColor = 0xFF29FF76;
+const defaultPrimaryColor = 0xFFFF8C69;
 
 double getWidgetHeight(num lines) => max(lines * 84 + (lines - 1) * 16, 0).ap;
 

@@ -106,8 +106,16 @@ Future<void> _service(List<String> flags) async {
   final quickStart = flags.contains("quick");
   commonPrint.log("[DART] quickStart = $quickStart");
 
-  final clashLibHandler = ClashLibHandler();
-  commonPrint.log("[DART] ClashLibHandler created");
+  late final ClashLibHandler clashLibHandler;
+  try {
+    clashLibHandler = ClashLibHandler();
+    commonPrint.log("[DART] ClashLibHandler created");
+  } catch (error, stack) {
+    // Emulator/debug builds without `dart ./setup.dart android` have no
+    // libclash.so. Fail the service isolate cleanly instead of ANR'ing boot.
+    commonPrint.log("[DART] ClashLibHandler unavailable: $error\n$stack");
+    return;
+  }
 
   commonPrint.log("[DART] BEFORE try-catch block");
   try {

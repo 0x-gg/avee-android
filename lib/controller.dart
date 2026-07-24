@@ -265,7 +265,8 @@ class AppController {
     final saved = await profile.saveFileWithString(yaml);
     _ref.read(profilesProvider.notifier).setProfile(saved);
     _ref.read(currentProfileIdProvider.notifier).value = managedId;
-    applyProfileDebounce(silence: true);
+    await applyProfile(silence: true);
+    await updateGroups();
   }
 
   /// Removes the managed profile and its on-disk configuration after account
@@ -619,7 +620,6 @@ class AppController {
 
   Future<void> setupClashConfig() async {
     final commonScaffoldState = globalState.homeScaffoldKey.currentState;
-    if (commonScaffoldState?.mounted != true) return;
     // Suppress the "restart VPN" tip (vpnTip) while a config setup applies:
     // _setupClashConfig -> syncNetworkSettingsFromProvider writes the provider's
     // tun.stack back into patchClashConfigProvider, which churns
@@ -629,9 +629,15 @@ class AppController {
     // _updateClashConfig instead and still fire the tip correctly.
     globalState.suppressVpnTip = true;
     try {
-      await commonScaffoldState?.loadingRun(() async {
+      if (commonScaffoldState?.mounted == true) {
+        await commonScaffoldState!.loadingRun(() async {
+          await _setupClashConfig();
+        });
+      } else {
+        // The AVEE mobile shell does not mount Dropweb's home scaffold.
+        // Core setup must still run; only the legacy loading overlay is absent.
         await _setupClashConfig();
-      });
+      }
     } finally {
       globalState.suppressVpnTip = false;
     }

@@ -1,11 +1,11 @@
-import 'package:avee/enum/enum.dart';
-import 'package:avee/common/common.dart';
-import 'package:avee/pages/home/connect_circle.dart';
-import 'package:avee/pages/home/home_overlays.dart';
-import 'package:avee/pages/home/navigation_bar.dart';
-import 'package:avee/providers/providers.dart';
-import 'package:avee/state.dart';
-import 'package:avee/widgets/widgets.dart';
+import 'package:dropweb/enum/enum.dart';
+import 'package:dropweb/common/common.dart';
+import 'package:dropweb/pages/home/connect_circle.dart';
+import 'package:dropweb/pages/home/home_overlays.dart';
+import 'package:dropweb/pages/home/navigation_bar.dart';
+import 'package:dropweb/providers/providers.dart';
+import 'package:dropweb/state.dart';
+import 'package:dropweb/widgets/widgets.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,7 +15,7 @@ import '../../services/avee_billing.dart';
 import '../views/avee_account_sheet.dart';
 import 'avee_mobile_shell.dart';
 
-export 'package:avee/pages/home/connect_circle.dart' show connectButtonCenter;
+export 'package:dropweb/pages/home/connect_circle.dart' show connectButtonCenter;
 
 typedef OnSelected = void Function(int index);
 

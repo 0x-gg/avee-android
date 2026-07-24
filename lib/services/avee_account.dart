@@ -32,7 +32,7 @@ class AveeAccountState extends ChangeNotifier {
   static String get _defaultBaseUrl {
     const configured = String.fromEnvironment('AVEE_API_URL');
     if (configured.isNotEmpty) return configured;
-    return 'http://${Platform.isAndroid ? '10.0.2.2' : '127.0.0.1'}:3000';
+    return 'https://api.aveevpn.app';
   }
 
   final AveeApi _api;
@@ -46,10 +46,21 @@ class AveeAccountState extends ChangeNotifier {
   String? error;
   String? recoveryCode;
   String? accessReason;
+  bool trialAvailable = true;
+  String? trialUnavailableReason;
+  String? antiAbuseNotice;
   int? trafficLimitBytes;
   int? trafficUsedBytes;
   int? trafficRemainingBytes;
   DateTime? managedProfileUpdatedAt;
+
+  /// Live Remnawave Host catalog returned by AVEE Backend.
+  List<Map<String, dynamic>> locations = const [];
+  bool locationsLoading = false;
+  String? locationsError;
+  String? selectedLocation;
+
+  static const _selectedLocationKey = 'avee.selected_location';
 
   Future<void> restore() async {
     final values = await Future.wait([
@@ -58,8 +69,10 @@ class AveeAccountState extends ChangeNotifier {
       _storage.read(key: _deviceIdKey),
       _storage.read(key: _sessionTokenKey),
       _storage.read(key: _sessionExpiresKey),
+      _storage.read(key: _selectedLocationKey),
     ]);
-    if (values.any((value) => value == null)) return;
+    selectedLocation = values[5];
+    if (values.take(5).any((value) => value == null)) return;
     final expiresAt = DateTime.tryParse(values[4]!);
     if (expiresAt == null || expiresAt.isBefore(DateTime.now())) {
       await clear();
@@ -74,6 +87,52 @@ class AveeAccountState extends ChangeNotifier {
     );
     notifyListeners();
     await refresh();
+    await refreshLocations();
+  }
+
+  Future<void> refreshLocations() async {
+    locationsLoading = true;
+    locationsError = null;
+    notifyListeners();
+    try {
+      final response = await _api.locations();
+      final raw = response['locations'];
+      locations = raw is List
+          ? raw
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList(growable: false)
+          : const [];
+      if (selectedLocation != null &&
+          !locations.any(
+            (item) => item['proxyName'] == selectedLocation,
+          )) {
+        selectedLocation = null;
+        await _storage.delete(key: _selectedLocationKey);
+      }
+    } on AveeApiException catch (exception) {
+      locations = const [];
+      locationsError = exception.message;
+    } catch (_) {
+      locations = const [];
+      locationsError = 'Locations are temporarily unavailable';
+    } finally {
+      locationsLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> selectLocation(String proxyName) async {
+    selectedLocation = proxyName;
+    await _storage.write(key: _selectedLocationKey, value: proxyName);
+    notifyListeners();
+  }
+
+  Map<String, dynamic>? get selectedLocationItem {
+    for (final item in locations) {
+      if (item['proxyName'] == selectedLocation) return item;
+    }
+    return null;
   }
 
   Future<void> createAccount() async {
@@ -92,6 +151,7 @@ class AveeAccountState extends ChangeNotifier {
       recoveryCode = created.recoveryCode;
       await verifyDevice();
       await refresh();
+      await refreshLocations();
     });
   }
 
@@ -116,6 +176,7 @@ class AveeAccountState extends ChangeNotifier {
       this.recoveryCode = recovered.recoveryCode;
       await verifyDevice();
       await refresh();
+      await refreshLocations();
     });
   }
 
@@ -141,17 +202,22 @@ class AveeAccountState extends ChangeNotifier {
     });
   }
 
-  Future<void> completeGooglePurchase({
+  Future<bool> completeGooglePurchase({
     required String productId,
     required String purchaseToken,
   }) async {
     final current = session;
-    if (current == null) return;
-    await _run(() async {
-      await _api.completeGooglePurchase(current,
-          productId: productId, purchaseToken: purchaseToken);
-      await refresh();
-    });
+    if (current == null) return false;
+    try {
+      await _run(() async {
+        await _api.completeGooglePurchase(current,
+            productId: productId, purchaseToken: purchaseToken);
+        await refresh();
+      });
+      return access;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<Map<String, dynamic>> billingMethods() => _api.billingMethods();
@@ -246,9 +312,18 @@ class AveeAccountState extends ChangeNotifier {
       reachable = true;
       access = state['access'] == true;
       accessReason = state['accessReason'] as String?;
-      trafficLimitBytes = int.tryParse(state['trafficLimitBytes'] as String? ?? '');
-      trafficUsedBytes = int.tryParse(state['trafficUsedBytes'] as String? ?? '');
-      trafficRemainingBytes = int.tryParse(state['trafficRemainingBytes'] as String? ?? '');
+      trialAvailable = state['trialAvailable'] != false;
+      trialUnavailableReason = state['trialUnavailableReason'] as String?;
+      final antiAbuse = state['antiAbuseNotice'];
+      antiAbuseNotice = antiAbuse is Map
+          ? antiAbuse['message']?.toString()
+          : antiAbuse?.toString();
+      trafficLimitBytes =
+          int.tryParse(state['trafficLimitBytes'] as String? ?? '');
+      trafficUsedBytes =
+          int.tryParse(state['trafficUsedBytes'] as String? ?? '');
+      trafficRemainingBytes =
+          int.tryParse(state['trafficRemainingBytes'] as String? ?? '');
       accessExpiresAt =
           DateTime.tryParse(state['entitlementExpiresAt'] as String? ?? '');
       error = null;
@@ -268,15 +343,24 @@ class AveeAccountState extends ChangeNotifier {
     recoveryCode = null;
     access = false;
     accessReason = null;
+    trialAvailable = true;
+    trialUnavailableReason = null;
+    antiAbuseNotice = null;
+    managedProfileUpdatedAt = null;
     trafficLimitBytes = null;
     trafficUsedBytes = null;
     trafficRemainingBytes = null;
+    locations = const [];
+    locationsError = null;
+    selectedLocation = null;
     final cleanup = <Future<void>>[
       _storage.delete(key: _accountIdKey),
       _storage.delete(key: _accountNumberKey),
       _storage.delete(key: _deviceIdKey),
       _storage.delete(key: _sessionTokenKey),
       _storage.delete(key: _sessionExpiresKey),
+      _storage.delete(key: _selectedLocationKey),
+      _storage.delete(key: _managedProfileKey),
     ];
     if (removeDeviceKey) {
       cleanup.add(_storage.delete(key: _publicKeyKey));
@@ -285,6 +369,8 @@ class AveeAccountState extends ChangeNotifier {
     await Future.wait(cleanup);
     notifyListeners();
   }
+
+  Future<void> logOut() => clear();
 
   Future<SimpleKeyPairData> _ensureDeviceKeyPair() async {
     final existingPrivate = await _storage.read(key: _privateKeyKey);
