@@ -28,10 +28,8 @@ class HomePage extends StatelessWidget {
           builder: (_, ref, child) {
             final state = ref.watch(homeStateProvider);
             final viewMode = state.viewMode;
-            // Android always uses the AVEE mobile shell. The legacy
-            // CommonScaffold dashboard is kept for desktop builds only;
-            // allowing it to win on Android caused the old UI to reappear
-            // when a persisted view mode was restored after an upgrade.
+            // Android always uses the AVEE mobile shell. Desktop keeps its
+            // own navigation surface.
             if (viewMode == ViewMode.mobile ||
                 defaultTargetPlatform == TargetPlatform.android) {
               return const AveeMobileShell();

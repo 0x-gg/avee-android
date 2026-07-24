@@ -48,7 +48,7 @@ class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
                 const SizedBox(height: 18),
                 _menuItem(sheetContext, Icons.home_outlined, 'Главная', 0),
                 _menuItem(sheetContext, Icons.person_outline,
-                    'Профиль и устройства', 3),
+                    'Профиль и устройства', 2),
                 ListTile(
                   leading: const Icon(Icons.workspace_premium_outlined,
                       color: AveeColors.primary),
@@ -68,7 +68,7 @@ class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
                   subtitle: const Text('Always-on, DNS и режимы защиты'),
                   onTap: () {
                     Navigator.pop(sheetContext);
-                    setState(() => tab = 3);
+                    setState(() => tab = 2);
                   },
                 ),
               ],
@@ -103,16 +103,15 @@ class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
           if (aveeAccountState.session == null) {
             return AveePage(child: AveeGuestOnboarding(onRecovery: _recover));
           }
-          const pages = <Widget>[
-            AveeHomeDashboard(),
+          final pages = <Widget>[
+            AveeHomeDashboard(onMenu: _openMenu),
             AveeLocationsPage(),
-            AveeSpeedPage(),
             AveeAccountPage(),
           ];
           return AveePage(
             child: Column(
               children: [
-                AveeTopBar(onMenu: _openMenu),
+                if (tab != 0) AveeTopBar(onMenu: _openMenu),
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 240),
@@ -153,14 +152,20 @@ class AveeGuestOnboarding extends StatelessWidget {
   Widget build(BuildContext context) => ListenableBuilder(
         listenable: aveeAccountState,
         builder: (context, _) => SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Flexible(child: AveeLogo(compact: true)),
+                  const Flexible(
+                    child: FittedBox(
+                      alignment: Alignment.centerLeft,
+                      fit: BoxFit.scaleDown,
+                      child: AveeLogo(compact: true, horizontal: true),
+                    ),
+                  ),
                   TextButton(
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
@@ -172,9 +177,9 @@ class AveeGuestOnboarding extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 56),
               Text(
-                'Приватное подключение.\nБез сложных настроек.',
+                'Безопасный интернет.\nОдин понятный шаг.',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: AveeColors.text,
                       fontWeight: FontWeight.w800,
@@ -183,12 +188,12 @@ class AveeGuestOnboarding extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Создайте AVEE-аккаунт и получите 1 ГБ на 3 дня.',
+                'Создайте аккаунт и подключайтесь без ручной настройки.',
                 style: TextStyle(color: AveeColors.secondaryText, fontSize: 16),
               ),
               const SizedBox(height: 24),
-              const _AveeOrb(),
-              const SizedBox(height: 24),
+              const _AveePulse(),
+              const SizedBox(height: 18),
               if (aveeAccountState.error != null) ...[
                 AveePanel(
                   child: Text(
@@ -212,25 +217,12 @@ class AveeGuestOnboarding extends StatelessWidget {
                 icon: Icons.key_rounded,
                 onPressed: onRecovery,
               ),
-              const SizedBox(height: 28),
-              const Row(
-                children: [
-                  Expanded(
-                      child: _Benefit(
-                          icon: Icons.touch_app_outlined,
-                          title: 'Один тап',
-                          text: 'Без сложных настроек')),
-                  Expanded(
-                      child: _Benefit(
-                          icon: Icons.auto_awesome_outlined,
-                          title: 'Умные локации',
-                          text: 'Доступный сервер')),
-                  Expanded(
-                      child: _Benefit(
-                          icon: Icons.visibility_off_outlined,
-                          title: 'Без журналов',
-                          text: 'История не записывается')),
-                ],
+              const SizedBox(height: 22),
+              const Text(
+                'Минимум данных для работы сервиса. Содержимое трафика не записывается.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: AveeColors.mutedText, fontSize: 12, height: 1.4),
               ),
             ],
           ),
@@ -253,60 +245,82 @@ class AveeGuestOnboarding extends StatelessWidget {
   }
 }
 
-class _Benefit extends StatelessWidget {
-  const _Benefit({required this.icon, required this.title, required this.text});
-  final IconData icon;
-  final String title;
-  final String text;
+class _AveePulse extends StatefulWidget {
+  const _AveePulse();
+
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: AveeColors.primary, size: 22),
-            const SizedBox(height: 8),
-            Text(title,
-                style: const TextStyle(
-                    color: AveeColors.text, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            Text(text,
-                style: const TextStyle(
-                    color: AveeColors.mutedText, fontSize: 11, height: 1.3)),
-          ],
+  State<_AveePulse> createState() => _AveePulseState();
+}
+
+class _AveePulseState extends State<_AveePulse>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2200),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 220,
+        child: RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, _) => CustomPaint(
+              painter: _PulsePainter(progress: _controller.value),
+              child: const Center(
+                child: Icon(Icons.power_settings_new_rounded,
+                    color: AveeColors.primary, size: 58),
+              ),
+            ),
+          ),
         ),
       );
 }
 
-class _AveeOrb extends StatelessWidget {
-  const _AveeOrb();
-  @override
-  Widget build(BuildContext context) => SizedBox(
-        height: 180,
-        child: CustomPaint(
-            painter: _OrbPainter(), child: const Center(child: AveeLogo())),
-      );
-}
+class _PulsePainter extends CustomPainter {
+  const _PulsePainter({required this.progress});
+  final double progress;
 
-class _OrbPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = math.min(size.width, size.height) * .36;
+    final radius = math.min(size.width, size.height) * .28;
+    final pulse = .88 + math.sin(progress * math.pi * 2) * .06;
+    final glow = Paint()
+      ..shader = RadialGradient(colors: [
+        AveeColors.primary.withValues(alpha: .22),
+        Colors.transparent,
+      ]).createShader(Rect.fromCircle(center: center, radius: radius * 2.1));
+    canvas.drawCircle(center, radius * 2.1, glow);
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+      ..strokeWidth = 1.4
+      ..color = AveeColors.outline;
     for (var i = 0; i < 3; i++) {
-      paint.color = AveeColors.primary.withValues(alpha: .16 - i * .035);
-      canvas.drawCircle(center, radius + i * 18, paint);
+      canvas.drawCircle(center, radius * (1.0 + i * .24) * pulse, paint);
     }
-    paint.style = PaintingStyle.fill;
-    paint.color = AveeColors.primary.withValues(alpha: .06);
-    canvas.drawCircle(center, radius + 34, paint);
+    paint
+      ..strokeWidth = 2.6
+      ..strokeCap = StrokeCap.round
+      ..color = AveeColors.primary;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius * 1.48),
+      progress * math.pi * 2,
+      math.pi * .56,
+      false,
+      paint,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _PulsePainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 class _AveeDataRow extends StatelessWidget {
@@ -340,104 +354,6 @@ class _AveeDataRow extends StatelessWidget {
           ],
         ),
       );
-}
-
-class AveeSpeedPage extends ConsumerWidget {
-  const AveeSpeedPage({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final traffic = ref.watch(trafficsProvider).list;
-    final last = traffic.isEmpty ? null : traffic.last;
-    final running = ref.watch(runTimeProvider.select((value) => value != null));
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-      children: [
-        const SizedBox(height: 16),
-        Text('Скорость',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: AveeColors.text, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 8),
-        const Text('Только реальные значения активного туннеля.',
-            style: TextStyle(color: AveeColors.secondaryText, fontSize: 15)),
-        const SizedBox(height: 32),
-        _SpeedGauge(
-            value: last?.speed.toDouble() ?? 0,
-            label: last == null ? '—' : last.down.toString()),
-        const SizedBox(height: 30),
-        const Divider(color: AveeColors.outline),
-        _AveeDataRow(
-            label: 'Загрузка',
-            value: last?.down.toString() ?? '—',
-            accent: AveeColors.primary),
-        _AveeDataRow(
-            label: 'Отдача',
-            value: last?.up.toString() ?? '—',
-            accent: AveeColors.signal),
-        _AveeDataRow(
-            label: 'Состояние',
-            value: running ? 'Туннель активен' : 'Подключитесь для измерения'),
-      ],
-    );
-  }
-}
-
-class _SpeedGauge extends StatelessWidget {
-  const _SpeedGauge({required this.value, required this.label});
-  final double value;
-  final String label;
-  @override
-  Widget build(BuildContext context) => SizedBox(
-        height: 226,
-        child: CustomPaint(
-          painter: _SpeedGaugePainter(value: value),
-          child: Center(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text(label,
-                  style: const TextStyle(
-                      color: AveeColors.text,
-                      fontSize: 30,
-                      fontWeight: FontWeight.w800)),
-              const SizedBox(height: 4),
-              const Text('текущая скорость',
-                  style: TextStyle(color: AveeColors.mutedText, fontSize: 12)),
-            ]),
-          ),
-        ),
-      );
-}
-
-class _SpeedGaugePainter extends CustomPainter {
-  const _SpeedGaugePainter({required this.value});
-  final double value;
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final rect = Rect.fromCenter(center: center, width: 178, height: 178);
-    final track = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 13
-      ..strokeCap = StrokeCap.round
-      ..color = AveeColors.outline;
-    final fill = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 13
-      ..strokeCap = StrokeCap.round
-      ..color = AveeColors.primary;
-    canvas.drawArc(rect, math.pi * .72, math.pi * 1.56, false, track);
-    canvas.drawArc(
-        rect,
-        math.pi * .72,
-        math.pi *
-            1.56 *
-            (value <= 0 ? .05 : (value / (value + 100)).clamp(.05, .96)),
-        false,
-        fill);
-  }
-
-  @override
-  bool shouldRepaint(covariant _SpeedGaugePainter oldDelegate) =>
-      oldDelegate.value != value;
 }
 
 String _locationName(AveeAccountState state) {
@@ -489,12 +405,12 @@ class _SignalOrbState extends State<_SignalOrb>
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, _) => SizedBox(
-            height: 344,
+            height: 360,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 CustomPaint(
-                  size: const Size(double.infinity, 344),
+                  size: const Size(double.infinity, 360),
                   painter: _SignalOrbPainter(
                     progress: _controller.value,
                     active: widget.running,
@@ -507,14 +423,14 @@ class _SignalOrbState extends State<_SignalOrb>
                     gradient: RadialGradient(
                       colors: [
                         AveeColors.surfaceRaised,
-                        AveeColors.violet.withValues(alpha: .14),
+                        AveeColors.highlight.withValues(alpha: .14),
                         AveeColors.background,
                       ],
                     ),
-                    border: Border.all(color: AveeColors.violet, width: 1.4),
+                    border: Border.all(color: AveeColors.highlight, width: 1.4),
                     boxShadow: const [
                       BoxShadow(
-                          color: Color(0x669B6CFF),
+                          color: Color(0x559CA8B5),
                           blurRadius: 34,
                           spreadRadius: 4),
                       BoxShadow(
@@ -524,10 +440,10 @@ class _SignalOrbState extends State<_SignalOrb>
                     ],
                   ),
                   child: const SizedBox(
-                    width: 138,
-                    height: 138,
+                    width: 190,
+                    height: 190,
                     child: Icon(Icons.power_settings_new_rounded,
-                        color: AveeColors.primary, size: 62),
+                        color: AveeColors.primary, size: 78),
                   ),
                 ),
                 Opacity(
@@ -554,66 +470,36 @@ class _SignalOrbPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = math.min(size.width, size.height) * .35;
-    final accent = AveeColors.primary;
-    final alpha = active ? .48 : .30;
-    final sphere = Paint()
+    final radius = math.min(size.width, size.height) * .34;
+    final glow = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          AveeColors.highlight.withValues(alpha: .24),
+          AveeColors.primary.withValues(alpha: .14),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: radius * 1.55));
+    canvas.drawCircle(center, radius * 1.5, glow);
+    final ring = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0
-      ..color = accent.withValues(alpha: alpha);
-
-    for (var i = -9; i <= 9; i++) {
-      final latitude = i / 10.0;
-      final halfWidth =
-          radius * math.sqrt(math.max(0, 1 - latitude * latitude));
-      final path = Path();
-      for (var step = 0; step <= 48; step++) {
-        final t = step / 48;
-        final x = center.dx - halfWidth + halfWidth * 2 * t;
-        final wave =
-            math.sin(t * math.pi * 5 + i * .42 + progress * math.pi * 2) * 3.2;
-        final y = center.dy + radius * latitude + wave;
-        if (step == 0) {
-          path.moveTo(x, y);
-        } else {
-          path.lineTo(x, y);
-        }
-      }
-      canvas.drawPath(path, sphere);
+      ..strokeWidth = connecting ? 2.4 : 1.5
+      ..color = AveeColors.highlight.withValues(alpha: connecting ? .68 : .38);
+    for (var i = 1; i <= 3; i++) {
+      canvas.drawCircle(center, radius * (.82 + i * .16), ring);
     }
-
-    for (var i = -5; i <= 5; i++) {
-      canvas.save();
-      canvas.translate(center.dx, center.dy);
-      canvas.rotate(i * .12);
-      canvas.drawOval(
-          Rect.fromCenter(
-              center: Offset.zero,
-              width: radius * (1.1 + i.abs() * .08),
-              height: radius * 2),
-          sphere);
-      canvas.restore();
-    }
-
-    final orbitPaint = Paint()
+    final sweep = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0
-      ..color = AveeColors.violet.withValues(alpha: connecting ? .72 : .38);
-    for (var i = 0; i < 3; i++) {
-      canvas.save();
-      canvas.translate(center.dx, center.dy);
-      canvas.rotate(-.22 + i * .45);
-      canvas.drawOval(
-          Rect.fromCenter(
-              center: Offset.zero, width: radius * 3.0, height: radius * .92),
-          orbitPaint);
-      canvas.restore();
-      final angle = progress * math.pi * 2 + i * 2.1;
-      final dot = Offset(center.dx + math.cos(angle) * radius * 1.45,
-          center.dy + math.sin(angle) * radius * .48);
-      canvas.drawCircle(
-          dot, 4.5, Paint()..color = i.isEven ? accent : AveeColors.violet);
-    }
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round
+      ..color = AveeColors.primary.withValues(alpha: active ? .92 : .72);
+    final sweepRect = Rect.fromCircle(center: center, radius: radius * 1.14);
+    canvas.drawArc(
+        sweepRect, progress * math.pi * 2, math.pi * .42, false, sweep);
+    final rim = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..color = AveeColors.primary.withValues(alpha: active ? .9 : .7);
+    canvas.drawCircle(center, radius * .72, rim);
   }
 
   @override
@@ -640,23 +526,40 @@ class _ConnectionCard extends StatelessWidget {
       const SizedBox(height: 18),
       Center(
         child: Column(children: [
-          Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.circle,
-                size: 12,
-                color: running ? AveeColors.primary : AveeColors.signal),
-            const SizedBox(width: 12),
-            Text(
-                running
-                    ? 'CONNECTED'
-                    : connecting
-                        ? 'CONNECTING'
-                        : 'DISCONNECTED',
-                style: const TextStyle(
-                    color: AveeColors.signal,
-                    fontSize: 16,
-                    letterSpacing: 5,
-                    fontWeight: FontWeight.w400)),
-          ]),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AveeColors.signal.withValues(alpha: .14),
+                  AveeColors.highlight.withValues(alpha: .10),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(30),
+              border:
+                  Border.all(color: AveeColors.signal.withValues(alpha: .5)),
+              boxShadow: const [
+                BoxShadow(color: Color(0x339CA8B5), blurRadius: 18),
+              ],
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.circle,
+                  size: 10,
+                  color: running ? AveeColors.primary : AveeColors.signal),
+              const SizedBox(width: 10),
+              Text(
+                  running
+                      ? 'CONNECTED'
+                      : connecting
+                          ? 'CONNECTING'
+                          : 'DISCONNECTED',
+                  style: const TextStyle(
+                      color: AveeColors.signal,
+                      fontSize: 14,
+                      letterSpacing: 4,
+                      fontWeight: FontWeight.w500)),
+            ]),
+          ),
           const SizedBox(height: 16),
           Text(running ? 'Protected connection' : 'Ready to connect',
               style: const TextStyle(
@@ -667,18 +570,18 @@ class _ConnectionCard extends StatelessWidget {
       ),
       _SignalOrb(running: running, connecting: connecting),
       Container(
-        height: 58,
+        height: 64,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              AveeColors.primary.withValues(alpha: .16),
-              AveeColors.violet.withValues(alpha: .18),
+              AveeColors.primary.withValues(alpha: .24),
+              AveeColors.highlight.withValues(alpha: .14),
             ],
           ),
           border: Border.all(color: AveeColors.primary, width: 1.2),
           borderRadius: BorderRadius.circular(18),
           boxShadow: const [
-            BoxShadow(color: Color(0x339B6CFF), blurRadius: 18)
+            BoxShadow(color: Color(0x339CA8B5), blurRadius: 18)
           ],
         ),
         child: Stack(
@@ -689,20 +592,13 @@ class _ConnectionCard extends StatelessWidget {
             ),
             IgnorePointer(
               child: Center(
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.power_settings_new_rounded,
-                      color: AveeColors.primary, size: 24),
-                  const SizedBox(width: 18),
-                  Text(
-                    running ? 'DISCONNECT' : 'CONNECT',
+                child: Text(running ? 'DISCONNECT' : 'CONNECT',
                     style: const TextStyle(
-                      color: AveeColors.primary,
-                      fontSize: 16,
+                      color: AveeColors.text,
+                      fontSize: 17,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 3.5,
-                    ),
-                  ),
-                ]),
+                    )),
               ),
             ),
           ],
@@ -719,7 +615,7 @@ class _ConnectionCard extends StatelessWidget {
             gradient: LinearGradient(
               colors: [
                 AveeColors.surface.withValues(alpha: .82),
-                AveeColors.violet.withValues(alpha: .10),
+                AveeColors.highlight.withValues(alpha: .08),
               ],
             ),
             borderRadius: BorderRadius.circular(20),
@@ -786,7 +682,7 @@ class _AveeDataLine extends StatelessWidget {
           gradient: LinearGradient(
             colors: [
               AveeColors.surface.withValues(alpha: .72),
-              AveeColors.violet.withValues(alpha: .06),
+              AveeColors.highlight.withValues(alpha: .06),
             ],
           ),
           borderRadius: BorderRadius.circular(20),
@@ -798,11 +694,11 @@ class _AveeDataLine extends StatelessWidget {
             height: 48,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AveeColors.violet.withValues(alpha: .10),
+              color: AveeColors.highlight.withValues(alpha: .10),
               border:
-                  Border.all(color: AveeColors.violet.withValues(alpha: .5)),
+                  Border.all(color: AveeColors.highlight.withValues(alpha: .5)),
             ),
-            child: Icon(icon, color: AveeColors.violet, size: 26),
+            child: Icon(icon, color: AveeColors.highlight, size: 26),
           ),
           const SizedBox(width: 26),
           Expanded(
@@ -827,8 +723,46 @@ class _AveeDataLine extends StatelessWidget {
       );
 }
 
+class _NeonBrandHeader extends StatelessWidget {
+  const _NeonBrandHeader({required this.onMenu});
+  final VoidCallback onMenu;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          ShaderMask(
+            shaderCallback: (bounds) => const LinearGradient(
+              colors: [AveeColors.primary, AveeColors.highlight],
+            ).createShader(bounds),
+            child: const Text(
+              'A',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 62,
+                height: .9,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -5,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          const AveeLogo(compact: true, horizontal: true),
+          const Spacer(),
+          IconButton(
+            onPressed: onMenu,
+            tooltip: 'Меню',
+            icon: const Icon(Icons.menu_rounded),
+            color: AveeColors.primary,
+            iconSize: 28,
+          ),
+        ],
+      );
+}
+
 class AveeHomeDashboard extends ConsumerWidget {
-  const AveeHomeDashboard({super.key});
+  const AveeHomeDashboard({required this.onMenu, super.key});
+  final VoidCallback onMenu;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final running = ref.watch(runTimeProvider.select((value) => value != null));
@@ -844,6 +778,7 @@ class AveeHomeDashboard extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
             children: [
+              _NeonBrandHeader(onMenu: onMenu),
               _ConnectionCard(
                 state: state,
                 running: running,

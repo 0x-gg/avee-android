@@ -3,15 +3,13 @@ import 'package:flutter/material.dart';
 /// AVEE's mobile visual language. Screens consume these tokens instead of
 /// embedding one-off colors, radii, and spacing values.
 class AveeColors {
-  // Neon Glass: deep blue-black canvas, translucent glass surfaces, and a
-  // restrained amber/violet signal pair.
-  static const background = Color(0xFF03040D);
-  static const surface = Color(0xFF0B0C1A);
-  static const surfaceRaised = Color(0xFF111329);
-  static const outline = Color(0xFF292B4B);
-  static const primary = Color(0xFFFFA516);
-  static const violet = Color(0xFF9B6CFF);
-  static const cyan = Color(0xFF55D8FF);
+  // AVEE Signal: cool graphite surfaces and one warm action colour.
+  static const background = Color(0xFF05070B);
+  static const surface = Color(0xFF0C1118);
+  static const surfaceRaised = Color(0xFF151C25);
+  static const outline = Color(0xFF26313B);
+  static const primary = Color(0xFFF7A928);
+  static const highlight = Color(0xFF9CA8B5);
   static const signal = Color(0xFFFF6048);
   static const text = Color(0xFFF6F7FA);
   static const secondaryText = Color(0xFFB8C0CE);
@@ -176,7 +174,7 @@ class AveePanel extends StatelessWidget {
           gradient: LinearGradient(
             colors: [
               AveeColors.surface.withValues(alpha: .90),
-              AveeColors.violet.withValues(alpha: .08),
+              AveeColors.highlight.withValues(alpha: .08),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
