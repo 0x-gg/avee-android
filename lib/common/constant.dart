@@ -70,13 +70,12 @@ const defaultTestUrl = "https://www.gstatic.com/generate_204";
 /// self-updates from [kUpdateManifestUrl].
 const bool kIsPlayBuild = bool.fromEnvironment('PLAY_BUILD');
 
-/// Public legal pages served by AVEE Backend (also linked from Play Console).
-const kAveePrivacyPolicyUrl = 'https://api.aveevpn.app/v1/legal/privacy';
-const kAveeTermsUrl = 'https://api.aveevpn.app/v1/legal/terms';
-const kAveeSupportUrl = 'https://api.aveevpn.app/v1/legal/support';
-const kAveeAccountDeletionUrl =
-    'https://api.aveevpn.app/v1/legal/account-deletion';
-const kAveeOpenSourceUrl = 'https://api.aveevpn.app/v1/legal/open-source';
+/// Public legal pages on aveevpn.com (linked from app and Play Console).
+const kAveePrivacyPolicyUrl = 'https://aveevpn.com/#privacy';
+const kAveeTermsUrl = 'https://aveevpn.com/#terms';
+const kAveeAcceptableUseUrl = 'https://aveevpn.com/#acceptable-use';
+const kAveeSupportUrl = 'https://aveevpn.com/#support';
+const kAveeAccountDeletionUrl = 'https://aveevpn.com/#account-deletion';
 const kAveeMarketingSiteUrl = 'https://aveevpn.com';
 
 /// Update manifest endpoint: dropweb.org → Vercel → Yandex Cloud Object Storage.

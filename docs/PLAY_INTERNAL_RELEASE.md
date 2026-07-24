@@ -79,10 +79,8 @@ Internal testing **не работает** через sideload APK — толь�
 
 | Поле | URL |
 |------|-----|
-| Privacy policy | https://api.aveevpn.app/v1/legal/privacy |
+| Privacy policy | https://aveevpn.com/#privacy |
 | Email | support@aveevpn.com (или ваш SUPPORT_EMAIL) |
-
-Опционально на сайте: добавить редирект `https://aveevpn.com/privacy` → API legal (сейчас 404).
 
 ### 2.3 App content
 
@@ -100,7 +98,7 @@ Internal testing **не работает** через sideload APK — толь�
 - Browsing history, DNS, traffic contents
 
 Encryption: in transit (HTTPS/TLS).  
-Deletion: in-app Account → Delete account + https://api.aveevpn.app/v1/legal/account-deletion
+Deletion: in-app Account → Delete account + https://aveevpn.com/#account-deletion
 
 #### App access
 **[App access](https://play.google.com/console/app/app-content/testing-credentials)**
@@ -157,8 +155,6 @@ pwsh ./scripts/verify-gpl-release.ps1 -Tag HEAD -OutputDirectory ./release-sourc
 2. Прикрепите `.tar.gz` + `.sha256` из `release-source/`
 3. В Play Console → Store listing → добавьте в описание:  
    `Source code: https://github.com/0x-gg/avee-android/releases`
-
-Также: https://api.aveevpn.app/v1/legal/open-source
 
 ---
 
@@ -307,6 +303,6 @@ Integrity token запрашивается при **Create account** / **Recover
 | API access | https://play.google.com/console/developers/api-access |
 | License testing | https://play.google.com/console/developers/license-testing |
 | Production API | https://api.aveevpn.app/v1/health |
-| Privacy policy | https://api.aveevpn.app/v1/legal/privacy |
+| Privacy policy | https://aveevpn.com/#privacy |
 | Android repo | https://github.com/0x-gg/avee-android |
 | Backend repo | https://github.com/0x-gg/avee-backend |
