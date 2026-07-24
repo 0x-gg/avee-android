@@ -1,9 +1,9 @@
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/models/common.dart';
-import 'package:dropweb/providers/app.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/widgets/widgets.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/common.dart';
+import 'package:avee/providers/app.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

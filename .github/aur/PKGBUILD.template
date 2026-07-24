@@ -1,16 +1,16 @@
-# Maintainer: dropweb <info@dropweb.org>
-pkgname=dropweb-bin
+# Maintainer: AVEE <info@aveevpn.com>
+pkgname=avee-bin
 pkgver=@PKGVER@
 pkgrel=1
 pkgdesc="Multi-platform consumer VPN client built on the mihomo/Clash core"
 arch=('x86_64')
-url="https://github.com/enkinvsh/dropweb"
+url="https://github.com/0x-gg/avee-android"
 license=('GPL-3.0-only')
-conflicts=('dropweb')
-provides=("dropweb=${pkgver}")
+conflicts=('avee')
+provides=("avee=${pkgver}")
 depends=('libayatana-appindicator' 'libkeybinder3')
-source=("dropweb.sh")
-source_x86_64=("dropweb-@PKGVER@-x86_64.deb::${url}/releases/download/v@PKGVER@/dropweb-@PKGVER@-linux-amd64.deb")
+source=("avee.sh")
+source_x86_64=("avee-@PKGVER@-x86_64.deb::${url}/releases/download/v@PKGVER@/avee-@PKGVER@-linux-amd64.deb")
 sha256sums=('@SH_SHA@')
 sha256sums_x86_64=('@DEB_SHA@')
 
@@ -19,16 +19,16 @@ prepare() {
 }
 
 package() {
-  install -Dm755 "${srcdir}/dropweb.sh" "${pkgdir}/usr/bin/dropweb"
+  install -Dm755 "${srcdir}/avee.sh" "${pkgdir}/usr/bin/avee"
 
-  install -dm755 "${pkgdir}/usr/lib/dropweb"
-  cp -a "${srcdir}/usr/share/dropweb/." "${pkgdir}/usr/lib/dropweb/"
+  install -dm755 "${pkgdir}/usr/lib/avee"
+  cp -a "${srcdir}/usr/share/avee/." "${pkgdir}/usr/lib/avee/"
 
-  install -Dm644 "${srcdir}/usr/share/applications/dropweb.desktop" \
-    "${pkgdir}/usr/share/applications/dropweb.desktop"
+  install -Dm644 "${srcdir}/usr/share/applications/avee.desktop" \
+    "${pkgdir}/usr/share/applications/avee.desktop"
 
-  install -Dm644 "${srcdir}/usr/share/icons/hicolor/128x128/apps/dropweb.png" \
-    "${pkgdir}/usr/share/icons/hicolor/128x128/apps/dropweb.png"
-  install -Dm644 "${srcdir}/usr/share/icons/hicolor/256x256/apps/dropweb.png" \
-    "${pkgdir}/usr/share/icons/hicolor/256x256/apps/dropweb.png"
+  install -Dm644 "${srcdir}/usr/share/icons/hicolor/128x128/apps/avee.png" \
+    "${pkgdir}/usr/share/icons/hicolor/128x128/apps/avee.png"
+  install -Dm644 "${srcdir}/usr/share/icons/hicolor/256x256/apps/avee.png" \
+    "${pkgdir}/usr/share/icons/hicolor/256x256/apps/avee.png"
 }

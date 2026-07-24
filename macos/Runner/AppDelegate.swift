@@ -13,7 +13,7 @@ class AppDelegate: FlutterAppDelegate {
     override init() {
         super.init()
 
-        // SIGPIPE hardening (field incident: exit 141). When the DropwebCore
+        // SIGPIPE hardening (field incident: exit 141). When the AveeCore
         // helper dies — e.g. `bad CPU type in executable` from a poisoned
         // Application Support core — the main app's next write to the now-dead
         // helper socket raises SIGPIPE, whose default disposition kills the
@@ -108,8 +108,8 @@ class AppDelegate: FlutterAppDelegate {
         }
         
         let bundleURL = Bundle.main.bundleURL
-        let bundleCorePath = bundleURL.appendingPathComponent("Contents/MacOS/DropwebCore")
-        let appSupportCorePath = appSupportURL.appendingPathComponent("app.dropweb/cores/DropwebCore")
+        let bundleCorePath = bundleURL.appendingPathComponent("Contents/MacOS/AveeCore")
+        let appSupportCorePath = appSupportURL.appendingPathComponent("com.avee.vpn/cores/AveeCore")
         let appSupportDir = appSupportCorePath.deletingLastPathComponent()
         
         do {
@@ -172,7 +172,7 @@ class AppDelegate: FlutterAppDelegate {
     func showPermissionRequiredAlert() {
         let alert = NSAlert()
         alert.messageText = "Administrator Access Required"
-        alert.informativeText = "dropweb requires administrator privileges to set up the network core. The application cannot run without these permissions.\n\nPlease restart the application and grant administrator access when prompted."
+        alert.informativeText = "avee requires administrator privileges to set up the network core. The application cannot run without these permissions.\n\nPlease restart the application and grant administrator access when prompted."
         alert.alertStyle = .critical
         alert.addButton(withTitle: "Quit")
         alert.runModal()

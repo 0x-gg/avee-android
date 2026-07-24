@@ -1,11 +1,11 @@
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/plugins/app.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/widgets/input.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/plugins/app.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/input.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

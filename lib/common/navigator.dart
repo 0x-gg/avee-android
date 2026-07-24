@@ -1,7 +1,7 @@
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/models/models.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/widgets/dialog.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/dialog.dart';
 import 'package:flutter/material.dart';
 
 class BaseNavigator {

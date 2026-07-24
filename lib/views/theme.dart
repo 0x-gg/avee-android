@@ -2,12 +2,12 @@
 
 import 'dart:math';
 
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/models/selector.dart';
-import 'package:dropweb/providers/config.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/widgets/widgets.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/selector.dart';
+import 'package:avee/providers/config.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,7 +25,7 @@ class FontFamilyItem {
 class ThemeView extends StatelessWidget {
   const ThemeView({super.key});
 
-  // Dropweb is shipped as a dark-only product. The legacy theme-mode
+  // AVEE is shipped as a dark-only product. The legacy theme-mode
   // picker (System / Light / Dark) used to live here but has been
   // removed so users can no longer switch the app out of dark mode.
   // Theme color / pureBlack / text-scale still work as before.

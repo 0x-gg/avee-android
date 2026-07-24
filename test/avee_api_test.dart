@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:dropweb/services/avee_api.dart';
+import 'package:avee/services/avee_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';

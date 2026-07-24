@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/pages/home/connect_circle.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/pages/home/connect_circle.dart';
 import 'package:flutter/material.dart';
 
 const Alignment _mobileConnectAlignment = Alignment(0, 0.58);

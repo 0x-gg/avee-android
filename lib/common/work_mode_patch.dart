@@ -1,4 +1,4 @@
-import 'package:dropweb/enum/enum.dart';
+import 'package:avee/enum/enum.dart';
 
 import 'country.dart';
 import 'mihomo_yaml_splice.dart'

@@ -14,9 +14,9 @@ val localProperties = Properties().apply {
 }
 
 val mStoreFile: File = file("keystore.jks")
-val mStorePassword: String? = System.getenv("DROPWEB_STORE_PASSWORD") ?: localProperties.getProperty("storePassword")
-val mKeyAlias: String? = System.getenv("DROPWEB_KEY_ALIAS") ?: localProperties.getProperty("keyAlias")
-val mKeyPassword: String? = System.getenv("DROPWEB_KEY_PASSWORD") ?: localProperties.getProperty("keyPassword")
+val mStorePassword: String? = System.getenv("AVEE_STORE_PASSWORD") ?: localProperties.getProperty("storePassword")
+val mKeyAlias: String? = System.getenv("AVEE_KEY_ALIAS") ?: localProperties.getProperty("keyAlias")
+val mKeyPassword: String? = System.getenv("AVEE_KEY_PASSWORD") ?: localProperties.getProperty("keyPassword")
 
 // Release signing is considered configured only when:
 //   - keystore.jks is an actual regular file (a directory or symlink-to-dir
@@ -35,7 +35,7 @@ val isRelease = mStoreFile.isFile
         && mKeyPassword.isPresentNonBlank()
 
 android {
-    namespace = "app.dropweb"
+    namespace = "com.avee.vpn"
     compileSdk = 36
     ndkVersion = "28.2.13676358"
 

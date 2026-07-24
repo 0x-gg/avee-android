@@ -1,7 +1,7 @@
-import 'package:dropweb/common/proxy.dart';
-import 'package:dropweb/models/models.dart';
-import 'package:dropweb/providers/state.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/common/proxy.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/providers/state.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

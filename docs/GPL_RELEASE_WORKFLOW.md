@@ -1,7 +1,7 @@
 # GPL source release workflow
 
 The Android repository is distributed under GPL-3.0 and keeps upstream
-attribution for Dropweb, FlClashX, FlClash, and mihomo/Clash.Meta in the
+attribution for AVEE, FlClashX, FlClash, and mihomo/Clash.Meta in the
 English README and `LICENSE`.
 
 `scripts/verify-gpl-release.ps1` is the release-candidate check. It:

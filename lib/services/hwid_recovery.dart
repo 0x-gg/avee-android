@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:dropweb/common/common.dart';
+import 'package:avee/common/common.dart';
 import 'package:flutter/widgets.dart';
 
 /// Recovers a subscription from a panel HWID device-limit block.

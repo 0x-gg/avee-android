@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:dropweb/common/utils.dart';
-import 'package:dropweb/models/models.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/common/utils.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:tray_manager/tray_manager.dart';
 

@@ -41,11 +41,11 @@ var
   i: Integer;
   ResultCode: Integer;
 begin
-  // dropweb lineage: current names, the FlClash upstream names that older
-  // dropweb builds shipped under our identity, and Koala Clash. Killing these
+  // avee lineage: current names, the FlClash upstream names that older
+  // AVEE builds shipped under our identity, and Koala Clash. Killing these
   // by name during install is transient/recoverable and frees the global
   // resources (mixed-port 7890, TUN, system proxy) so a clean install settles.
-  Processes := ['dropweb.exe', 'DropwebCore.exe', 'DropwebHelperService.exe',
+  Processes := ['avee.exe', 'AveeCore.exe', 'AveeHelperService.exe',
                 'FlClashX.exe', 'FlClashCore.exe', 'FlClashHelperService.exe',
                 'FlClash.exe', 'koala-clash-service.exe', 'KoalaClash.exe'];
 
@@ -177,7 +177,7 @@ var
   Tasks: TArrayOfString;
 begin
   // Stale Windows services from older / pre-rebrand builds whose binaries live
-  // inside OUR install dir. DropwebHelperService is intentionally NOT listed —
+  // inside OUR install dir. AveeHelperService is intentionally NOT listed —
   // it is the current service (re-copied by [Files], restarted post-install).
   Services := ['FlClashHelperService', 'FlClashXHelperService', 'ClashHelperService', 'clashx'];
   for i := 0 to GetArrayLength(Services)-1 do
@@ -208,7 +208,7 @@ begin
     PreviousVersion := GetInstalledVersion();
   
    // Stop service if running
-   Exec('sc.exe', 'stop "DropwebHelperService"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+   Exec('sc.exe', 'stop "AveeHelperService"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Sleep(1000);
   
   // Kill all processes
@@ -266,7 +266,7 @@ begin
     // CLEAN INSTALL (Tier 1): runs before [InstallDelete] wipes {app} and
     // before [Files] copies fresh binaries ({app} is resolved by now).
     // Stop our service so its .exe unlocks for the wipe; ssPostInstall restarts it.
-    Exec('sc.exe', 'stop "DropwebHelperService"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Exec('sc.exe', 'stop "AveeHelperService"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     Sleep(500);
     KillProcesses;
     // Drop stale services / autostart from older or pre-rebrand builds that
@@ -281,17 +281,17 @@ begin
     Sleep(500);
      // Ensure helper service is started after install/upgrade, independent of app
      try
-       Exec('sc.exe', 'start "DropwebHelperService"', '', SW_HIDE, ewNoWait, ResultCode);
+       Exec('sc.exe', 'start "AveeHelperService"', '', SW_HIDE, ewNoWait, ResultCode);
     except
     end;
 
     // CLEAN INSTALL (Tier 2): offer to remove legacy-identity data left by
     // pre-rebrand builds (%APPDATA%\com.follow\clashx). Current profiles and
-    // settings (%APPDATA%\dropweb\dropweb) are NOT touched. Skipped on silent.
+    // settings (%APPDATA%\avee\avee) are NOT touched. Skipped on silent.
     LegacyDir := ExpandConstant('{userappdata}\com.follow\clashx');
     if DirExists(LegacyDir) and (not WizardSilent) then
     begin
-      if MsgBox('Обнаружены данные от старой версии dropweb (com.follow\clashx).' + #13#10 +
+      if MsgBox('Обнаружены данные от старой версии avee (com.follow\clashx).' + #13#10 +
                 'Удалить их? Текущие профили и настройки не пострадают.',
                 mbConfirmation, MB_YESNO) = IDYES then
       begin
@@ -319,7 +319,7 @@ var
   OurExe: String;
 begin
   Cmd := GetSchemeCommand(Scheme);
-  OurExe := ExpandConstant('{app}\dropweb.exe');
+  OurExe := ExpandConstant('{app}\avee.exe');
   // Case-insensitive substring check — Inno's Pos is case-sensitive, so
   // lowercase both sides first.
   Result := (Cmd <> '') and (Pos(Lowercase(OurExe), Lowercase(Cmd)) > 0);
@@ -339,14 +339,14 @@ begin
      usUninstall:
      begin
        // Stop service first
-       Exec('sc.exe', 'stop "DropwebHelperService"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+       Exec('sc.exe', 'stop "AveeHelperService"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
       Sleep(1000);
       
       // Kill all processes
       KillProcesses;
       
        // Delete service
-       Exec('sc.exe', 'delete "DropwebHelperService"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+       Exec('sc.exe', 'delete "AveeHelperService"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
       Sleep(500);
     end;
     
@@ -355,15 +355,15 @@ begin
       // Remove our own protocol handlers. For the shared schemes (flclash,
       // clashx) only remove them if they still point to our exe — otherwise
       // we'd accidentally kill FlClashX's legitimate handler.
-      RegDeleteKeyIncludingSubkeys(HKEY_CURRENT_USER, 'Software\Classes\dropweb');
+      RegDeleteKeyIncludingSubkeys(HKEY_CURRENT_USER, 'Software\Classes\avee');
       RemoveSchemeIfOurs('flclash');
       RemoveSchemeIfOurs('clashx');
 
-      if DirExists(ExpandConstant('{userappdata}\dropweb\dropweb')) then
+      if DirExists(ExpandConstant('{userappdata}\avee\avee')) then
       begin
         if MsgBox('Удалить пользовательские данные программы?', mbConfirmation, MB_YESNO) = IDYES then
         begin
-          DelTree(ExpandConstant('{userappdata}\dropweb\dropweb'), True, True, True);
+          DelTree(ExpandConstant('{userappdata}\avee\avee'), True, True, True);
         end;
       end;
     end;

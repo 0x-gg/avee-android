@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:dropweb/common/common.dart';
+import 'package:avee/common/common.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:network_info_plus/network_info_plus.dart';
@@ -180,7 +180,7 @@ class _ReceiveProfileDialogState extends State<ReceiveProfileDialog> {
 
       setState(() {
         _qrData = jsonEncode({
-          'type': 'dropweb_tv_sync',
+          'type': 'avee_tv_sync',
           'ip': _server?.address.host,
           'port': _server?.port,
           'nonce': _nonce,

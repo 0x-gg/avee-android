@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/models/models.dart';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/views/dashboard/widgets/corner_badge.dart';
-import 'package:dropweb/views/subscription.dart';
-import 'package:dropweb/widgets/widgets.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
+import 'package:avee/views/dashboard/widgets/corner_badge.dart';
+import 'package:avee/views/subscription.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -167,7 +167,7 @@ class _MetainfoWidgetState extends ConsumerState<MetainfoWidget> {
     final headers = currentProfile.providerHeaders;
     final logoStyle = parseSubscriptionLogoStyle(headers);
     final profileTitle = _decodeBase64IfNeeded(headers['profile-title']);
-    final serviceName = _decodeBase64IfNeeded(headers['dropweb-servicename']);
+    final serviceName = _decodeBase64IfNeeded(headers['avee-servicename']);
     final announceText = _decodeAnnounce(headers['announce']);
 
     final hasAnnounce = announceText != null && announceText.isNotEmpty;
@@ -213,10 +213,10 @@ class _MetainfoWidgetState extends ConsumerState<MetainfoWidget> {
     }
 
     // Monetization buttons — gated by subscription state and driven by
-    // dropweb-* headers (auto-collected lowercase in profile.dart). Mechanism
+    // avee-* headers (auto-collected lowercase in profile.dart). Mechanism
     // is ported from pluralplay/FlClashX; the Lumina visual treatment is ours.
-    final renewUrl = headers['dropweb-renew-url'];
-    final topUpUrl = headers['dropweb-topup-url'];
+    final renewUrl = headers['avee-renew-url'];
+    final topUpUrl = headers['avee-topup-url'];
 
     final now = DateTime.now();
     final showRenew = renewUrl != null &&

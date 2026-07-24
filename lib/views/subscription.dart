@@ -1,15 +1,15 @@
 import 'dart:io';
 
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/views/profiles/add_profile.dart';
-import 'package:dropweb/views/profiles/profiles.dart' show ProfileItem;
-import 'package:dropweb/views/subscription/modes_content.dart';
-import 'package:dropweb/views/subscription/profiles_content.dart';
-import 'package:dropweb/views/subscription/rules_proxies_view.dart';
-import 'package:dropweb/widgets/mesh_background.dart';
-import 'package:dropweb/widgets/widgets.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
+import 'package:avee/views/profiles/add_profile.dart';
+import 'package:avee/views/profiles/profiles.dart' show ProfileItem;
+import 'package:avee/views/subscription/modes_content.dart';
+import 'package:avee/views/subscription/profiles_content.dart';
+import 'package:avee/views/subscription/rules_proxies_view.dart';
+import 'package:avee/widgets/mesh_background.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

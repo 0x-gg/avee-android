@@ -195,7 +195,7 @@ class MessageLookup extends MessageLookupByLibrary {
         "deleteMultipTip": m1,
         "deleteTip": m2,
         "desc":
-            MessageLookupByLibrary.simpleMessage("Dropweb — 简洁高速的加速器。开源，无广告。"),
+            MessageLookupByLibrary.simpleMessage("AVEE — 简洁高速的加速器。开源，无广告。"),
         "detectionTip": MessageLookupByLibrary.simpleMessage("依赖第三方api，仅供参考"),
         "developerMode": MessageLookupByLibrary.simpleMessage("开发者模式"),
         "developerModeEnableTip":
@@ -234,7 +234,7 @@ class MessageLookup extends MessageLookupByLibrary {
         "expressiveScheme": MessageLookupByLibrary.simpleMessage("表现力"),
         "externalController": MessageLookupByLibrary.simpleMessage("外部控制器"),
         "externalControllerDesc": MessageLookupByLibrary.simpleMessage(
-          "开启后将可以通过9090端口控制dropweb",
+          "开启后将可以通过9090端口控制avee",
         ),
         "externalLink": MessageLookupByLibrary.simpleMessage("外部链接"),
         "externalResources": MessageLookupByLibrary.simpleMessage("外部资源"),
@@ -658,7 +658,7 @@ class MessageLookup extends MessageLookupByLibrary {
         "view": MessageLookupByLibrary.simpleMessage("查看"),
         "vpnDesc": MessageLookupByLibrary.simpleMessage("修改加速器相关设置"),
         "vpnDisclosureBody": MessageLookupByLibrary.simpleMessage(
-          "Dropweb 使用 Android 的 VPN 权限来创建由您控制的本地加速隧道。网络流量将按照您选择的连接或订阅进行路由。您可以随时通过此界面或系统设置断开连接。任何可选的诊断、账户或后台功能均为独立功能，将在相应位置进行说明。",
+          "avee 使用 Android 的 VPN 权限来创建由您控制的本地加速隧道。网络流量将按照您选择的连接或订阅进行路由。您可以随时通过此界面或系统设置断开连接。任何可选的诊断、账户或后台功能均为独立功能，将在相应位置进行说明。",
         ),
         "vpnDisclosureContinue": MessageLookupByLibrary.simpleMessage("继续"),
         "vpnDisclosureTitle": MessageLookupByLibrary.simpleMessage("连接之前"),

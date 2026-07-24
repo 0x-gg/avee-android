@@ -1,6 +1,6 @@
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/models/models.dart';
-import 'package:dropweb/views/views.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/views/views.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 

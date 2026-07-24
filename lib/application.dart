@@ -2,13 +2,13 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:dropweb/clash/clash.dart';
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/l10n/l10n.dart';
-import 'package:dropweb/manager/manager.dart';
-import 'package:dropweb/plugins/app.dart';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/clash/clash.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/l10n/l10n.dart';
+import 'package:avee/manager/manager.dart';
+import 'package:avee/plugins/app.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -240,7 +240,7 @@ class ApplicationState extends ConsumerState<Application> {
                 title: appName,
                 locale: utils.getLocaleForString(locale),
                 supportedLocales: AppLocalizations.delegate.supportedLocales,
-                // Dropweb is shipped as a dark-only product. The light /
+                // AVEE is shipped as a dark-only product. The light /
                 // system options used to live behind `_ThemeModeItem` in
                 // Settings → Theme but have been removed; any persisted
                 // `ThemeMode.light` / `ThemeMode.system` value from older

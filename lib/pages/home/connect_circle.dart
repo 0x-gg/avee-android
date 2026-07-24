@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/plugins/app.dart';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/views/dashboard/widgets/start_button.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/plugins/app.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
+import 'package:avee/views/dashboard/widgets/start_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -115,7 +115,7 @@ class _ConnectCircleState extends ConsumerState<ConnectCircle>
           if (!mounted) return;
           // Connection established — settle haptic on the OFF→ON edge only.
           if (running && previous == false) {
-            unawaited(App().performHapticFeedback(DropwebHapticCue.success));
+            unawaited(App().performHapticFeedback(AveeHapticCue.success));
           }
           _syncAura();
         },

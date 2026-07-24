@@ -1,7 +1,7 @@
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/models/models.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/state.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -508,7 +508,7 @@ bool _isCabinetHeaderTruthy(String? value) {
 bool profileHasCabinetMarker(Profile? profile) {
   final headers = profile?.providerHeaders;
   if (headers == null) return false;
-  if (_isCabinetHeaderTruthy(headers['dropweb-cabinet'])) return true;
+  if (_isCabinetHeaderTruthy(headers['avee-cabinet'])) return true;
   // Legacy fallback: older profiles may carry the Cyrillic marker in any header.
   return headers.values.any(
     (value) => value.toLowerCase().contains('кабинет'),
@@ -517,7 +517,7 @@ bool profileHasCabinetMarker(Profile? profile) {
 
 /// Default cabinet URL used as a fallback when the legacy marker value
 /// `cabinet` (or its truthy aliases) is present without an explicit URL.
-const String defaultCabinetUrl = 'https://cab.dropweb.org';
+const String defaultCabinetUrl = 'https://aveevpn.com';
 
 /// Returns `true` for loopback hostnames that may legitimately be served
 /// over plain `http://` during local development.
@@ -532,7 +532,7 @@ bool _isLocalHttpCabinetHost(String host) {
 }
 
 /// Resolves the cabinet URL declared by the panel via
-/// `dropweb-cabinet: <url>` response header.
+/// `avee-cabinet: <url>` response header.
 ///
 /// Accepts:
 ///   * any absolute `https://` URI with a non-empty host;
@@ -544,7 +544,7 @@ bool _isLocalHttpCabinetHost(String host) {
 /// (relative paths, hostless URIs, plain `http://` on public hosts,
 /// `tg://`, `intent://`, `javascript:` etc.).
 Uri? profileCabinetUri(Profile? profile) {
-  final raw = profile?.providerHeaders['dropweb-cabinet'];
+  final raw = profile?.providerHeaders['avee-cabinet'];
   if (raw == null) return null;
   final trimmed = raw.trim();
   if (trimmed.isEmpty) return null;
@@ -570,7 +570,7 @@ Uri? profileCabinetUri(Profile? profile) {
 @riverpod
 bool globalModeEnabled(Ref ref) {
   final profile = ref.watch(currentProfileProvider);
-  final value = profile?.providerHeaders['dropweb-globalmode'];
+  final value = profile?.providerHeaders['avee-globalmode'];
   return value?.toLowerCase() != 'false';
 }
 
@@ -584,21 +584,21 @@ bool hasAnnounceData(Ref ref) {
 @riverpod
 bool hasServiceInfoData(Ref ref) {
   final profile = ref.watch(currentProfileProvider);
-  final value = profile?.providerHeaders['dropweb-servicename'];
+  final value = profile?.providerHeaders['avee-servicename'];
   return value != null && value.isNotEmpty;
 }
 
 @riverpod
 bool hasServerInfoData(Ref ref) {
   final profile = ref.watch(currentProfileProvider);
-  final value = profile?.providerHeaders['dropweb-serverinfo'];
+  final value = profile?.providerHeaders['avee-serverinfo'];
   return value != null && value.isNotEmpty;
 }
 
 @riverpod
 String? backgroundUrl(Ref ref) {
   final profile = ref.watch(currentProfileProvider);
-  return profile?.providerHeaders['dropweb-background'];
+  return profile?.providerHeaders['avee-background'];
 }
 
 @riverpod

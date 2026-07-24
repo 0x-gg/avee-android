@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:dropweb/common/common.dart';
+import 'package:avee/common/common.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -38,12 +38,12 @@ class AppPath {
 
   String get corePath {
     if (Platform.isMacOS) {
-      // Core is stored in Application Support/app.dropweb/cores/ (copied by Swift code on launch)
+      // Core is stored in Application Support/com.avee.vpn/cores/ (copied by Swift code on launch)
       // Permissions are set automatically in Swift
       final home = Platform.environment['HOME'] ?? '';
-      return '$home/Library/Application Support/app.dropweb/cores/DropwebCore';
+      return '$home/Library/Application Support/com.avee.vpn/cores/AveeCore';
     }
-    return join(executableDirPath, "DropwebCore$executableExtension");
+    return join(executableDirPath, "AveeCore$executableExtension");
   }
 
   String get helperPath =>
@@ -61,7 +61,7 @@ class AppPath {
 
   Future<String> get lockFilePath async {
     final directory = await dataDir.future;
-    return join(directory.path, "dropweb.lock");
+    return join(directory.path, "avee.lock");
   }
 
   Future<String> get sharedPreferencesPath async {

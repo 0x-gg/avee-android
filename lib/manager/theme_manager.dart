@@ -1,9 +1,9 @@
 import 'dart:math';
-import 'package:dropweb/common/constant.dart';
-import 'package:dropweb/common/measure.dart';
-import 'package:dropweb/common/theme.dart';
-import 'package:dropweb/providers/config.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/common/constant.dart';
+import 'package:avee/common/measure.dart';
+import 'package:avee/common/theme.dart';
+import 'package:avee/providers/config.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

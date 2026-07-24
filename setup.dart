@@ -131,9 +131,9 @@ class Build {
         ),
       ];
 
-  static String get appName => "dropweb";
+  static String get appName => "avee";
 
-  static String get coreName => "DropwebCore";
+  static String get coreName => "AveeCore";
 
   static String get libName => "libclash";
 
@@ -372,7 +372,7 @@ class Build {
     final targetPath = join(
       outDir,
       target.name,
-      "DropwebHelperService${target.executableExtensionName}",
+      "AveeHelperService${target.executableExtensionName}",
     );
     await File(outPath).copy(targetPath);
   }
@@ -584,7 +584,7 @@ class BuildCommand extends Command {
     // ── ARCH-HONEST DMG ─────────────────────────────────────────────────────
     // Field incident (Intel Mac, Monterey, pre.7): `flutter build macos` ALWAYS
     // emits UNIVERSAL Mach-O (the main app AND every bundled framework), but the
-    // DropwebCore helper that Xcode's CopyFiles brings in is SINGLE-ARCH (built
+    // AveeCore helper that Xcode's CopyFiles brings in is SINGLE-ARCH (built
     // per --arch). So an arm64 dmg opened on an Intel Mac still LAUNCHED (the
     // universal main simply ran its native x86_64 slice), then copied its
     // arm64-only core into Application Support as root+setuid. That poisoned

@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
-import 'package:dropweb/clash/message.dart';
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/models/models.dart';
+import 'package:avee/clash/message.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
 
 mixin ClashInterface {
   Future<bool> init(InitParams params);

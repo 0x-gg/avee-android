@@ -1,11 +1,11 @@
 import 'dart:convert';
 
-import 'package:dropweb/clash/clash.dart';
-import 'package:dropweb/controller.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/models/models.dart';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/clash/clash.dart';
+import 'package:avee/controller.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -100,7 +100,7 @@ class ProfileService {
     final headers = profile.providerHeaders;
     if (headers.isEmpty) return;
 
-    final customBehavior = headers['dropweb-custom'];
+    final customBehavior = headers['avee-custom'];
 
     final shouldApply = switch (customBehavior) {
       'add' => isNewProfile,
@@ -133,7 +133,7 @@ class ProfileService {
         return;
       }
 
-      final settingsHeader = headers['dropweb-settings'];
+      final settingsHeader = headers['avee-settings'];
       if (settingsHeader != null) {
         final settings = settingsHeader
             .split(',')
@@ -155,18 +155,18 @@ class ProfileService {
             .log("Apply subscription theme disabled - ignoring operator theme");
         return;
       }
-      final themeHeader = headers['dropweb-theme'];
+      final themeHeader = headers['avee-theme'];
       if (themeHeader != null && themeHeader.isNotEmpty) {
-        _applyDropwebTheme(themeHeader);
+        _applyProviderTheme(themeHeader);
       }
     } catch (e) {
       commonPrint.log("Failed to apply theme color: $e");
     }
   }
 
-  /// Resets operator-applied (subscription) theme accents back to the dropweb
+  /// Resets operator-applied (subscription) theme accents back to the AVEE
   /// defaults. Called when switching profiles so a profile WITHOUT a
-  /// `dropweb-theme` header doesn't keep the previously selected operator's
+  /// `avee-theme` header doesn't keep the previously selected operator's
   /// colors. Only the subscription-controlled fields are reset; the user's
   /// palette, text scale, pure-black and theme mode are preserved.
   void resetSubscriptionTheme() {
@@ -182,7 +182,7 @@ class ProfileService {
   }
 
   /// Parses `<filter>,<accentHex>,<orb1Hex>,<orb2Hex>,<blur>` (all optional).
-  void _applyDropwebTheme(String header) {
+  void _applyProviderTheme(String header) {
     try {
       final parts = header.split(',').map((s) => s.trim()).toList();
 
@@ -210,7 +210,7 @@ class ProfileService {
           ? double.tryParse(parts[4])?.clamp(1.0, 5.0)
           : null;
 
-      commonPrint.log('Applying dropweb-theme: filter=${variant?.name}, '
+      commonPrint.log('Applying avee-theme: filter=${variant?.name}, '
           'accent=$accent, orb1=$orb1, orb2=$orb2, blur=$blur');
 
       _ref.read(themeSettingProvider.notifier).updateState((state) {
@@ -228,7 +228,7 @@ class ProfileService {
 
       globalState.appController.savePreferencesDebounce();
     } catch (e) {
-      commonPrint.log('Failed to parse dropweb-theme: $header - $e');
+      commonPrint.log('Failed to parse avee-theme: $header - $e');
     }
   }
 
@@ -529,7 +529,7 @@ class ProfileService {
   void _applyCustomViewSettings(Profile profile) {
     final headers = profile.providerHeaders;
 
-    final dashboardLayout = headers['dropweb-widgets'];
+    final dashboardLayout = headers['avee-widgets'];
     if (dashboardLayout != null && dashboardLayout.isNotEmpty) {
       final newLayout = DashboardWidgetParser.parseLayout(dashboardLayout);
       if (newLayout.isNotEmpty) {
@@ -539,7 +539,7 @@ class ProfileService {
       }
     }
 
-    final proxiesView = headers['dropweb-view'];
+    final proxiesView = headers['avee-view'];
     if (proxiesView != null && proxiesView.isNotEmpty) {
       final proxiesStyleNotifier =
           _ref.read(proxiesStyleSettingProvider.notifier);

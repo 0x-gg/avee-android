@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/pages/scan.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/widgets/widgets.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/pages/scan.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';

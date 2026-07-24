@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
-import 'package:dropweb/common/constant.dart';
+import 'package:avee/common/constant.dart';
 
 /// IO + pure helpers for the Android in-app updater. The orchestration (state
 /// machine) lives in `lib/providers/app_update.dart`; this file holds the

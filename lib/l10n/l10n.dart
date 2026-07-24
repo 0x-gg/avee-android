@@ -1229,10 +1229,10 @@ class AppLocalizations {
     );
   }
 
-  /// `Dropweb — fast, simple VPN client. Open-source and ad-free.`
+  /// `AVEE — fast, simple VPN client. Open-source and ad-free.`
   String get desc {
     return Intl.message(
-      'Dropweb — fast, simple VPN client. Open-source and ad-free.',
+      'AVEE — fast, simple VPN client. Open-source and ad-free.',
       name: 'desc',
       desc: '',
       args: [],
@@ -3834,10 +3834,10 @@ class AppLocalizations {
     );
   }
 
-  /// `Dropweb uses Android's VPN permission to create a local VPN tunnel that you control. Network traffic is routed according to the connection or subscription you select. You can disconnect at any time from this screen or your device's VPN settings. Any optional diagnostics, account, or cabinet features are separate and are disclosed where they apply.`
+  /// `avee uses Android's VPN permission to create a local VPN tunnel that you control. Network traffic is routed according to the connection or subscription you select. You can disconnect at any time from this screen or your device's VPN settings. Any optional diagnostics, account, or cabinet features are separate and are disclosed where they apply.`
   String get vpnDisclosureBody {
     return Intl.message(
-      'Dropweb uses Android\'s VPN permission to create a local VPN tunnel that you control. Network traffic is routed according to the connection or subscription you select. You can disconnect at any time from this screen or your device\'s VPN settings. Any optional diagnostics, account, or cabinet features are separate and are disclosed where they apply.',
+      'avee uses Android\'s VPN permission to create a local VPN tunnel that you control. Network traffic is routed according to the connection or subscription you select. You can disconnect at any time from this screen or your device\'s VPN settings. Any optional diagnostics, account, or cabinet features are separate and are disclosed where they apply.',
       name: 'vpnDisclosureBody',
       desc: '',
       args: [],

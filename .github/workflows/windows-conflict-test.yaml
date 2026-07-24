@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   decouple-check:
-    name: Clean coexistence (current dropweb + FlClashX)
+    name: Clean coexistence (current AVEE + FlClashX)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +23,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          New-Item -ItemType Directory -Force dl\flclashx, dl\dropweb | Out-Null
+          New-Item -ItemType Directory -Force dl\flclashx, dl\avee | Out-Null
 
           Write-Host "=== FlClashX latest release assets ==="
           gh release view --repo pluralplay/FlClashX --json assets --jq '.assets[].name'
@@ -35,13 +35,13 @@ jobs:
             gh release download --repo pluralplay/FlClashX -p "*.exe" -D dl\flclashx
           }
 
-          Write-Host "=== dropweb latest pre-release ==="
+          Write-Host "=== avee latest pre-release ==="
           $tag = (gh release list --repo ${{ github.repository }} -L 30 --json tagName,isPrerelease | ConvertFrom-Json | Where-Object { $_.isPrerelease } | Select-Object -First 1).tagName
           Write-Host "latest pre-release tag: $tag"
           gh release view $tag --repo ${{ github.repository }} --json assets --jq '.assets[].name'
-          gh release download $tag --repo ${{ github.repository }} -p "*amd64*.exe" -D dl\dropweb
-          if (-not (Get-ChildItem dl\dropweb -Filter *.exe -EA SilentlyContinue)) {
-            gh release download $tag --repo ${{ github.repository }} -p "*setup*.exe" -D dl\dropweb
+          gh release download $tag --repo ${{ github.repository }} -p "*amd64*.exe" -D dl\avee
+          if (-not (Get-ChildItem dl\avee -Filter *.exe -EA SilentlyContinue)) {
+            gh release download $tag --repo ${{ github.repository }} -p "*setup*.exe" -D dl\avee
           }
 
           Write-Host "=== downloaded ==="
@@ -61,15 +61,15 @@ jobs:
           Write-Host "FlClashX installer exit=$($p.ExitCode)"
           & ./.github/scripts/win_conflict_inspect.ps1 -Label "1. after FlClashX"
 
-      - name: 2 - install current dropweb
+      - name: 2 - install current AVEE
         shell: pwsh
         run: |
-          $dw = Get-ChildItem dl\dropweb -Filter *.exe -Recurse | Select-Object -First 1
-          if (-not $dw) { Write-Host "::error::dropweb installer not found"; exit 1 }
+          $dw = Get-ChildItem dl\avee -Filter *.exe -Recurse | Select-Object -First 1
+          if (-not $dw) { Write-Host "::error::avee installer not found"; exit 1 }
           Write-Host "Installing $($dw.FullName)"
           $p = Start-Process -FilePath $dw.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/NOICONS','/NOCANCEL' -Wait -PassThru
-          Write-Host "dropweb installer exit=$($p.ExitCode)"
-          & ./.github/scripts/win_conflict_inspect.ps1 -Label "2. after current dropweb"
+          Write-Host "avee installer exit=$($p.ExitCode)"
+          & ./.github/scripts/win_conflict_inspect.ps1 -Label "2. after current AVEE"
 
       - name: 3 - verdict
         shell: pwsh
@@ -83,19 +83,19 @@ jobs:
           foreach ($k in $keys) {
             Get-ChildItem $k -ErrorAction SilentlyContinue | ForEach-Object {
               $p = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue
-              if ($p.DisplayName -match 'dropweb') { $dw = $p }
+              if ($p.DisplayName -match 'avee') { $dw = $p }
             }
           }
-          if (-not $dw) { Write-Host "::warning::no dropweb uninstall entry - install may have failed"; exit 1 }
-          Write-Host "dropweb InstallLocation = $($dw.InstallLocation)"
+          if (-not $dw) { Write-Host "::warning::no AVEE uninstall entry - install may have failed"; exit 1 }
+          Write-Host "avee InstallLocation = $($dw.InstallLocation)"
           if ($dw.InstallLocation -match 'FlClashX') {
-            Write-Host "::error::CONFLICT - dropweb installed inside FlClashX folder: $($dw.InstallLocation)"
+            Write-Host "::error::CONFLICT - avee installed inside FlClashX folder: $($dw.InstallLocation)"
             exit 1
           }
-          Write-Host "OK - dropweb decoupled (own install folder: $($dw.InstallLocation))"
+          Write-Host "OK - avee decoupled (own install folder: $($dw.InstallLocation))"
 
-  flclashx-running-then-dropweb:
-    name: FlClashX running first, then install dropweb (runtime helper-port)
+  flclashx-running-then-avee:
+    name: FlClashX running first, then install AVEE (runtime helper-port)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -105,12 +105,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          New-Item -ItemType Directory -Force dl\flclashx, dl\dropweb | Out-Null
+          New-Item -ItemType Directory -Force dl\flclashx, dl\avee | Out-Null
           gh release download --repo pluralplay/FlClashX -p "*amd64*setup*.exe" -D dl\flclashx
           if (-not (Get-ChildItem dl\flclashx -Filter *.exe -EA SilentlyContinue)) { gh release download --repo pluralplay/FlClashX -p "*setup*.exe" -D dl\flclashx }
           $tag = (gh release list --repo ${{ github.repository }} -L 30 --json tagName,isPrerelease | ConvertFrom-Json | Where-Object { $_.isPrerelease } | Select-Object -First 1).tagName
-          Write-Host "dropweb pre-release: $tag"
-          gh release download $tag --repo ${{ github.repository }} -p "*amd64*.exe" -D dl\dropweb
+          Write-Host "avee pre-release: $tag"
+          gh release download $tag --repo ${{ github.repository }} -p "*amd64*.exe" -D dl\avee
           Get-ChildItem -Recurse dl | ForEach-Object { Write-Host $_.FullName }
 
       - name: Install FlClashX, then bring it ALIVE (helper on 47890 + launch app)
@@ -128,29 +128,29 @@ jobs:
           & ./.github/scripts/win_conflict_inspect.ps1 -Label "FlClashX alive (helper + app)"
           Write-Host "-- who holds 47890 --"; (netstat -ano | Select-String ':47890') | ForEach-Object { Write-Host "  $_" }
 
-      - name: Install dropweb WHILE FlClashX runs, then start its helper
+      - name: Install avee WHILE FlClashX runs, then start its helper
         shell: pwsh
         run: |
-          $dw = Get-ChildItem dl\dropweb -Filter *.exe -Recurse | Select-Object -First 1
+          $dw = Get-ChildItem dl\avee -Filter *.exe -Recurse | Select-Object -First 1
           $p = Start-Process -FilePath $dw.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/NOICONS','/NOCANCEL' -Wait -PassThru
-          Write-Host "dropweb installer exit=$($p.ExitCode)"
-          $hexe = 'C:\Program Files\dropweb\DropwebHelperService.exe'
+          Write-Host "avee installer exit=$($p.ExitCode)"
+          $hexe = 'C:\Program Files\avee\AveeHelperService.exe'
           if (Test-Path $hexe) {
-            try { New-Service -Name DropwebHelperService -BinaryPathName "`"$hexe`"" -StartupType Manual -ErrorAction Stop | Out-Null } catch { Write-Host "create DropwebHelperService: $_" }
-            try { Start-Service DropwebHelperService -ErrorAction Stop; Write-Host "DropwebHelperService started OK" } catch { Write-Host "start DropwebHelperService FAILED: $_" }
-          } else { Write-Host "dropweb helper exe not found at $hexe" }
-          Start-Process -FilePath 'C:\Program Files\dropweb\dropweb.exe' -ErrorAction SilentlyContinue
+            try { New-Service -Name AveeHelperService -BinaryPathName "`"$hexe`"" -StartupType Manual -ErrorAction Stop | Out-Null } catch { Write-Host "create AveeHelperService: $_" }
+            try { Start-Service AveeHelperService -ErrorAction Stop; Write-Host "AveeHelperService started OK" } catch { Write-Host "start AveeHelperService FAILED: $_" }
+          } else { Write-Host "avee helper exe not found at $hexe" }
+          Start-Process -FilePath 'C:\Program Files\avee\avee.exe' -ErrorAction SilentlyContinue
           Start-Sleep -Seconds 6
-          & ./.github/scripts/win_conflict_inspect.ps1 -Label "after dropweb install (FlClashX still alive)"
+          & ./.github/scripts/win_conflict_inspect.ps1 -Label "after avee install (FlClashX still alive)"
           Write-Host "-- who holds 47890 now --"; (netstat -ano | Select-String ':47890') | ForEach-Object { Write-Host "  $_" }
 
       - name: Summary (informational - does not fail)
         shell: pwsh
         run: |
           $fl = (Get-Service FlClashHelperService -EA SilentlyContinue).Status
-          $dw = (Get-Service DropwebHelperService -EA SilentlyContinue).Status
+          $dw = (Get-Service AveeHelperService -EA SilentlyContinue).Status
           Write-Host "FlClashHelperService = $fl"
-          Write-Host "DropwebHelperService = $dw"
+          Write-Host "AveeHelperService = $dw"
           Write-Host "NOTE: pre.4 still uses port 47890 for BOTH helpers (the 47896 fix is unreleased)."
-          Write-Host "      So dropweb's helper is expected to FAIL while FlClashX holds 47890 - that PROVES the runtime port conflict."
+          Write-Host "      So avee's helper is expected to FAIL while FlClashX holds 47890 - that PROVES the runtime port conflict."
           Write-Host "      Install folders stay separate (other job); this job isolates the runtime helper-port clash."

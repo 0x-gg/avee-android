@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/common/constant.dart';
-import 'package:dropweb/services/avee_account.dart';
-import 'package:dropweb/services/avee_billing.dart';
-import 'package:dropweb/services/avee_remote_config.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/ui/avee_design.dart';
-import 'package:dropweb/views/dashboard/widgets/start_button.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/common/constant.dart';
+import 'package:avee/services/avee_account.dart';
+import 'package:avee/services/avee_billing.dart';
+import 'package:avee/services/avee_remote_config.dart';
+import 'package:avee/state.dart';
+import 'package:avee/ui/avee_design.dart';
+import 'package:avee/views/dashboard/widgets/start_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

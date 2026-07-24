@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/widgets/widgets.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

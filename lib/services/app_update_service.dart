@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/controller.dart';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/controller.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';

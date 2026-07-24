@@ -1,6 +1,6 @@
-import 'package:dropweb/common/constant.dart';
-import 'package:dropweb/common/utils.dart' show utils;
-import 'package:dropweb/models/models.dart';
+import 'package:avee/common/constant.dart';
+import 'package:avee/common/utils.dart' show utils;
+import 'package:avee/models/models.dart';
 
 /// Pure: maps a fetched `update.json` manifest to an [AppUpdateInfo] for the
 /// android-arm64 platform, or null when there is no newer/valid update.
@@ -34,7 +34,7 @@ AppUpdateInfo? resolveAndroidUpdate({
   final suffix = kGithubApkAssetByPlatform[platformKey];
   final fallback = suffix == null
       ? null
-      : 'https://github.com/$repository/releases/download/$tag/dropweb-$version-$suffix';
+      : 'https://github.com/$repository/releases/download/$tag/avee-$version-$suffix';
 
   final notes = manifest['notes'] is List
       ? (manifest['notes'] as List).map((e) => e.toString()).toList()

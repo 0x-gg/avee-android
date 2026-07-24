@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/models/models.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
 import 'package:flutter/foundation.dart';
 
 class ClashMessage {

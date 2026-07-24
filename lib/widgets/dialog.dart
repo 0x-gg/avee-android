@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:dropweb/providers/app.dart';
+import 'package:avee/providers/app.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

@@ -1,7 +1,7 @@
 // ignore_for_file: invalid_annotation_target
 
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/enum/enum.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
 import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -83,7 +83,7 @@ class AppSettingProps with _$AppSettingProps {
     @Default(true) bool closeConnections,
     @Default(defaultTestUrl) String testUrl,
     @Default(true) bool isAnimateToPage,
-    // Sideloaded RU build self-updates from dropweb.org/update.json by default;
+    // Sideloaded RU build self-updates from aveevpn.com/update.json by default;
     // Play build ignores this (gated by kIsPlayBuild). Desktop just opens the
     // release page on a newer version. See docs/plans/2026-06-25-auto-update.md.
     @Default(true) bool autoCheckUpdate,

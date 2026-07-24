@@ -1,10 +1,10 @@
 import 'dart:convert';
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/models/common.dart';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/widgets/widgets.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/common.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -32,7 +32,7 @@ class ChangeServerButton extends ConsumerWidget {
     }
 
     final serverInfoGroupName = _decodeBase64IfNeeded(
-      profile.providerHeaders['dropweb-serverinfo'],
+      profile.providerHeaders['avee-serverinfo'],
     );
 
     if (serverInfoGroupName == null || serverInfoGroupName.isEmpty) {

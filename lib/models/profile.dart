@@ -4,12 +4,12 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
-import 'package:dropweb/clash/core.dart';
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/common/share_link_profile.dart';
-import 'package:dropweb/common/smart_pool_patch.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/utils/device_info_service.dart';
+import 'package:avee/clash/core.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/common/share_link_profile.dart';
+import 'package:avee/common/smart_pool_patch.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/utils/device_info_service.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'clash_config.dart';
@@ -52,7 +52,7 @@ class SubscriptionInfo with _$SubscriptionInfo {
 ///
 /// The SOS fetch sits on the CRITICAL PATH of every subscription
 /// import/update. A blackholing endpoint (observed in the wild: the panel
-/// advertises a `dropweb-disconeko` host that drops packets) would otherwise
+/// advertises a `avee-disconeko` host that drops packets) would otherwise
 /// tax every update with a full connect timeout. One failure → the endpoint
 /// is skipped for [retryCooldown]; a success clears the record. In-memory
 /// only: a fresh launch retries naturally.
@@ -66,7 +66,7 @@ abstract final class _SosFetchGate {
     if (at == null) return false;
     if (DateTime.now().difference(at) >= retryCooldown) return false;
     commonPrint.log(
-      'dropweb-disconeko skipped: endpoint in failure cooldown',
+      'avee-disconeko skipped: endpoint in failure cooldown',
     );
     return true;
   }
@@ -177,7 +177,7 @@ extension ProfileExtension on Profile {
 
   /// Human-facing subscription/service name, mirroring the dashboard card
   /// resolution (MetainfoWidget.pickTitle): the Remnawave `profile-title`
-  /// header wins, then the `dropweb-servicename` header, then the stored
+  /// header wins, then the `avee-servicename` header, then the stored
   /// `label`, then the raw `id`. Both branding headers may arrive base64
   /// (optionally `base64:`-prefixed), so they are decoded here. Never empty.
   String get serviceName {
@@ -188,7 +188,7 @@ extension ProfileExtension on Profile {
 
     for (final candidate in [
       decode(providerHeaders['profile-title']),
-      decode(providerHeaders['dropweb-servicename']),
+      decode(providerHeaders['avee-servicename']),
     ]) {
       final trimmed = candidate?.trim();
       if (trimmed != null && trimmed.isNotEmpty) {
@@ -298,15 +298,15 @@ extension ProfileExtension on Profile {
       }
     }
 
-    // Subscription providers (Remnawave panel templates) return dropweb-*
+    // Subscription providers (Remnawave panel templates) return avee-*
     // HTTP headers to customize the dashboard layout, theme, service name,
     // logo, and behavior. Legacy flclashx-* headers from FlClashX-targeted
-    // panels are intentionally NOT accepted — dropweb is a distinct product
+    // panels are intentionally NOT accepted — AVEE is a distinct product
     // and must not share a customization protocol surface with FlClashX
     // (see .sisyphus/plans/2026-04-20-flclashx-hard-decouple.md for the
     // decision record).
     response.headers.forEach((name, values) {
-      if (name.toLowerCase().startsWith('dropweb-') && values.isNotEmpty) {
+      if (name.toLowerCase().startsWith('avee-') && values.isNotEmpty) {
         providerHeaders[name.toLowerCase()] = values.first;
       }
     });
@@ -335,7 +335,7 @@ extension ProfileExtension on Profile {
     }
 
     // SOS / disconeko emergency fallback. When the provider advertises a
-    // `dropweb-disconeko` URL it points to a SEPARATE pool of emergency
+    // `avee-disconeko` URL it points to a SEPARATE pool of emergency
     // servers (raw share links or a Mihomo YAML). Merge that pool into the
     // delivered config and surface it through the `📶 First Available`
     // (`type: fallback`) proxy-group — a manual, opt-in selection the user must
@@ -343,7 +343,7 @@ extension ProfileExtension on Profile {
     // is created if the delivered config lacks one. This is strictly best-
     // effort: the emergency pool is optional and must NEVER break the primary
     // update.
-    final disconekoUrl = providerHeaders['dropweb-disconeko'];
+    final disconekoUrl = providerHeaders['avee-disconeko'];
     if (disconekoUrl != null &&
         disconekoUrl.isNotEmpty &&
         !_SosFetchGate.inCooldown(disconekoUrl)) {
@@ -377,7 +377,7 @@ extension ProfileExtension on Profile {
               bytesToSave = Uint8List.fromList(utf8.encode(patched));
             } else {
               commonPrint.log(
-                'dropweb-disconeko patch rejected by core: $patchError',
+                'avee-disconeko patch rejected by core: $patchError',
               );
             }
           }
@@ -387,7 +387,7 @@ extension ProfileExtension on Profile {
         // decode, parse) and keep the primary profile update intact. Remember
         // the failure so the next updates don't pay the timeout again.
         _SosFetchGate.recordFailure(disconekoUrl);
-        commonPrint.log('dropweb-disconeko SOS merge skipped: $e');
+        commonPrint.log('avee-disconeko SOS merge skipped: $e');
       }
     }
 

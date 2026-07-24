@@ -5,12 +5,12 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/plugins/app.dart';
-import 'package:dropweb/plugins/tile.dart';
-import 'package:dropweb/plugins/vpn.dart';
-import 'package:dropweb/services/deep_link_handler.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/plugins/app.dart';
+import 'package:avee/plugins/tile.dart';
+import 'package:avee/plugins/vpn.dart';
+import 'package:avee/services/deep_link_handler.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -78,7 +78,7 @@ Future<void> main() async {
   if (Platform.isAndroid) {
     vpn;
   }
-  HttpOverrides.global = DropwebHttpOverrides();
+  HttpOverrides.global = AveeHttpOverrides();
   runApp(const ProviderScope(
     child: Application(),
   ));
@@ -257,7 +257,7 @@ Future<void> _service(List<String> flags) async {
       // Get server group name from header (may be base64-encoded, optionally
       // `base64:`-prefixed). decodeMaybeBase64 returns the raw value on any
       // decode failure, matching the previous empty-catch fallback.
-      String? groupName = profile?.providerHeaders['dropweb-serverinfo'];
+      String? groupName = profile?.providerHeaders['avee-serverinfo'];
       if (groupName != null && groupName.isNotEmpty) {
         groupName = decodeMaybeBase64(groupName).trim();
       }
@@ -445,12 +445,12 @@ void _handleMainIpc(ClashLibHandler clashLibHandler) {
         // service isolate's own globalState.config.currentProfile, which only
         // ever changed via 'updateForegroundServer'/'updateMode'. A profile
         // SWITCH (or an active-profile subscription update that rewrites
-        // profile-title / dropweb-servicename) sends no such IPC, so the service
+        // profile-title / avee-servicename) sends no such IPC, so the service
         // kept rendering the PREVIOUS profile's title — while live speed updates
         // masked it, since this isolate was the one answering. Replace the
         // profile in the service-side list (or append if unseen here) AND
         // repoint currentProfileId, so currentProfile → the NEW profile and its
-        // title chain (profile-title → dropweb-serverinfo → servicename)
+        // title chain (profile-title → avee-serverinfo → servicename)
         // resolves fresh.
         final profileJson = message['profile'] as String? ?? '';
         final profileId = message['profileId'] as String? ?? '';

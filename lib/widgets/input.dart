@@ -1,9 +1,9 @@
-import 'package:dropweb/common/app_localizations.dart';
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/models/common.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/widgets/dialog.dart';
-import 'package:dropweb/widgets/null_status.dart';
+import 'package:avee/common/app_localizations.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/models/common.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/dialog.dart';
+import 'package:avee/widgets/null_status.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 

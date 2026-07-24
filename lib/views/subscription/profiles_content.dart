@@ -1,13 +1,13 @@
 import 'dart:async';
 
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/common/error_mapper.dart';
-import 'package:dropweb/models/models.dart' hide Action;
-import 'package:dropweb/plugins/app.dart';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/views/profiles/profiles.dart' show ProfileItem;
-import 'package:dropweb/widgets/widgets.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/common/error_mapper.dart';
+import 'package:avee/models/models.dart' hide Action;
+import 'package:avee/plugins/app.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
+import 'package:avee/views/profiles/profiles.dart' show ProfileItem;
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -35,7 +35,7 @@ Future<void> refreshProfiles(BuildContext context, [Profile? current]) async {
   // Fire the refresh cue up-front so the user gets immediate feedback,
   // mirroring the dashboard pull-to-refresh behavior. Fire-and-forget:
   // `playUiSound` never throws, and we must not block the network work.
-  unawaited(App().playUiSound(DropwebSoundCue.subscriptionRefresh));
+  unawaited(App().playUiSound(AveeSoundCue.subscriptionRefresh));
   if (current != null) {
     controller.setProfile(current.copyWith(isUpdating: true));
     try {

@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'package:dropweb/models/core.dart';
+import 'package:avee/models/core.dart';
 
 /// Generates cryptographically random proxy credentials.
 /// Used to protect SOCKS/HTTP port from detection by other apps.

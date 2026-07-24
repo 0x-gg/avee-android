@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/widgets/widgets.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -161,9 +161,9 @@ class _ServiceInfoWidgetState extends ConsumerState<ServiceInfoWidget> {
     }
 
     final headers = profile.providerHeaders;
-    final serviceName = _decodeBase64IfNeeded(headers['dropweb-servicename']);
+    final serviceName = _decodeBase64IfNeeded(headers['avee-servicename']);
     final supportUrl = headers['support-url'];
-    final logoUrl = _decodeBase64IfNeeded(headers['dropweb-servicelogo']);
+    final logoUrl = _decodeBase64IfNeeded(headers['avee-servicelogo']);
     final announceText = _decodeAnnounce(headers['announce']);
 
     if (serviceName == null || serviceName.isEmpty) {

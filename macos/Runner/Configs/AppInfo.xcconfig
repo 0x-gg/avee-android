@@ -5,10 +5,10 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = dropweb
+PRODUCT_NAME = avee
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = org.dropweb.vpn
+PRODUCT_BUNDLE_IDENTIFIER = com.avee.vpn
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 dropweb contributors. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025 avee contributors. All rights reserved.

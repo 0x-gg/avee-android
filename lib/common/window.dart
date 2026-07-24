@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,7 +15,7 @@ class Window {
       exit(0);
     }
     if (Platform.isWindows) {
-      // One-time cleanup for users who were running a previous dropweb build
+      // One-time cleanup for users who were running a previous AVEE build
       // that unconditionally overwrote flclash:// and clashx:// handlers.
       // If the current handler still points to our exe, remove it so the
       // scheme becomes unclaimed — letting FlClashX (or any other app) take
@@ -23,11 +23,11 @@ class Window {
       await _migrateHijackedSchemes();
 
       // Always claim our own scheme.
-      protocol.register("dropweb");
+      protocol.register("avee");
 
       // Claim common schemes only if no other app currently owns them.
       // This lets users without FlClashX still open flclash:// links in
-      // dropweb, while leaving FlClashX-owned handlers untouched.
+      // avee, while leaving FlClashX-owned handlers untouched.
       protocol.register("flclash", onlyIfMissing: true);
       protocol.register("clashx", onlyIfMissing: true);
     }

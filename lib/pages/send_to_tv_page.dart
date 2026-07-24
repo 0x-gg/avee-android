@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:dropweb/common/common.dart';
+import 'package:avee/common/common.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -31,7 +31,7 @@ class _SendToTvPageState extends ConsumerState<SendToTvPage> {
 
     try {
       final data = jsonDecode(rawValue);
-      if (data['type'] == 'dropweb_tv_sync') {
+      if (data['type'] == 'avee_tv_sync') {
         final ip = data['ip'];
         final port = data['port'];
         final nonce = data['nonce'];

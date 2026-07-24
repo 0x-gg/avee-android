@@ -1,7 +1,7 @@
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/views/subscription.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/views/subscription.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

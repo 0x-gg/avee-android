@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:dropweb/common/print.dart';
+import 'package:avee/common/print.dart';
 import 'package:win32_registry/win32_registry.dart';
 
 class Protocol {

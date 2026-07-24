@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:dropweb/clash/interface.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/models/models.dart';
+import 'package:avee/clash/interface.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// A handler whose [sendMessage] never produces a reply, so every [invoke]

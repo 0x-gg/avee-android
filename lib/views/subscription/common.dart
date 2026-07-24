@@ -1,9 +1,9 @@
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/common/work_mode_patch.dart';
-import 'package:dropweb/models/models.dart' hide Action;
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/views/proxies/common.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/common/work_mode_patch.dart';
+import 'package:avee/models/models.dart' hide Action;
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
+import 'package:avee/views/proxies/common.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Parsed work-mode inputs for the current profile, read from the profile's

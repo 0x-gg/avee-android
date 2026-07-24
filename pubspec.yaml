@@ -1,5 +1,5 @@
-name: dropweb
-description: Multi-platform VPN client based on mihomo core. Open-source and ad-free.
+name: avee
+description: AVEE VPN — multi-platform client based on mihomo core.
 publish_to: "none"
 version: 0.8.5+2026074504
 
@@ -58,7 +58,7 @@ dependencies:
     git:
       url: https://github.com/enkinvsh/flutter_js.git
       # SECURITY: see note on re_editor above — pin to an immutable ref.
-      # TODO(dropweb): replace with a commit hash or tag when one is published.
+      # TODO(avee): replace with a commit hash or tag when one is published.
       ref: master
   flutter_svg: ^2.2.3
   flutter_cache_manager: ^3.4.1

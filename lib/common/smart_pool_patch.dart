@@ -17,7 +17,7 @@ const _smartGroupName = disconekoSmartGroupName;
 const disconekoSmartGroupName = '🧠 Smart';
 
 /// Name of the `fallback` group that surfaces the emergency pool — mirrors the
-/// `📶 First Available` group in the dropweb panel template. Offered as a
+/// `📶 First Available` group in the AVEE panel template. Offered as a
 /// selectable (NON-default) option inside the primary router.
 const _firstAvailableGroupName = '📶 First Available';
 

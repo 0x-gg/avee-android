@@ -1,16 +1,16 @@
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/common/send_to_tv_visibility.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/models/models.dart' hide Action;
-import 'package:dropweb/pages/pages.dart';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/views/dashboard/widgets/corner_badge.dart';
-import 'package:dropweb/views/subscription.dart';
-import 'package:dropweb/widgets/widgets.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/common/send_to_tv_visibility.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart' hide Action;
+import 'package:avee/pages/pages.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
+import 'package:avee/views/dashboard/widgets/corner_badge.dart';
+import 'package:avee/views/subscription.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';

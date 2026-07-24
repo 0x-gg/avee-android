@@ -2,15 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dropweb/clash/clash.dart';
-import 'package:dropweb/common/connect_trace.dart';
-import 'package:dropweb/common/error_mapper.dart';
-import 'package:dropweb/controller.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/models/models.dart';
-import 'package:dropweb/plugins/vpn.dart';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/clash/clash.dart';
+import 'package:avee/common/connect_trace.dart';
+import 'package:avee/common/error_mapper.dart';
+import 'package:avee/controller.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/plugins/vpn.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -90,7 +90,7 @@ class ConnectService {
   ///     the notification kept showing the PREVIOUS profile's label until a
   ///     reconnect/restart (owner-reported).
   ///   • current-profile update ([AppController.updateProfile], active-profile
-  ///     branch) — a subscription refresh can change `dropweb-servicename` /
+  ///     branch) — a subscription refresh can change `avee-servicename` /
   ///     the label rendered in the notification.
   /// The plugin setters (`updateProfileInfo`/`updateServerName`) are pure
   /// in-memory writes with no MethodChannel/notification side effect, so calling
@@ -104,7 +104,7 @@ class ConnectService {
 
     // Decode service name from header (may be `base64:`-prefixed base64).
     String serviceName = "";
-    final svc = profile.providerHeaders['dropweb-servicename'];
+    final svc = profile.providerHeaders['avee-servicename'];
     if (svc != null && svc.isNotEmpty) {
       serviceName = decodeMaybeBase64(svc).trim();
     }
@@ -115,7 +115,7 @@ class ConnectService {
     );
 
     // Get current server name from selectedMap
-    final groupName = profile.providerHeaders['dropweb-serverinfo'];
+    final groupName = profile.providerHeaders['avee-serverinfo'];
     if (groupName != null && groupName.isNotEmpty) {
       final decodedGroupName = decodeMaybeBase64(groupName).trim();
       final serverName = profile.selectedMap[decodedGroupName] ?? "";
@@ -128,7 +128,7 @@ class ConnectService {
     // `globalState.config.currentProfile` snapshot, which mutates ONLY via IPC
     // ('updateForegroundServer' → selectedMap, 'updateMode' → mode). A profile
     // switch/update sends no IPC, so that snapshot keeps the OLD profile and the
-    // title (profile-title → dropweb-serverinfo → servicename chain) stays stale
+    // title (profile-title → avee-serverinfo → servicename chain) stays stale
     // even after the cache write above (live speed updates masked it — the
     // service isolate was the one answering). Mirror the updateForegroundServer
     // precedent: push the freshly-active profile to the service isolate so its
@@ -271,7 +271,7 @@ class ConnectService {
       await StatusBarManager.updateIcon(isConnected: true);
       if (Platform.isAndroid) {
         unawaited(
-          const MethodChannel('app.dropweb/navigation')
+          const MethodChannel('com.avee.vpn/navigation')
               .invokeMethod<void>('requestBatteryExemption')
               .catchError((Object _) {}),
         );

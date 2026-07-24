@@ -4,10 +4,10 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/models/models.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 
@@ -28,7 +28,7 @@ class Request {
       final client = HttpClient();
       client.findProxy = (uri) {
         client.userAgent = globalState.ua;
-        return DropwebHttpOverrides.handleFindProxy(uri);
+        return AveeHttpOverrides.handleFindProxy(uri);
       };
       return client;
     });
@@ -132,7 +132,7 @@ class Request {
     return MemoryImage(data);
   }
 
-  /// Update check against our own update server (dropweb.org/update.json,
+  /// Update check against our own update server (aveevpn.com/update.json,
   /// backed by YC Object Storage) instead of the GitHub API. РФ-reliable and
   /// independent of GitHub. The manifest is adapted to the shape
   /// [Controller.checkUpdateResultHandle] expects (tag_name / body / html_url),
@@ -160,7 +160,7 @@ class Request {
       final notes = manifest['notes'] is List
           ? (manifest['notes'] as List).map((e) => e.toString()).toList()
           : const <String>[];
-      var downloadUrl = 'https://dropweb.org/downloads';
+      var downloadUrl = 'https://aveevpn.com/downloads';
       final platforms = manifest['platforms'];
       if (platforms is Map) {
         final entry = platforms[_platformKey()];
@@ -182,13 +182,13 @@ class Request {
     }
   }
 
-  /// Raw fetch of the update manifest (dropweb.org/update.json → Vercel → YC),
+  /// Raw fetch of the update manifest (aveevpn.com/update.json → Vercel → YC),
   /// reused by the Android in-app updater. Returns the decoded JSON map, or null
   /// on any non-200 / parse failure / network error.
   ///
   /// Tunnel-aware (the RU update path): when [viaProxy] is true — the caller
   /// knows the tunnel is connected — the request goes through the proxy-routed
-  /// [_clashDio] so a ТСПУ block on dropweb.org/YC is bypassed via the active
+  /// [_clashDio] so a ТСПУ block on aveevpn.com/YC is bypassed via the active
   /// node; otherwise it goes direct via [_dio]. The caller owns the tunnel-state
   /// decision and the direct→proxy fallback ordering.
   Future<Map<String, dynamic>?> fetchUpdateManifest(

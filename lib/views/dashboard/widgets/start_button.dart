@@ -3,14 +3,14 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/common/connect_trace.dart';
-import 'package:dropweb/models/models.dart';
-import 'package:dropweb/plugins/app.dart';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/views/dashboard/widgets/vpn_disclosure_dialog.dart';
-import 'package:dropweb/views/profiles/add_profile.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/common/connect_trace.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/plugins/app.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
+import 'package:avee/views/dashboard/widgets/vpn_disclosure_dialog.dart';
+import 'package:avee/views/profiles/add_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -88,8 +88,8 @@ class _StartButtonState extends ConsumerState<StartButton>
     // cue immediately so the user gets a confirmation tick on tap. Feedback
     // is fire-and-forget so we don't block the status update.
     if (!next) {
-      unawaited(App().performHapticFeedback(DropwebHapticCue.confirm));
-      unawaited(App().playUiSound(DropwebSoundCue.powerOff));
+      unawaited(App().performHapticFeedback(AveeHapticCue.confirm));
+      unawaited(App().playUiSound(AveeSoundCue.powerOff));
       unawaited(globalState.appController.updateStatus(false));
       return;
     }
@@ -101,8 +101,8 @@ class _StartButtonState extends ConsumerState<StartButton>
     if (!allowed) return;
 
     ConnectTrace.start();
-    unawaited(App().performHapticFeedback(DropwebHapticCue.confirm));
-    unawaited(App().playUiSound(DropwebSoundCue.powerOn));
+    unawaited(App().performHapticFeedback(AveeHapticCue.confirm));
+    unawaited(App().playUiSound(AveeSoundCue.powerOn));
     unawaited(_maybeRequestNotificationPermission());
     unawaited(globalState.appController.updateStatus(true));
   }
@@ -146,7 +146,7 @@ class _StartButtonState extends ConsumerState<StartButton>
     // the powerOn/powerOff cue). Animation still runs so the visual press
     // affordance is preserved.
     if (ref.read(startButtonSelectorStateProvider).hasProfile) {
-      App().performHapticFeedback(DropwebHapticCue.gestureStart);
+      App().performHapticFeedback(AveeHapticCue.gestureStart);
     }
     _pressController.forward();
   }

@@ -1,5 +1,5 @@
-import 'package:dropweb/common/color.dart';
-import 'package:dropweb/enum/enum.dart';
+import 'package:avee/common/color.dart';
+import 'package:avee/enum/enum.dart';
 import 'package:flutter/material.dart';
 
 class CommonChip extends StatelessWidget {

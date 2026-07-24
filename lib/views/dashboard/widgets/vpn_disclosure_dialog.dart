@@ -1,6 +1,6 @@
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/widgets/dialog.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/dialog.dart';
 import 'package:flutter/material.dart';
 
 /// First-run VPN disclosure shown before the very first connection attempt.

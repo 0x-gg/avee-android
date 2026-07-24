@@ -1,12 +1,12 @@
 import 'dart:io';
 
-import 'package:dropweb/clash/clash.dart';
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/models/models.dart';
-import 'package:dropweb/plugins/app.dart';
-import 'package:dropweb/providers/config.dart';
-import 'package:dropweb/widgets/widgets.dart';
+import 'package:avee/clash/clash.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/plugins/app.dart';
+import 'package:avee/providers/config.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';

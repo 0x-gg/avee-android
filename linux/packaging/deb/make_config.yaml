@@ -1,8 +1,8 @@
-display_name: dropweb
-package_name: dropweb
+display_name: avee
+package_name: avee
 maintainer:
-  name: dropweb
-  email: info@dropweb.org
+  name: avee
+  email: info@aveevpn.com
 
 priority: optional
 section: x11
@@ -15,12 +15,12 @@ dependencies:
   - libkeybinder-3.0-dev
 
 keywords:
-  - dropweb
+  - avee
   - Clash
   - ClashMeta
   - Proxy
 
-generic_name: dropweb
+generic_name: avee
 
 categories:
   - Network

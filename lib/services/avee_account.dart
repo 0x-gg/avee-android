@@ -14,7 +14,7 @@ import '../common/constant.dart';
 import '../utils/device_info_service.dart';
 
 /// Thin client-side AVEE account state. The VPN profile remains owned by
-/// Dropweb; this service only owns the AVEE control-plane session and device
+/// Legacy fork; this service only owns the AVEE control-plane session and device
 /// identity needed to obtain a managed profile later.
 class AveeAccountState extends ChangeNotifier {
   AveeAccountState({AveeApi? api, FlutterSecureStorage? storage})

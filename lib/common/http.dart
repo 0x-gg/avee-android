@@ -1,9 +1,9 @@
 import 'dart:io';
 
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/state.dart';
 
-class DropwebHttpOverrides extends HttpOverrides {
+class AveeHttpOverrides extends HttpOverrides {
   /// Hosts that are permitted to use self-signed / invalid certificates.
   /// Only the local mihomo helper + control API is allowed — everything else
   /// (subscription servers, update checks, IP detection APIs) MUST present

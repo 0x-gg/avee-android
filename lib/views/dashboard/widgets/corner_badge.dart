@@ -1,12 +1,12 @@
 import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dropweb/providers/providers.dart';
+import 'package:avee/providers/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-/// A `dropweb-logo` header value may be a raw URL or a `base64:`-wrapped URL.
+/// A `avee-logo` header value may be a raw URL or a `base64:`-wrapped URL.
 /// Decode the wrapper if present; otherwise return the value unchanged.
 String? decodeLogoUrl(String? value) {
   if (value == null || value.isEmpty) {
@@ -27,7 +27,7 @@ String? decodeLogoUrl(String? value) {
 bool isSvgLogoUrl(String url) => url.toLowerCase().endsWith('.svg');
 
 /// How the provider logo is displayed on the dashboard subscription card.
-/// Driven by the OPTIONAL 6th positional field of the `dropweb-theme` header
+/// Driven by the OPTIONAL 6th positional field of the `avee-theme` header
 /// (`<filter>,<accentHex>,<orb1Hex>,<orb2Hex>,<blur>[,<logoStyle>]`):
 /// `inline` -> small raw logo left of the provider name; anything else
 /// (missing field, empty, unknown value, no header) -> `watermark`, the
@@ -36,7 +36,7 @@ bool isSvgLogoUrl(String url) => url.toLowerCase().endsWith('.svg');
 enum SubscriptionLogoStyle { watermark, inline }
 
 SubscriptionLogoStyle parseSubscriptionLogoStyle(Map<String, String>? headers) {
-  final raw = headers?['dropweb-theme'];
+  final raw = headers?['avee-theme'];
   if (raw == null || raw.isEmpty) return SubscriptionLogoStyle.watermark;
   final parts = raw.split(',');
   if (parts.length < 6) return SubscriptionLogoStyle.watermark;
@@ -48,13 +48,13 @@ SubscriptionLogoStyle parseSubscriptionLogoStyle(Map<String, String>? headers) {
 /// Provider-logo flourish on the subscription card: the logo bleeds off the
 /// card's right edge, recoloured to the theme accent, its (dark/opaque)
 /// background dropped via a render-time luminance->alpha key, and every edge
-/// feathered to zero so it grows smoothly into the card. Reads `dropweb-logo`
+/// feathered to zero so it grows smoothly into the card. Reads `avee-logo`
 /// from the current profile; renders nothing when the subscription-logo toggle
 /// is off or no logo is present. Pointer-transparent.
 class SubscriptionCardLogo extends ConsumerWidget {
   const SubscriptionCardLogo({super.key, this.headers});
 
-  /// Provider headers to read `dropweb-logo` from. When null, the widget
+  /// Provider headers to read `avee-logo` from. When null, the widget
   /// tracks the currently selected profile (dashboard behaviour); when
   /// provided, it renders that specific profile's logo (e.g. profiles list).
   final Map<String, String>? headers;
@@ -75,7 +75,7 @@ class SubscriptionCardLogo extends ConsumerWidget {
         ref.watch(
           currentProfileProvider.select((p) => p?.providerHeaders),
         );
-    final url = decodeLogoUrl(resolvedHeaders?['dropweb-logo']);
+    final url = decodeLogoUrl(resolvedHeaders?['avee-logo']);
     if (!enabled || url == null || url.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -187,18 +187,18 @@ class SubscriptionCardLogo extends ConsumerWidget {
 
 /// The `inline` variant counterpart of [SubscriptionCardLogo]: a small, raw
 /// provider logo shown left of the service name in the dashboard subscription
-/// card's title row (compact row layout). Reads the SAME `dropweb-logo` header
+/// card's title row (compact row layout). Reads the SAME `avee-logo` header
 /// via [decodeLogoUrl] and is gated by the SAME user toggle
 /// (`applySubscriptionLogo`) as the watermark, but renders the logo verbatim:
 /// no accent keying, no luminance->alpha matrix, no feathering. When the toggle
 /// is off or no logo is present it collapses to `SizedBox.shrink()`, so the
-/// title row falls back to showing the name alone (dropweb ships no provider
+/// title row falls back to showing the name alone (AVEE ships no provider
 /// fallback mark). Which variant is active is decided by
 /// [parseSubscriptionLogoStyle]; the two widgets are mutually exclusive.
 class SubscriptionInlineLogo extends ConsumerWidget {
   const SubscriptionInlineLogo({super.key, this.headers});
 
-  /// Provider headers to read `dropweb-logo` from. When null, the widget
+  /// Provider headers to read `avee-logo` from. When null, the widget
   /// tracks the currently selected profile (dashboard behaviour); when
   /// provided, it renders that specific profile's logo.
   final Map<String, String>? headers;
@@ -214,7 +214,7 @@ class SubscriptionInlineLogo extends ConsumerWidget {
         ref.watch(
           currentProfileProvider.select((p) => p?.providerHeaders),
         );
-    final url = decodeLogoUrl(resolvedHeaders?['dropweb-logo']);
+    final url = decodeLogoUrl(resolvedHeaders?['avee-logo']);
     if (!enabled || url == null || url.isEmpty) {
       return const SizedBox.shrink();
     }

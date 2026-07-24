@@ -1,4 +1,4 @@
-import 'package:dropweb/models/models.dart';
+import 'package:avee/models/models.dart';
 
 /// Owns the single mutable `Config` mirror that backs `globalState.config`.
 ///

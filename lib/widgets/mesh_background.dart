@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/providers/config.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/providers/config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

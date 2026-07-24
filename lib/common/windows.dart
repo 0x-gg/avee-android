@@ -2,8 +2,8 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/enum/enum.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
 import 'package:path/path.dart';
 import 'package:win32/win32.dart';
 

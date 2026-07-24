@@ -1,1 +1,1 @@
--keep class app.dropweb.models.**{ *; }
+-keep class com.avee.vpn.models.**{ *; }

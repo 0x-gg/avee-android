@@ -9,7 +9,7 @@
 /// Accepted shapes (mirrors [LinkManager] deep-link parsing in `link.dart`):
 ///   * `http(s)://host/...`                         → returned as-is (trimmed)
 ///   * `clash://install-config?url=<inner>`          → the inner URL, if it is
-///   * `dropweb://install-config?url=<inner>`         itself a valid http(s) URL
+///   * `avee://install-config?url=<inner>`         itself a valid http(s) URL
 ///
 /// Everything else (random text, bare tokens, `vmess://…`, an install-config
 /// wrapper with no/invalid `url`) returns `null` so the UI never makes a false
@@ -28,7 +28,7 @@ String? extractSubscriptionUrl(String? clip) {
     return uri.host.isNotEmpty ? trimmed : null;
   }
 
-  if ((scheme == 'clash' || scheme == 'dropweb') &&
+  if ((scheme == 'clash' || scheme == 'avee') &&
       uri.host == 'install-config') {
     final inner = uri.queryParameters['url'];
     if (inner == null || inner.trim().isEmpty) return null;

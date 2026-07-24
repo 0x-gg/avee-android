@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Post a dropweb release announcement to Telegram as a Rich Message.
+"""Post a avee release announcement to Telegram as a Rich Message.
 
 Bot API 10.1 sendRichMessage, HTML rich mode, brand-styled:
-  🆕 dropweb vX.Y.Z 💚 heading (custom emoji from t.me/addemoji/dropwebpackv1),
+  🆕 AVEE vX.Y.Z 💚 heading (custom emoji from t.me/addemoji/aveepackv1),
   intro, the whole changelog collapsed into a <details> block (so the wall of
   commits doesn't scare users), bordered download table with platform icons,
   footer, inline keyboard. Falls back to a plain sendMessage (HTML parse mode,
@@ -33,12 +33,12 @@ import time
 import urllib.error
 import urllib.request
 
-REPO = os.environ.get("GITHUB_REPOSITORY", "enkinvsh/dropweb")
-YC_BASE = "https://storage.yandexcloud.net/dropweb-downloads"
+REPO = os.environ.get("GITHUB_REPOSITORY", "0x-gg/avee-android")
+YC_BASE = "https://storage.yandexcloud.net/avee-downloads"
 RICH_LIMIT = 32000   # official cap is 32768 rendered chars; keep headroom
 LEGACY_LIMIT = 4000  # sendMessage cap is 4096 rendered chars
 
-# t.me/addemoji/dropwebpackv1 (SimpleG by @dropwebvpn): fallback char -> custom_emoji_id
+# t.me/addemoji/aveepackv1 (SimpleG by @aveevpn): fallback char -> custom_emoji_id
 PACK = {
     "💚": "5264868767971713460", "🆕": "5265201189850488842",
     "🟢": "5265234995538075373", "🧠": "5265192428117208527",
@@ -74,14 +74,14 @@ OTHER = ("📟", "Под капотом")
 PLATFORMS = [  # (emoji, name, label, yc_name, gh_suffix)
     # yc_name = fixed YC-bucket asset name (the in-app updater's contract);
     # gh_suffix = the "<platform>-<arch>[...].<ext>" tail of the versioned
-    # GitHub release asset (dropweb-<version>-<suffix>) from build.yaml's
+    # GitHub release asset (avee-<version>-<suffix>) from build.yaml's
     # "Version asset filenames" step.
-    ("🤖", "Android", "APK · arm64", "dropweb-arm64-v8a.apk", "android-arm64-v8a.apk"),
-    ("🤖", "Android (старые устройства)", "APK · universal", "dropweb-universal.apk", "android-universal.apk"),
-    ("🪟", "Windows", "Установщик · x64", "dropweb-amd64-setup.exe", "windows-amd64-setup.exe"),
-    ("🍎", "macOS", "DMG · Apple Silicon", "dropweb-arm64.dmg", "macos-arm64.dmg"),
-    ("🍎", "macOS (Intel)", "DMG · Intel", "dropweb-amd64.dmg", "macos-amd64.dmg"),
-    ("🐧", "Linux", "AppImage · x64", "dropweb-amd64.AppImage", "linux-amd64.AppImage"),
+    ("🤖", "Android", "APK · arm64", "avee-arm64-v8a.apk", "android-arm64-v8a.apk"),
+    ("🤖", "Android (старые устройства)", "APK · universal", "avee-universal.apk", "android-universal.apk"),
+    ("🪟", "Windows", "Установщик · x64", "avee-amd64-setup.exe", "windows-amd64-setup.exe"),
+    ("🍎", "macOS", "DMG · Apple Silicon", "avee-arm64.dmg", "macos-arm64.dmg"),
+    ("🍎", "macOS (Intel)", "DMG · Intel", "avee-amd64.dmg", "macos-amd64.dmg"),
+    ("🐧", "Linux", "AppImage · x64", "avee-amd64.AppImage", "linux-amd64.AppImage"),
 ]
 
 
@@ -142,12 +142,12 @@ def classify(commits: list[str]) -> list[tuple[str, str, list[str]]]:
 def platform_urls(version: str, is_stable: bool) -> list[tuple[str, str, str, str]]:
     """Stable -> YC versioned links (RU-friendly, fixed bucket names = the
     in-app updater's contract); pre -> GitHub release assets (versioned names
-    dropweb-<version>-<suffix> from build.yaml's "Version asset filenames")."""
+    avee-<version>-<suffix> from build.yaml's "Version asset filenames")."""
     if is_stable:
         base = f"{YC_BASE}/v{version}"
         return [(e, name, label, f"{base}/{yc}") for e, name, label, yc, _ in PLATFORMS]
     gh = f"https://github.com/{REPO}/releases/download/v{version}"
-    return [(e, name, label, f"{gh}/dropweb-{version}-{suf}")
+    return [(e, name, label, f"{gh}/avee-{version}-{suf}")
             for e, name, label, _, suf in PLATFORMS]
 
 
@@ -219,11 +219,11 @@ def resolve_banner(tag: str) -> str:
 def intro_html(version: str, is_stable: bool) -> tuple[str, str]:
     """(heading inner html, intro paragraph html)."""
     if is_stable:
-        head = f"{ce('🆕')} dropweb v{esc(version)} {ce('💚')}"
+        head = f"{ce('🆕')} AVEE v{esc(version)} {ce('💚')}"
         intro = ("Стабильный релиз — доступен для всех платформ. "
                  "Приложение обновится само, либо скачайте вручную ниже.")
     else:
-        head = f"{ce('🆕')} dropweb v{esc(version)} · beta"
+        head = f"{ce('🆕')} AVEE v{esc(version)} · beta"
         intro = (f"{ce('⚠️')} Предварительная сборка — для тестов. "
                  "Возможны шероховатости; фидбек приветствуется.")
     return head, intro
@@ -266,7 +266,7 @@ def build_rich_html(version: str, is_stable: bool, commits: list[str],
 
     parts.append("<hr/>")
     parts.append(
-        f'<footer>dropweb v{esc(version)} · <a href="{html.escape(release_url)}">'
+        f'<footer>AVEE v{esc(version)} · <a href="{html.escape(release_url)}">'
         f"GitHub Release</a> · GPL-3.0</footer>"
     )
 
@@ -298,7 +298,7 @@ def build_legacy_html(version: str, is_stable: bool, commits: list[str],
         f'{ce(e)} <a href="{html.escape(url)}">{esc(name)}</a>'
         for e, name, _, url in platform_urls(version, is_stable)
     ) + f'\n{ce("📄")} <a href="{html.escape(release_url)}">GitHub Release</a>' \
-        f'\n{ce("💚")} <a href="https://dropweb.org">dropweb.org</a>'
+        f'\n{ce("💚")} <a href="https://aveevpn.com">aveevpn.com</a>'
 
     post = "\n\n".join(
         p for p in [f"<b>{head}</b>", intro, *body_sections, quote, downloads] if p)
@@ -383,12 +383,12 @@ def main() -> int:
     keyboard = {"inline_keyboard": [[
         {"text": "Скачать", "style": "success", "url": release_url,
          "icon_custom_emoji_id": PACK["⬇️"]},
-        {"text": "dropweb.org", "url": "https://dropweb.org",
+        {"text": "aveevpn.com", "url": "https://aveevpn.com",
          "icon_custom_emoji_id": PACK["💚"]},
     ]]}
     keyboard_plain = {"inline_keyboard": [[
         {"text": "⬇️ Скачать", "style": "success", "url": release_url},
-        {"text": "💚 dropweb.org", "url": "https://dropweb.org"},
+        {"text": "💚 aveevpn.com", "url": "https://aveevpn.com"},
     ]]}
 
     if args.dry_run:

@@ -1,14 +1,14 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/common/update_resolver.dart';
-import 'package:dropweb/models/models.dart';
-import 'package:dropweb/plugins/app.dart';
-import 'package:dropweb/providers/app.dart';
-import 'package:dropweb/providers/config.dart';
-import 'package:dropweb/services/android_app_updater.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/common/update_resolver.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/plugins/app.dart';
+import 'package:avee/providers/app.dart';
+import 'package:avee/providers/config.dart';
+import 'package:avee/services/android_app_updater.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -26,7 +26,7 @@ class AppUpdate extends _$AppUpdate {
   @override
   AppUpdateState build() => const AppUpdateState();
 
-  /// Checks dropweb.org/update.json for a newer build. [manual] bypasses the
+  /// Checks aveevpn.com/update.json for a newer build. [manual] bypasses the
   /// once/day cadence + the autoCheckUpdate setting; the Play gate is ALWAYS
   /// honoured. Tunnel-aware: routes via the proxy when the core is running.
   Future<void> check({bool manual = false}) async {
@@ -48,7 +48,7 @@ class AppUpdate extends _$AppUpdate {
 
     state = state.copyWith(status: AppUpdateStatus.checking, error: null);
     final viaProxy = ref.read(runTimeProvider) != null;
-    // Tunnel up: try via the active node first (ТСПУ may block dropweb.org/YC),
+    // Tunnel up: try via the active node first (ТСПУ may block aveevpn.com/YC),
     // fall back to direct. Tunnel down: direct only.
     final manifest = await request.fetchUpdateManifest(viaProxy: viaProxy) ??
         (viaProxy ? await request.fetchUpdateManifest() : null);
@@ -176,7 +176,7 @@ class AppUpdate extends _$AppUpdate {
     final cacheDir = await getApplicationCacheDirectory();
     final dir = Directory(p.join(cacheDir.path, kUpdateCacheDirName));
     if (!dir.existsSync()) dir.createSync(recursive: true);
-    return p.join(dir.path, 'dropweb-$version.apk');
+    return p.join(dir.path, 'avee-$version.apk');
   }
 
   void _deleteQuietly(File file) {

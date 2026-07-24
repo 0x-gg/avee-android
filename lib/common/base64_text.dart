@@ -4,7 +4,7 @@ import 'dart:convert';
 /// `base64:`-prefixed). Returns the original string unchanged when it is not
 /// valid base64/utf8.
 ///
-/// Mirrors the historical inline decode used across the app for `dropweb-*`
+/// Mirrors the historical inline decode used across the app for `avee-*`
 /// branding headers: strip an optional `base64:` prefix, normalize, then
 /// `utf8.decode`. On ANY failure the ORIGINAL value (prefix included) is
 /// returned. Trimming is intentionally NOT performed here — callers that need

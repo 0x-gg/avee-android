@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:dropweb/plugins/app.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/plugins/app.dart';
+import 'package:avee/state.dart';
 
 class Android {
   Future<void> init() async {

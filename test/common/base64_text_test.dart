@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:dropweb/common/base64_text.dart';
+import 'package:avee/common/base64_text.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -10,8 +10,8 @@ void main() {
     });
 
     test('valid base64 of utf8 text is decoded', () {
-      final encoded = base64.encode(utf8.encode('Привет, dropweb'));
-      expect(decodeMaybeBase64(encoded), 'Привет, dropweb');
+      final encoded = base64.encode(utf8.encode('Привет, AVEE'));
+      expect(decodeMaybeBase64(encoded), 'Привет, AVEE');
     });
 
     test('base64:-prefixed payload is decoded', () {

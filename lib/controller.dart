@@ -3,19 +3,19 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:dropweb/clash/clash.dart';
-import 'package:dropweb/common/error_mapper.dart';
-import 'package:dropweb/common/work_mode_patch.dart';
-import 'package:dropweb/services/hwid_recovery.dart';
-import 'package:dropweb/services/subscription_notification_service.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/plugins/app.dart';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/services/app_update_service.dart';
-import 'package:dropweb/services/connect_service.dart';
-import 'package:dropweb/services/profile_service.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/widgets/dialog.dart';
+import 'package:avee/clash/clash.dart';
+import 'package:avee/common/error_mapper.dart';
+import 'package:avee/common/work_mode_patch.dart';
+import 'package:avee/services/hwid_recovery.dart';
+import 'package:avee/services/subscription_notification_service.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/plugins/app.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/services/app_update_service.dart';
+import 'package:avee/services/connect_service.dart';
+import 'package:avee/services/profile_service.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/dialog.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -45,7 +45,7 @@ import 'views/profiles/override_profile.dart';
 ///
 /// Pure profile-update policy shared by [AppController.autoUpdateProfiles] (the
 /// facade) and its implementation in [ProfileService]; also unit-tested
-/// directly via `package:dropweb/controller.dart`.
+/// directly via `package:avee/controller.dart`.
 bool shouldAutoUpdateProfile({
   required Profile profile,
   required DateTime now,
@@ -76,7 +76,7 @@ bool shouldAutoUpdateProfile({
 ///
 /// Pure update policy shared by [AppController.checkUpdateResultHandle] (the
 /// facade) and its implementation in [AppUpdateService]; also unit-tested
-/// directly via `package:dropweb/controller.dart`.
+/// directly via `package:avee/controller.dart`.
 bool shouldHandleUpdateResult({
   required bool isPre,
   required bool handleError,
@@ -90,11 +90,11 @@ bool shouldHandleUpdateResult({
 /// forbids in-app update from an external source). Every other channel —
 /// crucially the sideloaded RU Android build, our primary RU update path —
 /// honours the user's `autoCheckUpdate` preference and self-updates from
-/// dropweb.org/update.json.
+/// aveevpn.com/update.json.
 ///
 /// Pure update policy shared by [AppController.autoCheckUpdate] (the facade)
 /// and its implementation in [AppUpdateService]; also unit-tested directly via
-/// `package:dropweb/controller.dart`.
+/// `package:avee/controller.dart`.
 bool shouldRunAutoUpdateCheck({
   required bool isAndroid,
   required bool isPlayBuild,
@@ -250,7 +250,7 @@ class AppController {
 
   /// Installs the backend-owned managed profile as the only AVEE-controlled
   /// profile. It has no subscription URL, so the client cannot replace it
-  /// through Dropweb's generic import/update paths.
+  /// through AVEE's generic import/update paths.
   Future<void> installManagedProfile(String yaml) async {
     const managedId = 'avee-managed-profile';
     final existing = _ref.read(profilesProvider).getProfile(managedId);
@@ -343,12 +343,12 @@ class AppController {
     if (profile.id == _ref.read(currentProfileIdProvider)) {
       // Header-driven theme/settings are GLOBAL state — only the ACTIVE profile
       // may write them. A background auto-update must never repaint the app
-      // with another provider's dropweb-theme / dropweb-settings.
+      // with another provider's avee-theme / avee-settings.
       if (headers.isNotEmpty) {
         _applyAllHeaderSettings(newProfile, isNewProfile: false);
       }
       // A subscription refresh of the ACTIVE profile can change
-      // `dropweb-servicename` / the label rendered in the foreground
+      // `avee-servicename` / the label rendered in the foreground
       // notification, so re-prime the plugin cache (pure in-memory write,
       // null-safe, no notification flash when idle) alongside the theme apply.
       _connectService.initForegroundCache();
@@ -395,7 +395,7 @@ class AppController {
         // instead of leaving the user guessing whether their cabinet dance
         // worked.
         globalState.showNotifier(appLocalizations.hwidRecovered);
-        unawaited(App().performHapticFeedback(DropwebHapticCue.confirm));
+        unawaited(App().performHapticFeedback(AveeHapticCue.confirm));
       }
       return;
     }
@@ -410,7 +410,7 @@ class AppController {
         // Panel-supplied deep link straight to the device-management page
         // (e.g. the cabinet's /devices). Provider-neutral: whatever URL the
         // panel advertises, nothing is baked into the app.
-        deviceRemoveUrl: headers['dropweb-device-remove'],
+        deviceRemoveUrl: headers['avee-device-remove'],
       );
     }
   }
@@ -634,7 +634,7 @@ class AppController {
           await _setupClashConfig();
         });
       } else {
-        // The AVEE mobile shell does not mount Dropweb's home scaffold.
+        // The AVEE mobile shell does not mount AVEE's home scaffold.
         // Core setup must still run; only the legacy loading overlay is absent.
         await _setupClashConfig();
       }
@@ -849,7 +849,7 @@ class AppController {
       );
 
       // Drop the previous operator's theme first so switching to a profile
-      // without a `dropweb-theme` header reverts to the dropweb default
+      // without a `avee-theme` header reverts to the AVEE default
       // instead of inheriting stale colors. Then re-apply this profile's own
       // theme/header settings if it has any.
       if (_ref.read(appSettingProvider).applySubscriptionTheme) {
@@ -907,7 +907,7 @@ class AppController {
   /// this, a fresh launch keeps the LAST-applied theme — which can be a
   /// *different* provider's colors — until the user manually switches or updates
   /// a profile. Mirrors the reset-then-apply that [handleChangeProfile] does, so
-  /// a profile without a `dropweb-theme` header reverts to the dropweb default
+  /// a profile without a `avee-theme` header reverts to the AVEE default
   /// instead of inheriting stale colors.
   void applyCurrentProfileThemeOnStartup() {
     final currentProfileId = _ref.read(currentProfileIdProvider);
@@ -1106,7 +1106,7 @@ class AppController {
       final filesToDelete = [
         'cache.db',
         'libCachedImageData.json',
-        'dropweb.lock',
+        'avee.lock',
       ];
 
       for (final fileName in filesToDelete) {
@@ -1392,7 +1392,7 @@ class AppController {
         !uri.hasScheme ||
         !(uri.scheme == 'http' || uri.scheme == 'https') ||
         uri.host.isEmpty) {
-      unawaited(App().playUiSound(DropwebSoundCue.importError));
+      unawaited(App().playUiSound(AveeSoundCue.importError));
       unawaited(
         globalState.showMessage(
           message: TextSpan(text: appLocalizations.invalidProfileUrl),
@@ -1423,7 +1423,7 @@ class AppController {
           // (e.g. `sub.example.com`) so the imported profile is identified by
           // its SERVICE, not by the provider's content-disposition filename
           // (account-noise like `user_468130024`). Branding headers
-          // (profile-title / dropweb-servicename) still win at display time
+          // (profile-title / avee-servicename) still win at display time
           // (Profile.serviceName / MetainfoWidget.pickTitle), and update()
           // keeps `label ?? disposition ?? id`, so a non-null label survives
           // auto-updates while manual renames keep working.
@@ -1439,7 +1439,7 @@ class AppController {
         _handleHwidHeaders(profile);
 
         await addProfile(profile);
-        unawaited(App().playUiSound(DropwebSoundCue.importSuccess));
+        unawaited(App().playUiSound(AveeSoundCue.importSuccess));
         // Onboarding Moment 3: first-ever profile imported → invite the user
         // to connect (haptic + transient notifier). No auto-connect — the VPN
         // disclosure + native permission gate must not ambush a user who never
@@ -1447,13 +1447,13 @@ class AppController {
         // hasProfile. See onboarding-brief §Moment 3.
         if (wasEmpty) {
           unawaited(
-            App().performHapticFeedback(DropwebHapticCue.gestureStart),
+            App().performHapticFeedback(AveeHapticCue.gestureStart),
           );
           globalState.showNotifier(appLocalizations.onboardingImported);
         }
       }
     } catch (err) {
-      unawaited(App().playUiSound(DropwebSoundCue.importError));
+      unawaited(App().playUiSound(AveeSoundCue.importError));
       commonPrint.log('Add Profile Failed: $err');
       final message = ErrorMapper.mapError(err.toString()) ??
           appLocalizations.genericErrorMessage;

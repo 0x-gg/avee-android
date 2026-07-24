@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dropweb/clash/clash.dart';
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/models/core.dart';
-import 'package:dropweb/providers/app.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/widgets/widgets.dart';
+import 'package:avee/clash/clash.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/models/core.dart';
+import 'package:avee/providers/app.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';

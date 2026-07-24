@@ -1,13 +1,13 @@
 import 'dart:async';
 
 import 'package:defer_pointer/defer_pointer.dart';
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/plugins/app.dart';
-import 'package:dropweb/providers/providers.dart';
-import 'package:dropweb/state.dart';
-import 'package:dropweb/views/dashboard/widgets/card_menu.dart';
-import 'package:dropweb/widgets/widgets.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/plugins/app.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
+import 'package:avee/views/dashboard/widgets/card_menu.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -183,7 +183,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> with PageMixin {
     Future<void> handleRefresh() async {
       final profile = currentProfile;
       if (profile == null) return;
-      unawaited(App().playUiSound(DropwebSoundCue.subscriptionRefresh));
+      unawaited(App().playUiSound(AveeSoundCue.subscriptionRefresh));
       try {
         await globalState.appController.updateProfile(profile);
       } catch (e, st) {

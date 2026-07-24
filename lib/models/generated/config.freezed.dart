@@ -32,7 +32,7 @@ mixin _$AppSettingProps {
   bool get closeConnections => throw _privateConstructorUsedError;
   String get testUrl => throw _privateConstructorUsedError;
   bool get isAnimateToPage =>
-      throw _privateConstructorUsedError; // Sideloaded RU build self-updates from dropweb.org/update.json by default;
+      throw _privateConstructorUsedError; // Sideloaded RU build self-updates from aveevpn.com/update.json by default;
 // Play build ignores this (gated by kIsPlayBuild). Desktop just opens the
 // release page on a newer version. See docs/plans/2026-06-25-auto-update.md.
   bool get autoCheckUpdate => throw _privateConstructorUsedError;
@@ -441,7 +441,7 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
   @override
   @JsonKey()
   final bool isAnimateToPage;
-// Sideloaded RU build self-updates from dropweb.org/update.json by default;
+// Sideloaded RU build self-updates from aveevpn.com/update.json by default;
 // Play build ignores this (gated by kIsPlayBuild). Desktop just opens the
 // release page on a newer version. See docs/plans/2026-06-25-auto-update.md.
   @override
@@ -626,7 +626,7 @@ abstract class _AppSettingProps implements AppSettingProps {
   String get testUrl;
   @override
   bool
-      get isAnimateToPage; // Sideloaded RU build self-updates from dropweb.org/update.json by default;
+      get isAnimateToPage; // Sideloaded RU build self-updates from aveevpn.com/update.json by default;
 // Play build ignores this (gated by kIsPlayBuild). Desktop just opens the
 // release page on a newer version. See docs/plans/2026-06-25-auto-update.md.
   @override

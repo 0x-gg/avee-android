@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dropweb/clash/interface.dart';
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/models/core.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/clash/interface.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/core.dart';
+import 'package:avee/state.dart';
 
 class ClashService extends ClashHandlerInterface {
   factory ClashService() {

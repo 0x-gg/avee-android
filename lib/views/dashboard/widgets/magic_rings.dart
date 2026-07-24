@@ -1,6 +1,6 @@
-import 'package:dropweb/enum/enum.dart';
-import 'package:dropweb/pages/home.dart' show connectButtonCenter;
-import 'package:dropweb/providers/providers.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/pages/home.dart' show connectButtonCenter;
+import 'package:avee/providers/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:dropweb/common/app_localizations.dart';
-import 'package:dropweb/models/models.dart';
+import 'package:avee/common/app_localizations.dart';
+import 'package:avee/models/models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -188,7 +188,7 @@ class App {
   /// renders the platform-native feel. If the native channel is missing
   /// (desktop, tests, very old Android) or fails, we fall back to Flutter's
   /// generic `HapticFeedback` shim so callers never need a try/catch.
-  Future<void> performHapticFeedback(DropwebHapticCue cue) async {
+  Future<void> performHapticFeedback(AveeHapticCue cue) async {
     try {
       final ok = await methodChannel.invokeMethod<bool>(
         "performHapticFeedback",
@@ -203,15 +203,15 @@ class App {
     await _fallbackHaptic(cue);
   }
 
-  Future<void> _fallbackHaptic(DropwebHapticCue cue) async {
+  Future<void> _fallbackHaptic(AveeHapticCue cue) async {
     switch (cue) {
-      case DropwebHapticCue.gestureStart:
+      case AveeHapticCue.gestureStart:
         await HapticFeedback.selectionClick();
-      case DropwebHapticCue.confirm:
+      case AveeHapticCue.confirm:
         await HapticFeedback.mediumImpact();
-      case DropwebHapticCue.cancel:
+      case AveeHapticCue.cancel:
         await HapticFeedback.lightImpact();
-      case DropwebHapticCue.success:
+      case AveeHapticCue.success:
         await HapticFeedback.mediumImpact();
     }
   }
@@ -228,7 +228,7 @@ class App {
   /// In that case — and when the channel is absent or errors — we fall back
   /// to Flutter's `SystemSound.play(SystemSoundType.click)` so the tap never
   /// feels dead.
-  Future<void> playUiSound(DropwebSoundCue cue) async {
+  Future<void> playUiSound(AveeSoundCue cue) async {
     try {
       final ok = await methodChannel.invokeMethod<bool>(
         "playUiSound",
@@ -248,7 +248,7 @@ class App {
 ///
 /// String names (`.name`) are part of the public method-channel contract
 /// with `AppPlugin.kt` and are covered by `test/plugins/app_haptics_test.dart`.
-enum DropwebHapticCue {
+enum AveeHapticCue {
   gestureStart,
   confirm,
   cancel,
@@ -275,7 +275,7 @@ enum DropwebHapticCue {
 ///   - [importError]         → `assets/sounds/toggle_off.wav`
 ///     (shares the powerOff asset; the standalone import_error.wav was
 ///     removed during the SFX simplification pass).
-enum DropwebSoundCue {
+enum AveeSoundCue {
   powerOn,
   powerOff,
   subscriptionRefresh,

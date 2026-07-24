@@ -5,7 +5,7 @@
 - Field incident (Intel MacBook, Monterey): the app died within a second
 - of launch — tray icon flashed once, exit 141, no crash report. Chain:
 - flutter always emits UNIVERSAL main/framework binaries while the
-- DropwebCore helper is single-arch, so the Apple-Silicon dmg LAUNCHES on
+- AveeCore helper is single-arch, so the Apple-Silicon dmg LAUNCHES on
 - an Intel Mac and copies an arm64-only core into Application Support
 - (root+setuid); the old mtime-based shouldUpdateCore then kept that
 - poisoned core through every later correct install; the helper died
@@ -84,7 +84,7 @@
 - unversioned names: the Telegram post's download table (404 for every
 - button) and the in-app updater's GitHub fallback — the path that exists
 - precisely for when the YC bucket is throttled. Both now build
-- dropweb-<version>-<platform>-<arch> names; the YC primary URLs keep
+- avee-<version>-<platform>-<arch> names; the YC primary URLs keep
 - their historical fixed names (updater contract). TG post macOS row also
 - gains the Intel dmg.
 
@@ -111,7 +111,7 @@
 
 - fix(errors): human messages on every error surface, «Ошибка» titled
 
-- Subscription update failures showed raw Dio dumps («sub.dropweb.org:
+- Subscription update failures showed raw Dio dumps («sub.aveevpn.com:
 - DioException [connection timeout]: … try raising the
 - RequestOptions.connectTimeout») under a «Подсказка» title with a useless
 - Cancel button. Every user-facing error dialog now routes through
@@ -183,7 +183,7 @@
 - feat(release): versioned asset names + rich release page
 
 - GitHub release assets now carry the version
-- (dropweb-<version>-<platform>-<arch>.<ext>); the YC update bucket keeps
+- (avee-<version>-<platform>-<arch>.<ext>); the YC update bucket keeps
 - its historical fixed names — the in-app updater contract is untouched.
 - Release templates rebuilt as a centered platform matrix (logo header,
 - for-the-badge shields, macOS Intel + full Linux rows; stable adds the
@@ -196,13 +196,13 @@
 
 ## v0.8.5-pre.3
 
-- ci(release): macOS Intel dmg + AUR dropweb-bin publishing
+- ci(release): macOS Intel dmg + AUR avee-bin publishing
 
 - Matrix gains {macos, macos-latest, amd64} — setup.dart cross-builds the
 - Intel dmg on the arm64 runner (upstream-proven). Stable YC manifest adds
 - a macos-amd64 platform entry; the existing macos (arm64) key is
 - unchanged. New stable-only publish-aur job repacks the release .deb into
-- an AUR dropweb-bin package; it is a guarded no-op until AUR secrets
+- an AUR avee-bin package; it is a guarded no-op until AUR secrets
 - (AUR_SSH_PRIVATE_KEY/AUR_USERNAME/AUR_EMAIL) are configured — see
 - docs/aur-publishing.md for the one-time setup.
 
@@ -220,11 +220,11 @@
 
 - Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
 
-- feat(theme): logoStyle — 6th dropweb-theme field switches card logo layout
+- feat(theme): logoStyle — 6th avee-theme field switches card logo layout
 
-- `dropweb-theme: <filter>,<accent>,<orb1>,<orb2>,<blur>[,<logoStyle>]`.
+- `avee-theme: <filter>,<accent>,<orb1>,<orb2>,<blur>[,<logoStyle>]`.
 - `watermark` (default) keeps the accent-keyed corner-bleed mark on the
-- dashboard subscription card; `inline` renders the provider's dropweb-logo
+- dashboard subscription card; `inline` renders the provider's avee-logo
 - raw at 32px left of the service name, letting panels pick the layout per
 - brand. Parsed leniently from the raw header at render time
 - (missing/unknown -> watermark, old 5-field panels unaffected); gated by
@@ -456,9 +456,9 @@
 
 - fix(update): single OK button on "already latest" dialog
 
-- docs(headers): drop dropweb-xnodes/game section — native Remnawave Hysteria
+- docs(headers): drop avee-xnodes/game section — native Remnawave Hysteria
 
-- refactor(hy2)!: drop dropweb-xnodes overlay — native Remnawave Hysteria
+- refactor(hy2)!: drop avee-xnodes overlay — native Remnawave Hysteria
 
 - refactor(modes)!: remove Gaming work mode
 
@@ -500,7 +500,7 @@
 - - services/hwid_recovery.dart: per-profile episode machine — dialog once,
 -   foreground poll (30s / 10min tick budget) + app-resume retry
 - - controller.dart: route x-hwid-limit headers into the episode; single
--   decisive "Освободить лимит" action opens the panel's dropweb-device-remove
+-   decisive "Освободить лимит" action opens the panel's avee-device-remove
 -   deep link; two-line success notifier on recovery
 - - state.dart: openUrlDirect (no external-link confirm for explicit actions)
 - - app_state_manager.dart: retry the flagged profile on app resume
@@ -547,7 +547,7 @@
 -   (fail-fast) + log the raw payload (code/dataType/data) for diagnosis; type
 -   getConfig's empty default as Map<String, dynamic> to avoid a cast throw
 
-- feat(hy2): build nodes from dropweb-xnodes header specs
+- feat(hy2): build nodes from avee-xnodes header specs
 
 - Absorb the panel-pushed rich node descriptor (base64 JSON: name + server +
 - port + alpn) and build the hysteria2 proxy verbatim, instead of hardcoded
@@ -561,7 +561,7 @@
 - - subscription: «Страна» picker mirrors the overlay so Hy2 nodes appear under
 -   their country flag
 - - drop dead parseGameNodeDomains / kGamingNodesHeader
-- - docs: document the dropweb-xnodes header contract
+- - docs: document the avee-xnodes header contract
 
 - feat(hy2): wire header-gated Hy2 overlay into config build (all modes)
 
@@ -574,7 +574,7 @@
 - feat(hy2): pure header-gated Hysteria2 overlay module
 
 - Additive, idempotent overlay that injects hysteria2 proxies (pool domains from
-- the new dropweb-xnodes header, legacy dropweb-game-nodes fallback; password =
+- the new avee-xnodes header, legacy avee-game-nodes fallback; password =
 - the user's vless uuid) into top-level proxies and binds them into the EXISTING
 - auto-select group — resolved name-agnostically from the MATCH router via the
 - shared detectPrimaryRouter. Deploy-matching protocol consts (443 / [h3] /
@@ -609,7 +609,7 @@
 
 - feat(gaming): surface «Игровой» mode card
 
-- Surfaces the gaming work-mode as a selectable card in the modes list, shown ONLY when gamingModeAvailableProvider is true (the subscription advertises a valid dropweb-game header).
+- Surfaces the gaming work-mode as a selectable card in the modes list, shown ONLY when gamingModeAvailableProvider is true (the subscription advertises a valid avee-game header).
 
 - Unlike country, it has no deep screen / chevron / badge — its nodes and rules come from the panel, so tapping just applies WorkMode.gaming. Because the build path is fail-safe (silently falls back to standard routing if gaming can't apply), header-present == card-shown needs no extra gate. Uses the existing workModeGaming/workModeGamingDesc l10n + a game-controller glyph.
 
@@ -635,7 +635,7 @@
 
 - game_descriptor.dart: Freezed GameDescriptor model (proxies/groups/rules/rule-providers) parsed from the pinned game.yml; game_descriptor.g.dart/.freezed.dart its generated codecs. gaming_patch.dart: pure functions — injectGamingProxies, applyGamingPatch, parseGameNodeDomains, extractGamingUuid — that fold the descriptor into a raw config without touching disk or network. game_descriptor_loader.dart: loadGameDescriptor + gamingDescriptorUrl + isPinnedGamingHost (host-pin guard) for fetching/validating the descriptor URL.
 
-- constant.dart: two subscription-header consts — kGamingHeader ('dropweb-game', advertises the descriptor URL) and kGamingNodesHeader ('dropweb-game-nodes', the Hy2 node pool). common.dart: barrel exports for the three new modules (kept alphabetical). build.yaml: route lib/common/ generated .g.dart/.freezed.dart beside source (no generated/ subdir) so the descriptor codegen lands next to its source.
+- constant.dart: two subscription-header consts — kGamingHeader ('avee-game', advertises the descriptor URL) and kGamingNodesHeader ('avee-game-nodes', the Hy2 node pool). common.dart: barrel exports for the three new modules (kept alphabetical). build.yaml: route lib/common/ generated .g.dart/.freezed.dart beside source (no generated/ subdir) so the descriptor codegen lands next to its source.
 
 - Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-openagent)
 
@@ -687,7 +687,7 @@
 
 - Tier 1 (safe, preserves user data): [InstallDelete] {app}\* empties the install dir before [Files] copy; expand process kill-list to FlClash/Koala lineage; CurStepChanged(ssInstall) stops service + kills processes + CleanLineageLeftovers (delete stale services/Run-key/scheduled-tasks gated to those whose path is inside our {app}, so a separately installed real FlClashX is never touched).
 
-- Tier 2 (opt-in): prompt to delete legacy-identity data (%APPDATA%\com.follow\clashx); current dropweb\dropweb profiles/settings preserved. Skipped on silent installs.
+- Tier 2 (opt-in): prompt to delete legacy-identity data (%APPDATA%\com.follow\clashx); current AVEE\dropweb profiles/settings preserved. Skipped on silent installs.
 
 ## v0.8.2-pre.8
 
@@ -699,7 +699,7 @@
 
 - ci(windows): add clean-install integration test (no FlClashX)
 
-- Baseline counterpart to windows-conflict-test: on a pristine windows-latest runner (no FlClashX) install the latest dropweb pre-release and assert it (1) installs with the full footprint, (2) its helper binds its OWN port 47896 — the clean-box proof of the 3ad5cd4 fix, mirroring the conflict test that proves it FAILS to bind when FlClashX squats 47890, and (3) boots without leaving a loadingRun started-but-never-done (the e374d08 stuck-dashboard regression), asserted from the app boot log since headless CI can't see the UI. Fails on positive evidence of the stuck-UI bug; warns (not fails) if the app simply doesn't init in headless CI, so it catches regressions without flaking. Boot logs upload as an artifact for inspection.
+- Baseline counterpart to windows-conflict-test: on a pristine windows-latest runner (no FlClashX) install the latest avee pre-release and assert it (1) installs with the full footprint, (2) its helper binds its OWN port 47896 — the clean-box proof of the 3ad5cd4 fix, mirroring the conflict test that proves it FAILS to bind when FlClashX squats 47890, and (3) boots without leaving a loadingRun started-but-never-done (the e374d08 stuck-dashboard regression), asserted from the app boot log since headless CI can't see the UI. Fails on positive evidence of the stuck-UI bug; warns (not fails) if the app simply doesn't init in headless CI, so it catches regressions without flaking. Boot logs upload as an artifact for inspection.
 
 - ci: fail the build when dist/ is empty so a no-artifact build can't pass green
 
@@ -725,7 +725,7 @@
 
 - FlClashX's Windows helper also binds 127.0.0.1:47890 (verified in pluralplay/FlClashX constant.dart + hub.rs). The CI integration test proved the runtime clash on a real x64 runner: with both helpers on 47890, whichever starts last takes the port and the other's service goes Stopped. Moving dropweb's helper to 47896 (hub.rs LISTEN_PORT + constant.dart helperPort) lets both coexist; pairs with the identity-checked helper-conflict resolution already in 31a4963.
 
-- ci(windows): add runtime job — FlClashX running first, then install dropweb
+- ci(windows): add runtime job — FlClashX running first, then install AVEE
 
 - Installs FlClashX, registers+starts its helper service (binds 47890) and launches the app, THEN installs dropweb and starts its helper. With pre.4 (both helpers on 47890) this isolates the runtime helper-port clash: dropweb's helper is expected to fail to bind while FlClashX holds 47890. Informational (does not fail the build).
 
@@ -735,7 +735,7 @@
 
 - ci(windows): add FlClashX coexistence integration test
 
-- Native x64 GitHub Actions job (public repo = free runners) that installs FlClashX + current dropweb on a clean windows-latest runner and inspects install paths, uninstall registry keys ({728B} vs {6997}), helper services and ports after each step. Proves whether the two apps' installers/footprints actually collide (the 'FlClashX installer detects dropweb' report) on real x64 Windows — no local ARM VM needed. Fails if current dropweb lands in FlClashX's install folder.
+- Native x64 GitHub Actions job (public repo = free runners) that installs FlClashX + current AVEE on a clean windows-latest runner and inspects install paths, uninstall registry keys ({728B} vs {6997}), helper services and ports after each step. Proves whether the two apps' installers/footprints actually collide (the 'FlClashX installer detects dropweb' report) on real x64 Windows — no local ARM VM needed. Fails if current AVEE lands in FlClashX's install folder.
 
 ## v0.8.2-pre.4
 
@@ -756,7 +756,7 @@
 
 - fix(theme): apply the current profile's theme on startup
 
-- The subscription theme was only (re)applied on a profile switch/update, so a fresh launch kept the last-applied theme — possibly a DIFFERENT provider's colors — until the user switched or updated a profile. init() now calls applyCurrentProfileThemeOnStartup(), mirroring handleChangeProfile's reset-then-apply (a profile without a dropweb-theme header reverts to the dropweb default).
+- The subscription theme was only (re)applied on a profile switch/update, so a fresh launch kept the last-applied theme — possibly a DIFFERENT provider's colors — until the user switched or updated a profile. init() now calls applyCurrentProfileThemeOnStartup(), mirroring handleChangeProfile's reset-then-apply (a profile without a avee-theme header reverts to the AVEE default).
 
 - fix(profiles): remove the traffic usage bar from profile cards
 
@@ -784,7 +784,7 @@
 
 - fix(ci): build a real universal APK and publish it as android-universal
 
-- The android job only emitted split-per-abi APKs, so the update.json android-universal slot aliased the arm64 APK (uninstallable on 32-bit/x86). setup.dart now also builds a single all-ABI universal APK (dist/dropweb-universal.apk) when no --arch is given, and the YC publish step uploads it and points android-universal at it.
+- The android job only emitted split-per-abi APKs, so the update.json android-universal slot aliased the arm64 APK (uninstallable on 32-bit/x86). setup.dart now also builds a single all-ABI universal APK (dist/avee-universal.apk) when no --arch is given, and the YC publish step uploads it and points android-universal at it.
 
 - feat(modes): bind Smart to the primary MATCH router only + Smart chevron
 
@@ -800,7 +800,7 @@
 
 - feat(profiles): show the service name + logo on profile cards
 
-- Reuse SubscriptionCardLogo (now header-parametrized) and a new Profile.serviceName getter (profile-title -> dropweb-servicename -> label) so each profile card shows the branded name + accent bleed-off logo instead of the raw user_xxx label, with the user id kept as a muted secondary line.
+- Reuse SubscriptionCardLogo (now header-parametrized) and a new Profile.serviceName getter (profile-title -> avee-servicename -> label) so each profile card shows the branded name + accent bleed-off logo instead of the raw user_xxx label, with the user id kept as a muted secondary line.
 
 - feat(modes): country picker — liveness-filtered list + canonical load UX
 
@@ -864,7 +864,7 @@
 
 - docs(readme): use logo as header, drop platforms/build sections
 
-- Replace the retro banner with the centered db logo (assets/images/logo.png, copied from dropweb-site). Remove the redundant Platforms & download and Build from source sections and their now-unused icons.
+- Replace the retro banner with the centered db logo (assets/images/logo.png, copied from avee-site). Remove the redundant Platforms & download and Build from source sections and their now-unused icons.
 
 - docs(readme): correct upstream attribution to FlClashX (fork of FlClash)
 
@@ -876,7 +876,7 @@
 
 - chore(core): bump Clash.Meta — resolve firefox/safari to newest custom spec
 
-- Pin xHomo dropweb-core-alpha-refresh acdf427->d4bdb09: the firefox/safari
+- Pin xHomo avee-core-alpha-refresh acdf427->d4bdb09: the firefox/safari
 - uTLS aliases now resolve to the newest custom ClientHello spec (FF148 /
 - Safari 26.3) instead of the older built-in. Already exercised on-device in
 - this wave's QA build.
@@ -1029,7 +1029,7 @@
 - - detached tun fd is closed (adoptFd) and runState rolled back to STOP when
 -   Core.startTun throws
 - - handleStop: clear uidPageNameMap, unbind the BIND_AUTO_CREATE connection
--   and null dropwebService (the binding kept the stopped service alive)
+-   and null aveeService (the binding kept the stopped service alive)
 - - onServiceDisconnected stops the 1s foreground-params polling job
 - - resolverProcess: getPackagesForUid()?.firstOrNull() — empty array crashed
 -   the JNI callback thread
@@ -1111,7 +1111,7 @@
 - - subscription/theme headers: applySubscriptionSettings, applyAllHeaderSettings
 -   (was _applyAllHeaderSettings), applyActiveProfileHeaders, resetSubscriptionTheme
 -   (was _resetSubscriptionTheme) + service-private _applyProviderSettings,
--   _applyThemeColor, _applyDropwebTheme, _parseHexColorValue, _applyCustomViewSettings
+-   _applyThemeColor, _applyProviderTheme, _parseHexColorValue, _applyCustomViewSettings
 - - geo metadata:      updateGeoFilesAfterProfileUpdate (was _updateGeoFiles...) +
 -   service-private _getRemoteFileMetadata, _getMetadataKey, _getSavedMetadata,
 -   _saveMetadata, _hasMetadataChanged
@@ -1242,7 +1242,7 @@
 - - Glyph layer counterpart: power glyph recedes (0.88 scale, 0.82 alpha)
 -   while connected so the logo reads as the primary surface; recede/restore
 -   rides the same Lumina duration/curve as the lens morph.
-- - New DropwebHapticCue.success on the established connection (OFF→ON only):
+- - New AveeHapticCue.success on the established connection (OFF→ON only):
 -   CONTEXT_CLICK on Android R+, KEYBOARD_TAP fallback, mediumImpact Flutter
 -   shim; contract test extended (4 pass).
 
@@ -1405,7 +1405,7 @@
 
 - Port zencab's ConnectGlassCTA/LiquidLogoLayer into _ConnectGlassPainter
 - as layer 2.5: orb1->darkened-accent gradient base, top glass highlight,
-- and the subscription provider logo (dropweb-logo header, gated by
+- and the subscription provider logo (avee-logo header, gated by
 - applySubscriptionLogo) stretched across the lens and liquid-warped.
 
 - The SVG filter chain is reproduced on pure canvas (no fragment shaders -
@@ -1729,19 +1729,19 @@
 
 - chore(release): v0.8.1-pre.5 (bump build for in-place upgrade)
 
-- docs(headers): document dropweb-renew-url and dropweb-topup-url monetization headers
+- docs(headers): document avee-renew-url and avee-topup-url monetization headers
 
 - chore(android): read signing creds from env with local.properties fallback
 
-- Release signing credentials can now be supplied via DROPWEB_STORE_PASSWORD
-- / DROPWEB_KEY_ALIAS / DROPWEB_KEY_PASSWORD instead of plaintext in
+- Release signing credentials can now be supplied via AVEE_STORE_PASSWORD
+- / AVEE_KEY_ALIAS / AVEE_KEY_PASSWORD instead of plaintext in
 - local.properties. Non-breaking: falls back to local.properties when the
 - env vars are unset, so existing local and CI builds are unchanged.
 
-- chore: track core submodule on dropweb-core-alpha-refresh branch
+- chore: track core submodule on avee-core-alpha-refresh branch
 
 - .gitmodules pointed core/Clash.Meta at 'main' (metacubex upstream), but
-- the actual dropweb fork work lives on 'dropweb-core-alpha-refresh'. This
+- the actual dropweb fork work lives on 'avee-core-alpha-refresh'. This
 - fixes 'git submodule update --remote' pulling the wrong branch. SHA-based
 - checkout (CI) was already correct.
 
@@ -1751,8 +1751,8 @@
 - implemented in dropweb's own conventions:
 
 - - monetization: header-driven renew/top-up buttons in the subscription
--   card, gated by expiry<3d / traffic<10%, via dropweb-renew-url and
--   dropweb-topup-url (our namespace; flclashx-* still rejected)
+-   card, gated by expiry<3d / traffic<10%, via avee-renew-url and
+-   avee-topup-url (our namespace; flclashx-* still rejected)
 - - vpn(fd): leak-free Android TUN fd ownership on start failure + bounded
 -   3s drain in TunHandler.close() to avoid stop/start deadlock
 - - vpn(consent): queue VPN consent callbacks so concurrent starts cannot
@@ -1770,7 +1770,7 @@
 
 - fix: batch UI/profile/subscription fixes from on-device QA
 
-- - profile switch now routes through handleChangeProfile() and resets the operator (subscription) theme to the dropweb default when the new profile has no dropweb-theme — fixes the previous operator's theme persisting after switching back
+- - profile switch now routes through handleChangeProfile() and resets the operator (subscription) theme to the AVEE default when the new profile has no avee-theme — fixes the previous operator's theme persisting after switching back
 - - addProfile() always selects the freshly imported config (was skipped when a profile already existed)
 - - three-dots 'Update' + new 'Обновить подписку' card-menu item no longer no-op: dropped the post-migration 'type == file' guard that silently skipped every URL subscription (url is '' in memory). Mirrors the pull-to-refresh fix
 - - desktop window 375x600 -> 450x720 on Windows/Linux (macOS popover 5:8 proportions, roomier); native min/max synced in flutter_window.cpp (macOS popover untouched)
@@ -1782,7 +1782,7 @@
 - - add updateSubscription l10n key (ru: 'Обновить подписку')
 - - tests: package UA contract + utils.delayBadgeLabel
 
-- fix(windows): use dropweb's own Inno AppId GUID (was inherited FlClashX 728B3532-...) — installer no longer detects/overwrites a FlClashX install; dropweb is now a distinct app
+- fix(windows): use dropweb's own Inno AppId GUID (was inherited FlClashX 728B3532-...) — installer no longer detects/overwrites a FlClashX install; AVEE is now a distinct app
 
 ## v0.8.1-pre.3
 
@@ -1790,7 +1790,7 @@
 
 - feat(update): show 'Check for updates' on sideloaded Android (our RU channel) — gated off for Play via --dart-define=PLAY_BUILD=true; _platformKey resolves android-arm64; test updated + passing
 
-- feat(update): in-app update check via our own server (dropweb.org/update.json, YC-backed) instead of GitHub API — РФ-reliable, graceful when absent (Phase 3)
+- feat(update): in-app update check via our own server (aveevpn.com/update.json, YC-backed) instead of GitHub API — РФ-reliable, graceful when absent (Phase 3)
 
 - fix(android): drop redundant runtime portrait re-assert (manifest already locks it) — avoids fixed-orientation letterbox leaking a compat frame to the launcher on exit (flutter#184963). Candidate fix for home-screen layout break on Pixel/Android 15
 
@@ -1817,7 +1817,7 @@
 - cherry-pick. Security fixes now native; adds PASS-RULE, empty-fallback,
 - path-in-bundle, age-secret-key, OpenVPN ping keepalive, allow-insecure listeners.
 - Followed upstream removal of global-client-fingerprint (config parsing kept).
-- xHomo @ dropweb-core-alpha-refresh (7cb57dc8). pubspec 0.8.1+2026060602.
+- xHomo @ avee-core-alpha-refresh (7cb57dc8). pubspec 0.8.1+2026060602.
 - Verified: host build + android cross-compile + device boot (no crash, core inits).
 
 ## v0.8.1-pre.1
@@ -1825,13 +1825,13 @@
 - chore(release): v0.8.1-pre.1 — canonical repo slug + version bump
 
 - - pubspec 0.8.0+2026053101 -> 0.8.1+2026060601
-- - pre_release_template.md: enkinvsh/dropweb-app -> enkinvsh/dropweb (canonical)
+- - pre_release_template.md: 0x-gg/avee-android-app -> 0x-gg/avee-android (canonical)
 - - build.yaml: latest-release lookup uses ${{ github.repository }}
 
 - core: backport mihomo v1.19.27 security fixes; bump core to 1.19.27
 
 - Cherry-pick 5 upstream OOB/DoS fixes onto our Alpha core base (xHomo
-- dropweb-core-rebuild @ 2590b929):
+- avee-core-rebuild @ 2590b929):
 - - dns/doq readMsg out-of-bounds access (conflict-resolved)
 - - quic sniffer OOB crash via single UDP packet
 - - socks4 readUntilNull unbounded memory allocation
@@ -1865,13 +1865,13 @@
 
 - Bump version to 0.8.0+2026053101. Add a linux/ubuntu-24.04/amd64 entry to build.yaml so Linux is built and attached to GitHub releases (mirrors build-linux.yaml).
 
-- docs: document dropweb-logo header
+- docs: document avee-logo header
 
 - Circular provider logo on the subscription card: accent ring synced to the connect button, theme-filter applied, gated by the 'Лого из подписки' toggle.
 
 - feat(dashboard): subscription logo on the card with filter, accent ring, toggle
 
-- Render the dropweb-logo header as a circular logo on the subscription card (replacing the menu icon; menu stays reachable via the swipe-up handle). Logo is color-filtered to follow the active scheme variant (imageColorFilter mirrors applyColorFilter), with a thin 0.5px accent ring that lights up in sync with the connect button. Gated by a new 'Лого из подписки' setting (applySubscriptionLogo, default on) placed above 'Тема из подписки'.
+- Render the avee-logo header as a circular logo on the subscription card (replacing the menu icon; menu stays reachable via the swipe-up handle). Logo is color-filtered to follow the active scheme variant (imageColorFilter mirrors applyColorFilter), with a thin 0.5px accent ring that lights up in sync with the connect button. Gated by a new 'Лого из подписки' setting (applySubscriptionLogo, default on) placed above 'Тема из подписки'.
 
 - feat(dashboard): card menu modal + bottom swipe-up handle
 
@@ -1884,7 +1884,7 @@
 - docs: add TLS Fragment reference; consolidate header docs
 
 - - docs/tls-fragment.md: SNI-targeted TLS fragmentation (DPI bypass) — how it works, params (tls-fragment/-size/-delay), how to enable
-- - subscription-headers.md: merge dropweb-cabinet section + summary row
+- - subscription-headers.md: merge avee-cabinet section + summary row
 - - remove duplicate remnawave-response-headers.md (single source of truth)
 
 - feat(profile): surface disconeko pool via First Available, not VPN default
@@ -1899,10 +1899,10 @@
 - Tests updated to the new contract; disconeko comment in profile.dart
 - reworded accordingly.
 
-- docs: add subscription headers reference; remove legacy dropweb-hex
+- docs: add subscription headers reference; remove legacy avee-hex
 
-- - docs/subscription-headers.md: operator reference for dropweb-custom gate, dropweb-theme contract (filter,hex,hex,hex,blur), 'Тема из подписки' toggle, dropweb-disconeko SOS pool
-- - remove legacy dropweb-hex parser (_applyThemeColorFromHex) and its dispatch; dropweb-theme is now the sole theme contract
+- - docs/subscription-headers.md: operator reference for avee-custom gate, avee-theme contract (filter,hex,hex,hex,blur), 'Тема из подписки' toggle, avee-disconeko SOS pool
+- - remove legacy avee-hex parser (_applyThemeColorFromHex) and its dispatch; avee-theme is now the sole theme contract
 
 - feat(theme): operator-driven theming + user presets/filters/orbs/picker
 
@@ -1912,11 +1912,11 @@
 - - flutter_colorpicker hue-wheel replaces buggy custom palette
 - - connect button retuned per design tuner + icon outline
 - - 'Тема из подписки' toggle (user master switch over operator theme)
-- - operator contract: dropweb-theme (filter,hex,hex,hex,blur) + dropweb-hex CSV; applied on subscription update and profile switch
+- - operator contract: avee-theme (filter,hex,hex,hex,blur) + avee-hex CSV; applied on subscription update and profile switch
 
 - feat(profile): merge disconeko emergency pool into a Smart group
 
-- Subscriptions may carry a `dropweb-disconeko` header pointing to an emergency server pool. On profile update the client fetches it, names the nodes by country (flag + country word), and exposes them through a `🧠 Smart` group (type: smart, include-all) set as the primary router default — so traffic uses the best live server among the subscription's own nodes plus the emergency pool, matching the smart UX of loading a raw subscription directly.
+- Subscriptions may carry a `avee-disconeko` header pointing to an emergency server pool. On profile update the client fetches it, names the nodes by country (flag + country word), and exposes them through a `🧠 Smart` group (type: smart, include-all) set as the primary router default — so traffic uses the best live server among the subscription's own nodes plus the emergency pool, matching the smart UX of loading a raw subscription directly.
 
 - - common/smart_pool_patch: pure additive YAML patch (Smart group + nodes)
 - - common/mihomo_yaml_splice: shared text-splice + router-detection helpers
@@ -2167,7 +2167,7 @@
 
 - feat(cabinet): add zencab WebView shell
 
-- Merge branch 'main' of https://github.com/enkinvsh/dropweb
+- Merge branch 'main' of https://github.com/0x-gg/avee-android
 
 - style(ui): update support link icon
 
@@ -2203,7 +2203,7 @@
 - hit this within 10s of a fresh launch on Pixel 10.
 
 - VPN apps qualify for the `systemExempted` FGS type, which is the
-- correct declaration for VpnService subclasses. DropwebService stays
+- correct declaration for VpnService subclasses. AveeService stays
 - on `dataSync` since it is a true background-data service.
 
 - Caught during device QA on Pixel 10 (API 36).
@@ -2212,7 +2212,7 @@
 
 - Implements docs/plans/2026-05-02-parazitx-mihomo-outbound.md tasks 1-9.
 
-- Mihomo's DropwebVpnService now owns TUN/DNS/fake-IP. ParazitXVpnService
+- Mihomo's AveeVpnService now owns TUN/DNS/fake-IP. ParazitXVpnService
 - gains a `mihomo_outbound` mode that runs the relay subprocess only and
 - exposes its local SOCKS5 listener as `__dropweb_parazitx_vk_bridge`
 - appended to the GLOBAL proxy-group. ParazitXMihomoOrchestrator wires
@@ -2607,7 +2607,7 @@
 - feat(parazitx): server pool from subscription with 503 fallback
 
 - - Remove hardcoded 31.57.105.213:8088
-- - Read server list from dropweb-parazitx-servers header
+- - Read server list from avee-parazitx-servers header
 - - Shuffle pool, try each server, fallback on 503/error
 - - Port changed to 3478 (TURN mimicry)
 - - deactivate() clears server cache for fresh load on next activate
@@ -2756,12 +2756,12 @@
 -   Fix: hard decouple both layers.
 -     - flclash:// and clashx:// now registered with onlyIfMissing=true.
 -     - One-time migration removes our existing claims on shared schemes.
--     - Remnawave header parser now accepts ONLY dropweb-* prefix.
+-     - Remnawave header parser now accepts ONLY avee-* prefix.
 -     - Uninstaller conditionally removes shared scheme handlers.
 
 - BREAKING: Remnawave panel (cab.dropweb.space) and @dropwebpay_bot must be
-- updated in the same release window to emit dropweb-* headers and
-- dropweb:// links. Legacy flclashx-* is silently ignored.
+- updated in the same release window to emit avee-* headers and
+- avee:// links. Legacy flclashx-* is silently ignored.
 
 - TG notifications disabled for this release (notify_telegram.py still
 - posts as FlClashX - separate rebrand task).
@@ -2808,8 +2808,8 @@
 
 - fix(about+nav): repo URL, header tap zones, easter-egg moved to nav-bar
 
-- - fix: repository constant was 'enkinvsh/dropweb-app' but the actual
--   GitHub repo is 'enkinvsh/dropweb' — broke About 'Проект' link, the
+- - fix: repository constant was '0x-gg/avee-android-app' but the actual
+-   GitHub repo is '0x-gg/avee-android' — broke About 'Проект' link, the
 -   in-app update checker, and release page redirects.
 
 - - perf(home): _ConnectCircle._scheduleTracking was an infinite
@@ -2878,7 +2878,7 @@
 
 ## v0.4.5
 
-- release(v0.4.5): consolidate splash-hang fix, rebrand repo dropweb-app → dropweb
+- release(v0.4.5): consolidate splash-hang fix, rebrand repo avee-app → dropweb
 
 - Consolidates the real splash-hang fix (file_logger infinite microtask
 - loop, see lib/common/file_logger.dart) into a single v0.4.5 release.
@@ -2887,7 +2887,7 @@
 - none of which were the actual bug. The whole timeline rolls into this
 - single release under its proper version.
 
-- Also renames the repository: enkinvsh/dropweb-app → enkinvsh/dropweb.
+- Also renames the repository: 0x-gg/avee-android-app → 0x-gg/avee-android.
 - Updated README.md, README_EN.md, and .github/release_template.md.
 - GitHub preserves a redirect from the old URL.
 
@@ -3048,13 +3048,13 @@
 - synchronously. This lets FlutterActivity's pending runnables (including
 - main engine's executeDartEntrypoint) drain first. Service engine still
 - gets created — VPN connect path (AppPlugin.onActivityResult RESULT_OK,
-- DropwebVpnService.onCreate, GlobalState.handleStart with no TilePlugin)
+- AveeVpnService.onCreate, GlobalState.handleStart with no TilePlugin)
 - keeps working, just one looper tick later.
 
 - Also adds a Throwable to the deferred-path log so the next reproduction
 - will tell us WHICH callsite is firing initServiceEngine on cold-start —
 - the four known callers (handleStart, AppPlugin.onActivityResult,
-- ServicePlugin.onMethodCall("init"), DropwebVpnService.onCreate) all
+- ServicePlugin.onMethodCall("init"), AveeVpnService.onCreate) all
 - showed no preceding log line in the captured trace, so the trigger
 - remains to be confirmed.
 
@@ -3174,7 +3174,7 @@
 - to provide.
 
 - Fix: replace the full 85-line file with the upstream one-liner
-- (adjusted to `app.dropweb.models`).
+- (adjusted to `com.avee.vpn.models`).
 
 - Verified on Pixel 10: release APK (95MB, 275KB smaller than the
 - previous broken build) installs and launches cleanly to the
@@ -3191,7 +3191,7 @@
 
 - Changes reverted to upstream form:
 
-- 1. DropwebVpnService: drop `onStartCommand { return START_STICKY }`.
+- 1. AveeVpnService: drop `onStartCommand { return START_STICKY }`.
 -    Upstream FlClashXVpnService has no onStartCommand override — it
 -    inherits the default (START_STICKY_COMPATIBILITY, treated as
 -    START_NOT_STICKY on modern Android). My override forced the
@@ -3211,7 +3211,7 @@
 -    has this exact call and their app boots fine post-reboot; the
 -    "deadlock" I theorized wasn't real.
 
-- 4. DropwebApplication: drop the FlutterLoader.startInitialization
+- 4. AveeApplication: drop the FlutterLoader.startInitialization
 -    pre-warm (reverting 59c3add). Upstream doesn't do this, so it
 -    was never the actual race condition fix I thought it was.
 
@@ -3303,7 +3303,7 @@
 - fix(android): remove syncStatus deadlock from MainActivity startup
 
 - Second splash-hang regression on post-boot with an active profile.
-- `DropwebVpnService` is marked START_STICKY, so Android revives it on
+- `AveeVpnService` is marked START_STICKY, so Android revives it on
 - boot before the user even taps the icon. `onCreate` calls
 - `GlobalState.initServiceEngine()` which attaches the singleton
 - `VpnPlugin` to the service engine — binding its MethodChannel to the
@@ -3632,9 +3632,9 @@
 - rebuilding the QuickJS .so with -Wl,-z,max-page-size=16384.
 
 - The enkinvsh/flutter_js fork (master) was bumped to pull 0.3.6 instead
-- of 0.3.5 in commit 17be98e. This file locks dropweb-app to that commit.
+- of 0.3.5 in commit 17be98e. This file locks avee-app to that commit.
 
-- Verified: built release APK (dist/dropweb-arm64-v8a.apk), extracted
+- Verified: built release APK (dist/avee-arm64-v8a.apk), extracted
 - libfastdev_quickjs_runtime.so, checked ELF p_align via python struct —
 - LOAD segments now align=65536 (64KB, valid 16KB-multiple) instead of
 - 4096. Installed the APK on Pixel 10, launched: no system modal appears,
@@ -3723,8 +3723,8 @@
 - let dropweb's uninstaller nuke FlClashX's config.
 
 - - Runner.rc: CompanyName/InternalName/ProductName → dropweb, copyright 2026
-- - inno_setup.iss: kill DropwebCore.exe/DropwebHelperService.exe (real names)
-- - inno_setup.iss: uninstaller path → {userappdata}\dropweb\dropweb
+- - inno_setup.iss: kill AveeCore.exe/AveeHelperService.exe (real names)
+- - inno_setup.iss: uninstaller path → {userappdata}\avee\avee
 -   (matches path_provider Windows layout from new Runner.rc values)
 
 - Note: existing Windows users upgrading to this version will see their
@@ -3733,7 +3733,7 @@
 
 - docs: add SEO keywords (Clash Meta, DPI bypass, split tunneling, Xray-core)
 
-- docs: fix legal phrasing, remove dropweb.org links, improve disclaimer
+- docs: fix legal phrasing, remove aveevpn.com links, improve disclaimer
 
 - docs: rewrite README with Gemini 3.1 — engineer-to-engineer tone, detection protection focus
 
@@ -3775,7 +3775,7 @@
 
 - docs: remove build instructions
 
-- docs: add dropweb.org link
+- docs: add aveevpn.com link
 
 - docs: add trending AI keywords
 
@@ -3893,12 +3893,12 @@
 
 - fix(ci): update release template with new artifact names + add macOS badge
 
-- fix(rebrand): rename FlClashCore → DropwebCore across all platforms
+- fix(rebrand): rename FlClashCore → AveeCore across all platforms
 
 - Windows CMakeLists.txt, Linux CMakeLists.txt, macOS pbxproj + Swift,
 - Dart corePath, setup.dart coreName. This fixes Windows build failure
 - (CMake could not find FlClashHelperService.exe — was renamed to
-- DropwebHelperService but CMakeLists.txt still referenced old name).
+- AveeHelperService but CMakeLists.txt still referenced old name).
 
 - ci: add macOS to unified build matrix (drop separate build-macos workflow)
 
@@ -3907,8 +3907,8 @@
 - chore(build): drop platform prefix from artifact names
 
 - Extension already identifies the platform (.apk=Android, .dmg=macOS, .exe=Windows).
-- dropweb-android-arm64-v8a.apk → dropweb-arm64-v8a.apk
-- dropweb-macos-arm64.dmg → dropweb-arm64.dmg
+- avee-android-arm64-v8a.apk → avee-arm64-v8a.apk
+- avee-macos-arm64.dmg → avee-arm64.dmg
 
 - chore: add .opencode/ and opencode.json to .gitignore
 
@@ -3917,7 +3917,7 @@
 - Auto-upgrade by Flutter tooling — uses Flutter's default minSdkVersion (23)
 - instead of hardcoded value.
 
-- fix(macos): align core path — Swift now uses app.dropweb to match Dart
+- fix(macos): align core path — Swift now uses com.avee.vpn to match Dart
 
 - feat(theme): replace Unbounded with Onest font across all text levels
 
@@ -4053,13 +4053,13 @@
 - Parse fallback-url header from provider response and retry with it
 - when primary subscription URL fails (timeout, HTTP error, network).
 
-- fix: keep core module at org.dropweb.vpn.core for JNI compat
+- fix: keep core module at com.avee.vpn.core for JNI compat
 
-- Go native library (libcore.so) has org/dropweb/vpn/core/TunInterface
+- Go native library (libcore.so) has com/avee/vpn/core/TunInterface
 - hardcoded in JNI_OnLoad. Cannot rename without recompiling Go core.
-- App package stays app.dropweb, only core module keeps old path.
+- App package stays com.avee.vpn, only core module keeps old path.
 
-- refactor: rename package org.dropweb.vpn → app.dropweb
+- refactor: rename package com.avee.vpn → com.avee.vpn
 
 - Move Kotlin/Java sources to app/dropweb/ directory structure,
 - update all package declarations, Gradle configs, Manifest,
@@ -4117,7 +4117,7 @@
 - pointer unchanged at b64d7d11.
 
 - Also:
-- - DropwebVpnService.kt: setMtu 9000 → 1500 (match mobile link MTU,
+- - AveeVpnService.kt: setMtu 9000 → 1500 (match mobile link MTU,
 -   prevent fragmentation; 9000 was inherited FlClashX gigabit desktop
 -   hardcode).
 - - .gitmodules: fix broken enkinvsh/xHomo.git URL (wrong repo; xHomo
@@ -4177,7 +4177,7 @@
 -   structured sections: Download / Known issues / Build from source
 -   / License. Pre-release variant carries a yellow warning header
 -   and bug-report CTA.
-- - Delete .github/FUNDING.yml (was pointing to dropweb.org, dead).
+- - Delete .github/FUNDING.yml (was pointing to aveevpn.com, dead).
 - - Add docs/screenshots/ with dashboard.png and proxy.png taken
 -   from Pixel 10 running the current build.
 
@@ -4311,7 +4311,7 @@
 - breathing glow lit, glass tab bar renders, VPN state persists
 - through hot restart. Impeller-related static color-bends background
 - is pre-existing state since 2025-09-11, unrelated to this change;
-- skill flutter-dropweb-dev Gotcha #1 was updated separately to
+- skill flutter-avee-dev Gotcha #1 was updated separately to
 - document that situation.
 
 - flutter analyze: 0 errors (16 warnings, 568 infos — baseline clean,
@@ -4362,18 +4362,18 @@
 
 - fix: minSdk 21 → 23 to match core module
 
-- rebrand: FlClashX → dropweb v0.3.3
+- rebrand: FlClashX → AVEE v0.3.3
 
 - Full rebrand across all platforms:
-- - Dart: DropwebHttpOverrides, UA 'dropweb/v...', repository enkinvsh/dropweb-app
-- - Kotlin: 4 files renamed (DropwebApplication/Service/VpnService/TileService)
+- - Dart: AveeHttpOverrides, UA 'dropweb/v...', repository 0x-gg/avee-android-app
+- - Kotlin: 4 files renamed (AveeApplication/Service/VpnService/TileService)
 - - Android: manifests, adaptive icons from official db pixel-art logo
-- - macOS: bundle ID org.dropweb.vpn, copyright, xib, pbxproj
+- - macOS: bundle ID com.avee.vpn, copyright, xib, pbxproj
 - - Windows/Linux: publisher dropweb, service names, packager info
 - - Icons: official neon db logo, monochrome, tray variants, TV banner
 - - Meta: README RU+EN rewritten, GitHub templates, CI workflows, .gitmodules
 - - Submodules: forked to enkinvsh/xHomo + enkinvsh/flutter_distributor
-- - Rust helper: DropwebHelperService
+- - Rust helper: AveeHelperService
 - - GPL-3.0 attribution preserved for chen08209/FlClash and pluralplay/FlClashX
 
 - BREAKING: flclashx-* HTTP headers unchanged (Remnawave protocol compat)
@@ -4516,7 +4516,7 @@
 - - Defaults: removed announce & mode switcher from home widgets
 - - Layout: connect button + widgets in scrollable content
 
-- rebrand FlClashX → dropweb: package org.dropweb.vpn, custom icon, cleanup nav
+- rebrand FlClashX → dropweb: package com.avee.vpn, custom icon, cleanup nav
 
 - fix: tg channel link
 
@@ -5778,11 +5778,11 @@
 - Windows: window width is now capped at 600 px (portrait/compact layout
   only). The connect button, navigation bar, and widget layout only exist
   in the ≤600 px viewport — this is a design decision, not a regression.
-- Subscription protocol: Remnawave panels must now emit `dropweb-*` HTTP
-  response headers (`dropweb-widgets`, `dropweb-hex`, `dropweb-servicename`,
-  `dropweb-servicelogo`, `dropweb-serverinfo`, `dropweb-view`,
-  `dropweb-settings`, `dropweb-background`, `dropweb-globalmode`,
-  `dropweb-custom`) instead of `flclashx-*`. Legacy `flclashx-*` headers
+- Subscription protocol: Remnawave panels must now emit `avee-*` HTTP
+  response headers (`avee-widgets`, `avee-hex`, `avee-servicename`,
+  `avee-servicelogo`, `avee-serverinfo`, `avee-view`,
+  `avee-settings`, `avee-background`, `avee-globalmode`,
+  `avee-custom`) instead of `flclashx-*`. Legacy `flclashx-*` headers
   are silently ignored.
 
 ### Fixed
@@ -5975,7 +5975,7 @@
 
 - docs: remove build instructions
 
-- docs: add dropweb.org link
+- docs: add aveevpn.com link
 
 - docs: add trending AI keywords
 

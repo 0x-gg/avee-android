@@ -1,14 +1,14 @@
-display_name: dropweb
+display_name: avee
 
 icon: ./assets/images/icon.png
 
 keywords:
-  - dropweb
+  - avee
   - Clash
   - ClashMeta
   - Proxy
 
-generic_name: dropweb
+generic_name: avee
 
 categories:
   - Network

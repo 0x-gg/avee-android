@@ -1,4 +1,4 @@
-import 'package:dropweb/common/constant.dart';
+import 'package:avee/common/constant.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persists whether the user has accepted the in-app VPN disclosure.

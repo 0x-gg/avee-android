@@ -167,8 +167,8 @@ jobs:
           git add CHANGELOG.md
           if ! git diff --cached --quiet; then
             echo "Commit pushing"
-            git config --local user.email "ci@dropweb.org"
-            git config --local user.name "dropweb-ci"
+            git config --local user.email "ci@aveevpn.com"
+            git config --local user.name "avee-ci"
             git commit -m "Update changelog"
             git push
             if [ $? -eq 0 ]; then
@@ -201,25 +201,25 @@ jobs:
           merge-multiple: true
 
       # GitHub release assets carry the version in the filename
-      # (dropweb-<version>-<platform>-<arch>.<ext>); the YC update bucket
+      # (avee-<version>-<platform>-<arch>.<ext>); the YC update bucket
       # keeps the historical fixed names — the in-app updater's contract.
       - name: Version asset filenames
         run: |
           set -euo pipefail
           version=$(echo "${{ github.ref_name }}" | sed 's/^v//')
           declare -A map=(
-            [dropweb-arm64-v8a.apk]=dropweb-$version-android-arm64-v8a.apk
-            [dropweb-armeabi-v7a.apk]=dropweb-$version-android-armeabi-v7a.apk
-            [dropweb-x86_64.apk]=dropweb-$version-android-x86_64.apk
-            [dropweb-universal.apk]=dropweb-$version-android-universal.apk
-            [dropweb-android-play.aab]=dropweb-$version-android-play.aab
-            [dropweb-arm64.dmg]=dropweb-$version-macos-arm64.dmg
-            [dropweb-amd64.dmg]=dropweb-$version-macos-amd64.dmg
-            [dropweb-amd64-setup.exe]=dropweb-$version-windows-amd64-setup.exe
-            [dropweb-amd64.zip]=dropweb-$version-windows-amd64-portable.zip
-            [dropweb-amd64.AppImage]=dropweb-$version-linux-amd64.AppImage
-            [dropweb-amd64.deb]=dropweb-$version-linux-amd64.deb
-            [dropweb-amd64.rpm]=dropweb-$version-linux-amd64.rpm
+            [avee-arm64-v8a.apk]=avee-$version-android-arm64-v8a.apk
+            [avee-armeabi-v7a.apk]=avee-$version-android-armeabi-v7a.apk
+            [avee-x86_64.apk]=avee-$version-android-x86_64.apk
+            [avee-universal.apk]=avee-$version-android-universal.apk
+            [avee-android-play.aab]=avee-$version-android-play.aab
+            [avee-arm64.dmg]=avee-$version-macos-arm64.dmg
+            [avee-amd64.dmg]=avee-$version-macos-amd64.dmg
+            [avee-amd64-setup.exe]=avee-$version-windows-amd64-setup.exe
+            [avee-amd64.zip]=avee-$version-windows-amd64-portable.zip
+            [avee-amd64.AppImage]=avee-$version-linux-amd64.AppImage
+            [avee-amd64.deb]=avee-$version-linux-amd64.deb
+            [avee-amd64.rpm]=avee-$version-linux-amd64.rpm
           )
           for src in "${!map[@]}"; do
             if [ -f "./dist/$src" ]; then
@@ -255,7 +255,7 @@ jobs:
           # "type(scope): " prefixes, drop internal noise (docs/chore/refactor/
           # test/ci/build/style), dedupe, capitalize, cap at 15.
           echo "" >> release.md
-          echo "## <img src=\"https://raw.githubusercontent.com/enkinvsh/dropweb/main/docs/icons/flash.svg\" width=\"22\" alt=\"\"> Что нового" >> release.md
+          echo "## <img src=\"https://raw.githubusercontent.com/0x-gg/avee-android/main/docs/icons/flash.svg\" width=\"22\" alt=\"\"> Что нового" >> release.md
           echo "" >> release.md
           if [ -n "$preTag" ]; then
             changelog_range="$preTag..${{ github.ref_name }}"
@@ -305,14 +305,14 @@ jobs:
           tag="${{ github.ref_name }}"; version="${tag#v}"
           build=$(grep '^version:' pubspec.yaml | sed -E 's/.*\+([0-9]+).*/\1/')
           ep="--endpoint-url=https://storage.yandexcloud.net"
-          B="s3://dropweb-downloads"
+          B="s3://avee-downloads"
           for pair in \
-            "dropweb-$version-android-arm64-v8a.apk:dropweb-arm64-v8a.apk" \
-            "dropweb-$version-android-universal.apk:dropweb-universal.apk" \
-            "dropweb-$version-windows-amd64-setup.exe:dropweb-amd64-setup.exe" \
-            "dropweb-$version-macos-arm64.dmg:dropweb-arm64.dmg" \
-            "dropweb-$version-macos-amd64.dmg:dropweb-amd64.dmg" \
-            "dropweb-$version-linux-amd64.AppImage:dropweb-amd64.AppImage"; do
+            "avee-$version-android-arm64-v8a.apk:avee-arm64-v8a.apk" \
+            "avee-$version-android-universal.apk:avee-universal.apk" \
+            "avee-$version-windows-amd64-setup.exe:avee-amd64-setup.exe" \
+            "avee-$version-macos-arm64.dmg:avee-arm64.dmg" \
+            "avee-$version-macos-amd64.dmg:avee-amd64.dmg" \
+            "avee-$version-linux-amd64.AppImage:avee-amd64.AppImage"; do
             local_f="${pair%%:*}"; remote_f="${pair##*:}"
             if [ -f "./dist/$local_f" ]; then
               aws s3 cp "./dist/$local_f" "$B/v$version/$remote_f" $ep
@@ -321,7 +321,7 @@ jobs:
               echo "WARN: ./dist/$local_f not found, skipping"
             fi
           done
-          base="https://storage.yandexcloud.net/dropweb-downloads/latest"
+          base="https://storage.yandexcloud.net/avee-downloads/latest"
           notes_raw=$(grep '^- ' release.md | head -3 | sed 's/^- //' || true)
           [ -z "$notes_raw" ] && notes_raw="Релиз $version"
           notes_json=$(printf '%s\n' "$notes_raw" | jq -R . | jq -s .)
@@ -331,18 +331,18 @@ jobs:
           # binary yields an empty string, which the app treats as "unverified,
           # install anyway" (graceful).
           sha() { [ -f "./dist/$1.sha256" ] && cut -d' ' -f1 "./dist/$1.sha256" || echo ""; }
-          apk_sha=$(sha dropweb-$version-android-arm64-v8a.apk)
-          universal_sha=$(sha dropweb-$version-android-universal.apk)
-          exe_sha=$(sha dropweb-$version-windows-amd64-setup.exe)
-          dmg_sha=$(sha dropweb-$version-macos-arm64.dmg)
-          dmg_amd64_sha=$(sha dropweb-$version-macos-amd64.dmg)
-          appimage_sha=$(sha dropweb-$version-linux-amd64.AppImage)
+          apk_sha=$(sha avee-$version-android-arm64-v8a.apk)
+          universal_sha=$(sha avee-$version-android-universal.apk)
+          exe_sha=$(sha avee-$version-windows-amd64-setup.exe)
+          dmg_sha=$(sha avee-$version-macos-arm64.dmg)
+          dmg_amd64_sha=$(sha avee-$version-macos-amd64.dmg)
+          appimage_sha=$(sha avee-$version-linux-amd64.AppImage)
           jq -n --arg version "$version" --argjson build "${build:-0}" --arg pubDate "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson notes "$notes_json" \
-            --arg apk "$base/dropweb-arm64-v8a.apk" --arg universal "$base/dropweb-universal.apk" --arg exe "$base/dropweb-amd64-setup.exe" --arg dmg "$base/dropweb-arm64.dmg" --arg dmgAmd "$base/dropweb-amd64.dmg" --arg appimage "$base/dropweb-amd64.AppImage" \
+            --arg apk "$base/avee-arm64-v8a.apk" --arg universal "$base/avee-universal.apk" --arg exe "$base/avee-amd64-setup.exe" --arg dmg "$base/avee-arm64.dmg" --arg dmgAmd "$base/avee-amd64.dmg" --arg appimage "$base/avee-amd64.AppImage" \
             --arg apkSha "$apk_sha" --arg universalSha "$universal_sha" --arg exeSha "$exe_sha" --arg dmgSha "$dmg_sha" --arg dmgAmdSha "$dmg_amd64_sha" --arg appimageSha "$appimage_sha" \
             '{version:$version,build:$build,mandatory:false,minSupported:"0.7.0",pubDate:$pubDate,notes:$notes,platforms:{"android-arm64":{url:$apk,sha256:$apkSha},"android-universal":{url:$universal,sha256:$universalSha},"windows-amd64":{url:$exe,sha256:$exeSha},"windows-arm64":{url:"",sha256:""},"linux-amd64":{url:$appimage,sha256:$appimageSha},"linux-arm64":{url:"",sha256:""},"macos":{url:$dmg,sha256:$dmgSha},"macos-amd64":{url:$dmgAmd,sha256:$dmgAmdSha},"ios":{url:"",sha256:""}}}' > update.json
           aws s3 cp update.json "$B/update.json" $ep --content-type application/json --cache-control no-cache
-          echo "Published v$version binaries + manifest to YC (dropweb-downloads)."
+          echo "Published v$version binaries + manifest to YC (avee-downloads)."
 
       # Rich Message release post (Bot API 10.1). Stable tags post to
       # TELEGRAM_CHAT_IDS; pre-release tags post to TELEGRAM_PRERELEASE_CHAT_IDS
@@ -360,7 +360,7 @@ jobs:
           IS_STABLE: ${{ env.IS_STABLE }}
         run: python3 .github/scripts/notify_telegram.py --release-md release.md
 
-  # Publish the Arch `dropweb-bin` package (repack of the release .deb) to the
+  # Publish the Arch `avee-bin` package (repack of the release .deb) to the
   # AUR on stable tags only. This is a NO-OP until the owner adds the AUR
   # secrets (AUR_SSH_PRIVATE_KEY / AUR_USERNAME / AUR_EMAIL): the gate step
   # detects their absence and every downstream step is skipped, so a release
@@ -395,22 +395,22 @@ jobs:
           # This job downloads the raw build artifact (pre-rename name); the
           # PKGBUILD source URL points at the renamed GitHub release asset —
           # same bytes, so this sha is valid for both.
-          DEB_SHA=$(sha256sum "dist/dropweb-amd64.deb" | cut -d' ' -f1)
-          SH_SHA=$(sha256sum .github/aur/dropweb.sh | cut -d' ' -f1)
+          DEB_SHA=$(sha256sum "dist/avee-amd64.deb" | cut -d' ' -f1)
+          SH_SHA=$(sha256sum .github/aur/avee.sh | cut -d' ' -f1)
           mkdir -p ./aur-pkg
           sed -e "s|@PKGVER@|$PKGVER|g" \
               -e "s|@DEB_SHA@|$DEB_SHA|g" \
               -e "s|@SH_SHA@|$SH_SHA|g" \
               .github/aur/PKGBUILD.template > ./aur-pkg/PKGBUILD
-          cp .github/aur/dropweb.sh ./aur-pkg/dropweb.sh
+          cp .github/aur/avee.sh ./aur-pkg/avee.sh
 
       - name: Publish to AUR
         if: steps.gate.outputs.enabled == 'true'
         uses: KSXGitHub/github-actions-deploy-aur@v4
         with:
-          pkgname: dropweb-bin
+          pkgname: avee-bin
           pkgbuild: ./aur-pkg/PKGBUILD
-          assets: ./aur-pkg/dropweb.sh
+          assets: ./aur-pkg/avee.sh
           commit_username: ${{ secrets.AUR_USERNAME }}
           commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}

@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:dropweb/common/log_redaction.dart';
-import 'package:dropweb/common/path.dart';
+import 'package:avee/common/log_redaction.dart';
+import 'package:avee/common/path.dart';
 import 'package:flutter/widgets.dart';
 import 'package:path/path.dart';
 
@@ -77,9 +77,9 @@ class FileLogger {
 
   String _getLogFileName(String date, {int index = 0}) {
     if (index == 0) {
-      return 'dropweb_$date.log';
+      return 'avee_$date.log';
     }
-    return 'dropweb_$date\_$index.log';
+    return 'avee_$date\_$index.log';
   }
 
   Future<void> _rotateLogs() async {

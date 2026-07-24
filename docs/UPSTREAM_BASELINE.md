@@ -1,9 +1,9 @@
-# Dropweb upstream baseline
+# AVEE upstream baseline
 
-- Upstream: https://github.com/enkinvsh/dropweb
+- Upstream: https://github.com/0x-gg/avee-android
 - Base commit: `df97cd83386eab1a5273edb5a16cdca44963b2ec`
 - Local origin: https://github.com/0x-gg/avee-android
-- Local upstream: https://github.com/enkinvsh/dropweb
+- Local upstream: https://github.com/0x-gg/avee-android
 - Application ID: `com.avee.vpn` (debug suffix: `com.avee.vpn.debug`)
 - Flutter/Dart requirement: Dart `>=3.5.0 <4.0.0`
 - Android Gradle Plugin: `8.9.2`

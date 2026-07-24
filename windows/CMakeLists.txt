@@ -1,10 +1,10 @@
 # Project-level configuration.
 cmake_minimum_required(VERSION 3.14)
-project(dropweb LANGUAGES CXX)
+project(avee LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "dropweb")
+set(BINARY_NAME "avee")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
@@ -99,10 +99,10 @@ set(CLASH_DIR "../libclash/windows")
 #   set(CLASH_DIR "../libclash/windows/x86")
 # endif()
 
-install(PROGRAMS "${CLASH_DIR}/DropwebCore.exe" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+install(PROGRAMS "${CLASH_DIR}/AveeCore.exe" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
   COMPONENT Runtime)
 
-install(PROGRAMS "${CLASH_DIR}/DropwebHelperService.exe" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+install(PROGRAMS "${CLASH_DIR}/AveeHelperService.exe" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
   COMPONENT Runtime)
 
 install(FILES "EnableLoopback.exe" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"

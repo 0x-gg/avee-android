@@ -2,9 +2,9 @@
 
 import 'dart:io';
 
-import 'package:dropweb/views/dashboard/widgets/metainfo_widget.dart';
-import 'package:dropweb/views/dashboard/widgets/widgets.dart';
-import 'package:dropweb/widgets/widgets.dart';
+import 'package:avee/views/dashboard/widgets/metainfo_widget.dart';
+import 'package:avee/views/dashboard/widgets/widgets.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';

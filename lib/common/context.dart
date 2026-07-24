@@ -1,5 +1,5 @@
-import 'package:dropweb/manager/message_manager.dart';
-import 'package:dropweb/widgets/scaffold.dart';
+import 'package:avee/manager/message_manager.dart';
+import 'package:avee/widgets/scaffold.dart';
 import 'package:flutter/material.dart';
 
 extension BuildContextExtension on BuildContext {

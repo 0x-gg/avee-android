@@ -36,7 +36,7 @@ $env:PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER = "<ваш GCP project number>"
 dart setup.dart android build
 ```
 
-Готовый файл: `dist/dropweb-android-play.aab`
+Готовый файл: `dist/avee-android-play.aab`
 
 Cloud Project Number:  
 **Play Console → Release → App integrity → Play Integrity API**  
@@ -130,7 +130,7 @@ Rationale: encrypted tunnel for user-initiated connection.
 
 **Release → Testing → Internal testing → Create new release**
 
-1. Upload `dropweb-android-play.aab`
+1. Upload `avee-android-play.aab`
 2. Release name: `0.8.5 internal 1`
 3. Release notes: first internal VPN build
 4. **Review release → Start rollout to Internal testing**

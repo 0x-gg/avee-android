@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
-import 'package:dropweb/common/constant.dart';
+import 'package:avee/common/constant.dart';
 import 'package:flutter/services.dart';
 
 class AveePlayIntegrityAttestation {

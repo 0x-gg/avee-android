@@ -1,4 +1,4 @@
-import 'package:dropweb/common/print.dart';
+import 'package:avee/common/print.dart';
 
 /// Lightweight tap-to-traffic tracing. One log line per mark via commonPrint.
 /// Stays enabled in release builds (cheap; makes field issues diagnosable).

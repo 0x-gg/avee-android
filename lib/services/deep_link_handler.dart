@@ -6,8 +6,8 @@ import 'package:flutter/services.dart';
 class DeepLinkHandler {
   DeepLinkHandler._();
 
-  static const _channel = MethodChannel('app.dropweb/navigation');
-  static const _events = EventChannel('app.dropweb/navigation/events');
+  static const _channel = MethodChannel('com.avee.vpn/navigation');
+  static const _events = EventChannel('com.avee.vpn/navigation/events');
   static StreamSubscription<dynamic>? _sub;
   static bool _initialized = false;
 

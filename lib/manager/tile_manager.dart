@@ -1,5 +1,5 @@
-import 'package:dropweb/plugins/tile.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/plugins/tile.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 
 class TileManager extends StatefulWidget {

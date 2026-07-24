@@ -9,7 +9,7 @@
         android:label="AVEE Debug"
         tools:replace="android:label">
         <service
-            android:name=".services.DropwebTileService"
+            android:name=".services.AveeTileService"
             android:label="AVEE Debug"
             tools:replace="android:label"
             tools:targetApi="24" />

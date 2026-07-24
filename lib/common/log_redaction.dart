@@ -1,7 +1,7 @@
 /// Strips sensitive parts from URL-like substrings in log text.
 ///
 /// Subscription links, deep-link imports (`clash://install-config?url=...`,
-/// `dropweb://install-config?url=...`), and arbitrary `http(s)://` URLs
+/// `avee://install-config?url=...`), and arbitrary `http(s)://` URLs
 /// frequently carry tokens in userinfo, query, or fragment. Those must
 /// never reach `debugPrint`, the file logger, or the in-app log viewer
 /// in clear text.
@@ -19,7 +19,7 @@ library;
 // the call sites embed `Uri` values whose `toString()` never contains
 // whitespace, quotes, or angles, so the match is exactly the URL.
 final RegExp _urlPattern = RegExp(
-  r'''(?:https?|clash|dropweb)://[^\s<>"']+''',
+  r'''(?:https?|clash|avee)://[^\s<>"']+''',
   caseSensitive: false,
 );
 
@@ -38,7 +38,7 @@ final RegExp _urlPattern = RegExp(
 // redacted fragment (`#[REDACTED]` and nothing else).
 final RegExp _alreadyRedactedShape = RegExp(
   r'^'
-  r'(?:https?|clash|dropweb)://'
+  r'(?:https?|clash|avee)://'
   r'(?:\[REDACTED\]@)?'
   r'[^\s/?#@\[\]]+'
   r'(?::\d+)?'
@@ -50,7 +50,7 @@ final RegExp _alreadyRedactedShape = RegExp(
 );
 
 /// Returns [text] with any URL substring of a known sensitive scheme
-/// (`http`, `https`, `clash`, `dropweb`) rewritten so userinfo, query,
+/// (`http`, `https`, `clash`, `avee`) rewritten so userinfo, query,
 /// and fragment never appear in clear text.
 String redactUrls(String text) => text.replaceAllMapped(
     _urlPattern, (match) => _sanitizeUrl(match.group(0)!));

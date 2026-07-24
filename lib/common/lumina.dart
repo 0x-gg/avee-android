@@ -26,7 +26,7 @@ class Lumina {
   static const double blurSigma = 4.0;
   static const double blurSigmaHeavy = 8.0;
 
-  // Glow colors (adapted for dropweb)
+  // Glow colors (adapted for AVEE)
   static const Color glowPrimary = Color(0xFF15803D);
   static const Color glowSecondary = Color(0xFF22C55E);
   static const Color glowAccent = Color(0xFF38BDF8);

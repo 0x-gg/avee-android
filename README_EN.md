@@ -2,18 +2,18 @@
   <a href="README.md">Русский</a>
 </div>
 
-<img src="assets/images/header.png" alt="dropweb — private VPN client for Android, Windows, macOS and Linux" width="720" />
+<img src="assets/images/header.png" alt="AVEE — private VPN client for Android, Windows, macOS and Linux" width="720" />
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/images/wordmark-dark.png">
-  <img src="assets/images/wordmark-light.png" alt="dropweb" height="46">
+  <img src="assets/images/wordmark-light.png" alt="AVEE" height="46">
 </picture>
 
-<a href="https://github.com/enkinvsh/dropweb/releases">
-  <img src="https://img.shields.io/github/v/release/enkinvsh/dropweb?include_prereleases&style=for-the-badge&color=15803D&labelColor=0D1117&label=release" alt="Latest Release">
+<a href="https://github.com/0x-gg/avee-android/releases">
+  <img src="https://img.shields.io/github/v/release/0x-gg/avee-android?include_prereleases&style=for-the-badge&color=15803D&labelColor=0D1117&label=release" alt="Latest Release">
 </a>
-<a href="https://github.com/enkinvsh/dropweb/stargazers">
-  <img src="https://img.shields.io/github/stars/enkinvsh/dropweb?style=for-the-badge&color=15803D&labelColor=0D1117" alt="GitHub Stars">
+<a href="https://github.com/0x-gg/avee-android/stargazers">
+  <img src="https://img.shields.io/github/stars/0x-gg/avee-android?style=for-the-badge&color=15803D&labelColor=0D1117" alt="GitHub Stars">
 </a>
 <a href="LICENSE">
   <img src="https://img.shields.io/badge/license-GPL--3.0-15803D?style=for-the-badge&labelColor=0D1117" alt="License GPL-3.0">
@@ -21,28 +21,28 @@
 
 <br>
 
-<a href="https://github.com/enkinvsh/dropweb/releases">
+<a href="https://github.com/0x-gg/avee-android/releases">
   <img src="https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android">
 </a>
-<a href="https://github.com/enkinvsh/dropweb/releases">
+<a href="https://github.com/0x-gg/avee-android/releases">
   <img src="https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows">
 </a>
-<a href="https://github.com/enkinvsh/dropweb/releases">
+<a href="https://github.com/0x-gg/avee-android/releases">
   <img src="https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS">
 </a>
-<a href="https://github.com/enkinvsh/dropweb/releases">
+<a href="https://github.com/0x-gg/avee-android/releases">
   <img src="https://img.shields.io/badge/Linux-1793D1?style=for-the-badge&logo=linux&logoColor=white" alt="Linux">
 </a>
 
 ---
 
-**dropweb** is a private VPN and proxy client for Android, Windows, macOS and Linux, built on the mihomo (Clash.Meta) core. You connect your own configuration; dropweb establishes the connection and handles routing.
+**AVEE** is a private VPN and proxy client for Android, Windows, macOS and Linux, built on the mihomo (Clash.Meta) core. You connect your own configuration; AVEE establishes the connection and handles routing.
 
-The dropweb team follows open-source principles, privacy by default, and predictable behavior across every platform. No activity logs are kept; dropweb does not provide servers and does not interfere with traffic — configurations and keys remain on the device.
+The AVEE team follows open-source principles, privacy by default, and predictable behavior across every platform. No activity logs are kept; AVEE does not provide servers and does not interfere with traffic — configurations and keys remain on the device.
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/connected.png" alt="dropweb dashboard with an active connection" width="240" /></td>
+    <td><img src="docs/screenshots/connected.png" alt="AVEE dashboard with an active connection" width="240" /></td>
     <td><img src="docs/screenshots/modes.png" alt="Work modes and country selection" width="240" /></td>
     <td><img src="docs/screenshots/menu.png" alt="Account menu on the dashboard" width="240" /></td>
   </tr>
@@ -54,7 +54,7 @@ The dropweb team follows open-source principles, privacy by default, and predict
 
 ### <img src="docs/icons/shield.svg" width="20" alt="" /> On-device leak protection
 
-Most clients keep an open local proxy port that any app on the same device can reach — a potential channel for leaking your IP. On mobile, dropweb closes it by default: a random port on every launch, mandatory proxy authentication, and routing through the TUN interface only, with no separate listeners. The local proxy is not reachable by other apps on the device.
+Most clients keep an open local proxy port that any app on the same device can reach — a potential channel for leaking your IP. On mobile, AVEE closes it by default: a random port on every launch, mandatory proxy authentication, and routing through the TUN interface only, with no separate listeners. The local proxy is not reachable by other apps on the device.
 
 ### <img src="docs/icons/ai.svg" width="20" alt="" /> Intelligent route selection
 
@@ -62,7 +62,7 @@ The **Smart** mode relies on the core's ML model (LightGBM): it predicts the bes
 
 ### <img src="docs/icons/fingerprint.svg" width="20" alt="" /> Modern TLS profiles
 
-dropweb shapes the TLS handshake of outbound connections after a current browser profile, including custom **Firefox 148** and **Safari 26** profiles with the post-quantum **X25519MLKEM768** key exchange. These profiles are not available in upstream uTLS.
+AVEE shapes the TLS handshake of outbound connections after a current browser profile, including custom **Firefox 148** and **Safari 26** profiles with the post-quantum **X25519MLKEM768** key exchange. These profiles are not available in upstream uTLS.
 
 ### <img src="docs/icons/puzzle.svg" width="20" alt="" /> Connection resilience
 
@@ -76,7 +76,7 @@ The indicator becomes active only when the tunnel is established: the core confi
 
 ## <img src="docs/icons/compare.svg" width="24" alt="" /> Comparison
 
-| Capability | dropweb | mihomo/Clash GUIs | Xray/sing-box GUIs |
+| Capability | AVEE | mihomo/Clash GUIs | Xray/sing-box GUIs |
 |---|:---:|:---:|:---:|
 | On-device privacy (local proxy isolation) | <img src="docs/icons/yes.svg" width="15" alt="yes" /> by default | <img src="docs/icons/partial.svg" width="15" alt="partial" /> rare / optional | <img src="docs/icons/partial.svg" width="15" alt="partial" /> rare |
 | TLS connection resilience (ClientHello fragmentation) | <img src="docs/icons/yes.svg" width="15" alt="yes" /> | <img src="docs/icons/no.svg" width="15" alt="no" /> | <img src="docs/icons/partial.svg" width="15" alt="partial" /> in the core, usually manual JSON only |
@@ -115,7 +115,7 @@ The indicator becomes active only when the tunnel is established: the core confi
 
 ## <img src="docs/icons/efficiency.svg" width="24" alt="" /> Efficiency & reliability
 
-dropweb uses less battery and memory than comparable clients built on the same core, through targeted optimizations across the stack.
+AVEE uses less battery and memory than comparable clients built on the same core, through targeted optimizations across the stack.
 
 **Battery & background**
 - Proxy-group polling stops when the app is backgrounded, eliminating the 20-second wakeup cycle
@@ -140,12 +140,12 @@ dropweb uses less battery and memory than comparable clients built on the same c
 
 An operator defines the client's appearance and behavior through the subscription response HTTP headers — no separate build, no fork. A single client binary can be branded independently for any number of operators.
 
-Through `dropweb-*` headers an operator can set:
+Through `avee-*` headers an operator can set:
 
-- **Single-header theme** — accent color, two background-orb colors, a color-scheme filter and blur (`dropweb-theme`)
-- **Logo and service name** on the subscription card (`dropweb-logo`, `dropweb-servicename`)
-- **Account area and subscription management** — a cabinet link and contextual actions (`dropweb-cabinet`)
-- **An emergency fallback pool** of nodes for when the primary ones are unreachable (`dropweb-disconeko`)
+- **Single-header theme** — accent color, two background-orb colors, a color-scheme filter and blur (`avee-theme`)
+- **Logo and service name** on the subscription card (`avee-logo`, `avee-servicename`)
+- **Account area and subscription management** — a cabinet link and contextual actions (`avee-cabinet`)
+- **An emergency fallback pool** of nodes for when the primary ones are unreachable (`avee-disconeko`)
 - **Announcements and service metadata** (`announce`, `support-url`)
 
 The user retains control of appearance: the **"Theme from subscription"** and **"Logo from subscription"** toggles (on by default) restore the default appearance at any time; operator-supplied values are not applied when these toggles are off.
@@ -154,13 +154,13 @@ The user retains control of appearance: the **"Theme from subscription"** and **
 
 ## <img src="docs/icons/privacy.svg" width="24" alt="" /> Privacy
 
-dropweb is a client: the app does not provide server infrastructure. You connect your own configuration (subscription), which the app uses to establish a connection. Traffic is not modified, no ads are shown, and no logs of network activity are retained. Configurations and keys are stored in on-device secure storage and are not transmitted.
+AVEE is a client: the app does not provide server infrastructure. You connect your own configuration (subscription), which the app uses to establish a connection. Traffic is not modified, no ads are shown, and no logs of network activity are retained. Configurations and keys are stored in on-device secure storage and are not transmitted.
 
 ---
 
 ## <img src="docs/icons/opensource.svg" width="24" alt="" /> Open source
 
-dropweb is distributed under the **GPL-3.0** license — the source code is fully open and available for audit. The project is based on FlClashX (a fork of FlClash) and uses the mihomo (Clash.Meta) core; we are grateful to their authors and communities.
+AVEE is distributed under the **GPL-3.0** license — the source code is fully open and available for audit. The project is based on FlClashX (a fork of FlClash) and uses the mihomo (Clash.Meta) core; we are grateful to their authors and communities.
 
 - FlClashX (© pluralplay) — https://github.com/pluralplay/FlClashX
 - FlClash (© chen08209) — https://github.com/chen08209/FlClash
@@ -178,4 +178,4 @@ GPL-3.0 — see [LICENSE](LICENSE).
 
 ---
 
-<sub>dropweb is a tool for the privacy and security of your own traffic. Permitted use is defined by the laws of your country; the user is responsible for how the app is used.</sub>
+<sub>AVEE is a tool for the privacy and security of your own traffic. Permitted use is defined by the laws of your country; the user is responsible for how the app is used.</sub>

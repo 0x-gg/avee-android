@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dropweb/common/app_localizations.dart';
-import 'package:dropweb/common/print.dart';
-import 'package:dropweb/models/models.dart';
-import 'package:dropweb/plugins/vpn.dart';
+import 'package:avee/common/app_localizations.dart';
+import 'package:avee/common/print.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/plugins/vpn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Service for showing subscription expiration notifications.
@@ -111,9 +111,9 @@ class SubscriptionNotificationService {
     final supportUrl = profile.providerHeaders['support-url'] ?? '';
     commonPrint.log('[SubscriptionNotification] supportUrl: $supportUrl');
 
-    // Get title from dropweb-servicename header or fallback to profile label
+    // Get title from avee-servicename header or fallback to profile label
     String title = profile.label ?? profile.id;
-    final svc = profile.providerHeaders['dropweb-servicename'];
+    final svc = profile.providerHeaders['avee-servicename'];
     if (svc != null && svc.isNotEmpty) {
       try {
         final normalized = base64.normalize(svc);

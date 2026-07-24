@@ -1,4 +1,4 @@
-import 'package:dropweb/common/app_localizations.dart';
+import 'package:avee/common/app_localizations.dart';
 
 extension DateTimeExtension on DateTime {
   bool get isBeforeNow => isBefore(DateTime.now());

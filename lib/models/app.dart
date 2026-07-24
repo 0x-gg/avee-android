@@ -1,5 +1,5 @@
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/enum/enum.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
 import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 

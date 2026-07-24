@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:dropweb/clash/clash.dart';
-import 'package:dropweb/common/common.dart';
-import 'package:dropweb/models/models.dart';
-import 'package:dropweb/state.dart';
+import 'package:avee/clash/clash.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -109,7 +109,7 @@ class Vpn {
       // Current proxy/server name
       String? proxyName;
       try {
-        final header = profile?.providerHeaders['dropweb-serverinfo'];
+        final header = profile?.providerHeaders['avee-serverinfo'];
         final serverInfoGroupName =
             header == null ? null : decodeMaybeBase64(header);
         if (serverInfoGroupName != null && serverInfoGroupName.isNotEmpty) {

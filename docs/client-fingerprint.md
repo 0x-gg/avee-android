@@ -12,7 +12,7 @@ Client Fingerprint подменяет TLS ClientHello исходящих сое�
 | `safari26` | Safari 26.3 | пост-квантовый (X25519MLKEM768) |
 | `random`, `randomized` | случайный отпечаток | |
 
-`firefox148` и `safari26` — кастомные отпечатки dropweb (актуальные ClientHello), отсутствующие в апстрим-uTLS.
+`firefox148` и `safari26` — кастомные отпечатки AVEE (актуальные ClientHello), отсутствующие в апстрим-uTLS.
 
 ## Как включить
 
