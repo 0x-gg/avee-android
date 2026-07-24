@@ -9,6 +9,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:yaml/yaml.dart';
 
 import 'avee_api.dart';
+import 'avee_play_integrity.dart';
+import '../common/constant.dart';
 import '../utils/device_info_service.dart';
 
 /// Thin client-side AVEE account state. The VPN profile remains owned by
@@ -110,6 +112,7 @@ class AveeAccountState extends ChangeNotifier {
         selectedLocation = null;
         await _storage.delete(key: _selectedLocationKey);
       }
+      await _ensureDefaultLocation();
     } on AveeApiException catch (exception) {
       locations = const [];
       locationsError = exception.message;
@@ -128,6 +131,23 @@ class AveeAccountState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _ensureDefaultLocation() async {
+    if (selectedLocation != null &&
+        locations.any((item) => item['proxyName'] == selectedLocation)) {
+      return;
+    }
+    final online = locations
+        .where((item) => item['status']?.toString() != 'offline')
+        .toList(growable: false);
+    final candidates = online.isNotEmpty ? online : locations;
+    if (candidates.isEmpty) return;
+    final pick = candidates[Random.secure().nextInt(candidates.length)];
+    final proxyName =
+        pick['proxyName']?.toString() ?? pick['name']?.toString();
+    if (proxyName == null || proxyName.isEmpty) return;
+    await selectLocation(proxyName);
+  }
+
   Map<String, dynamic>? get selectedLocationItem {
     for (final item in locations) {
       if (item['proxyName'] == selectedLocation) return item;
@@ -140,10 +160,13 @@ class AveeAccountState extends ChangeNotifier {
       final keyPair = await _ensureDeviceKeyPair();
       final fingerprint = (await DeviceInfoService().getDeviceDetails()).hwid;
       final info = await PackageInfo.fromPlatform();
+      final integrity = kIsPlayBuild ? await AveePlayIntegrity.request() : null;
       final created = await _api.createAccount(
         publicKey: base64UrlEncode(keyPair.publicKey.bytes),
         installationId: await _ensureInstallationId(),
         deviceFingerprint: fingerprint,
+        playIntegrityToken: integrity?.token,
+        playIntegrityRequestHash: integrity?.requestHash,
         deviceName: Platform.operatingSystem,
         appVersion: info.version,
       );
@@ -163,12 +186,15 @@ class AveeAccountState extends ChangeNotifier {
       final keyPair = await _ensureDeviceKeyPair();
       final fingerprint = (await DeviceInfoService().getDeviceDetails()).hwid;
       final info = await PackageInfo.fromPlatform();
+      final integrity = kIsPlayBuild ? await AveePlayIntegrity.request() : null;
       final recovered = await _api.recoverAccount(
         accountNumber: accountNumber.trim(),
         recoveryCode: recoveryCode.trim(),
         publicKey: base64UrlEncode(keyPair.publicKey.bytes),
         installationId: await _ensureInstallationId(),
         deviceFingerprint: fingerprint,
+        playIntegrityToken: integrity?.token,
+        playIntegrityRequestHash: integrity?.requestHash,
         deviceName: Platform.operatingSystem,
         appVersion: info.version,
       );

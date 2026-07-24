@@ -26,7 +26,7 @@ class AboutView extends StatelessWidget {
       ),
       ListItem(
         title: Text(appLocalizations.privacyPolicy),
-        onTap: () => globalState.openUrl("https://dropweb.org/privacy"),
+        onTap: () => globalState.openUrl(kAveePrivacyPolicyUrl),
         trailing: HugeIcon(icon: HugeIcons.strokeRoundedLink01, size: 24),
       ),
     ];

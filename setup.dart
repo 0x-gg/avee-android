@@ -875,16 +875,20 @@ class BuildCommand extends Command {
               "build",
               "appbundle",
               "--release",
+              "--flavor",
+              "play",
               "--dart-define=APP_ENV=$env",
               "--dart-define=CORE_VERSION=$coreVersion",
               "--dart-define=PLAY_BUILD=true",
+              if ((Platform.environment["PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER"] ?? '').isNotEmpty)
+                "--dart-define=PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=${Platform.environment["PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER"]}",
               if ((Platform.environment["AVEE_CONFIG_PUBLIC_KEY"] ?? '').isNotEmpty)
                 "--dart-define=AVEE_CONFIG_PUBLIC_KEY=${Platform.environment["AVEE_CONFIG_PUBLIC_KEY"]}",
             ],
           );
           Build.copyFile(
-            join(current, "build", "app", "outputs", "bundle", "release",
-                "app-release.aab"),
+            join(current, "build", "app", "outputs", "bundle", "playRelease",
+                "app-play-release.aab"),
             join(Build.distPath, "${Build.appName}-android-play.aab"),
           );
         }

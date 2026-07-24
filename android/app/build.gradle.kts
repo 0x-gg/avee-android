@@ -97,13 +97,6 @@ android {
             isShrinkResources = true
             isDebuggable = false
 
-            // Fail-closed signing: only attach the production signing config when
-            // every required input is present (keystore + storePassword + keyAlias
-            // + keyPassword). When inputs are missing, signingConfig is left null
-            // so AGP cannot silently sign the release variant with the debug key.
-            // The task-graph guard below aborts any release packaging task before
-            // it runs, with an actionable message naming the required (non-secret)
-            // inputs. Release builds without a production keystore MUST NOT ship.
             if (isRelease) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -112,6 +105,17 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+    }
+
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("sideload") {
+            dimension = "distribution"
+            isDefault = true
+        }
+        create("play") {
+            dimension = "distribution"
         }
     }
 }
@@ -195,6 +199,7 @@ configurations.all {
 
 dependencies {
     implementation("com.android.billingclient:billing:8.0.0")
+    implementation("com.google.android.play:integrity:1.4.0")
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
     implementation(project(":core"))
     implementation("androidx.core:core-splashscreen:1.0.1")

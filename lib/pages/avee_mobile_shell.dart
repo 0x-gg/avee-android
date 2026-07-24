@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:dropweb/providers/providers.dart';
+import 'package:dropweb/common/constant.dart';
 import 'package:dropweb/services/avee_account.dart';
 import 'package:dropweb/services/avee_billing.dart';
 import 'package:dropweb/services/avee_remote_config.dart';
@@ -418,13 +419,8 @@ class AveeHomeDashboard extends ConsumerWidget {
         final location = locationItem?['name']?.toString() ??
             (aveeAccountState.locations.isEmpty
                 ? 'No locations available'
-                : 'Choose location');
+                : 'Loading location…');
         final flag = locationItem?['flag']?.toString();
-        final locationStatus = locationItem?['status'] == 'offline'
-            ? 'Unavailable'
-            : locationItem == null
-                ? 'Remnawave Hosts'
-                : 'Available';
         return Column(
           children: [
             AveeAppBar(
@@ -564,6 +560,7 @@ class AveeHomeDashboard extends ConsumerWidget {
                         vertical: 14,
                       ),
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           if (flag != null && flag.isNotEmpty)
                             Text(flag, style: const TextStyle(fontSize: 28))
@@ -573,30 +570,20 @@ class AveeHomeDashboard extends ConsumerWidget {
                               color: AveeColors.primary,
                               size: 28,
                             ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  location,
-                                  style: const TextStyle(
-                                    color: AveeColors.text,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  locationStatus,
-                                  style: const TextStyle(
-                                    color: AveeColors.mutedText,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
+                          const SizedBox(width: 12),
+                          Flexible(
+                            child: Text(
+                              location,
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AveeColors.text,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 4),
                           const Icon(
                             Icons.chevron_right_rounded,
                             color: AveeColors.mutedText,
@@ -841,7 +828,8 @@ class _AveeLocationsPageState extends ConsumerState<AveeLocationsPage> {
                           else if (items.isEmpty)
                             const AveePanel(
                               child: Text(
-                                'No Remnawave Hosts are available.',
+                                'No locations are available.',
+                                textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: AveeColors.secondaryText,
                                 ),
@@ -1080,6 +1068,28 @@ class AveeAccountPage extends StatelessWidget {
                           onPressed: () => _delete(context),
                         ),
                         const SizedBox(height: 28),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: [
+                            TextButton(
+                              onPressed: () =>
+                                  globalState.openUrl(kAveePrivacyPolicyUrl),
+                              child: const Text('Privacy'),
+                            ),
+                            TextButton(
+                              onPressed: () =>
+                                  globalState.openUrl(kAveeTermsUrl),
+                              child: const Text('Terms'),
+                            ),
+                            TextButton(
+                              onPressed: () =>
+                                  globalState.openUrl(kAveeSupportUrl),
+                              child: const Text('Support'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
                         TextButton.icon(
                           onPressed: () async {
                             await globalState.appController

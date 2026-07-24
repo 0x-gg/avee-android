@@ -154,6 +154,33 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "avee/play_integrity")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "requestIntegrityToken") {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                }
+                val cloudProjectNumber = call.argument<String>("cloudProjectNumber")
+                val requestHash = call.argument<String>("requestHash")
+                if (cloudProjectNumber.isNullOrBlank() || requestHash.isNullOrBlank()) {
+                    result.error("INVALID_ARGS", "cloudProjectNumber and requestHash are required", null)
+                    return@setMethodCallHandler
+                }
+                val integrityManager =
+                    com.google.android.play.core.integrity.IntegrityManagerFactory.create(applicationContext)
+                val request = com.google.android.play.core.integrity.IntegrityTokenRequest.builder()
+                    .setCloudProjectNumber(cloudProjectNumber.toLong())
+                    .setNonce(requestHash)
+                    .build()
+                integrityManager.requestIntegrityToken(request)
+                    .addOnSuccessListener { response ->
+                        result.success(response.token())
+                    }
+                    .addOnFailureListener { error ->
+                        result.error("INTEGRITY_FAILED", error.message, null)
+                    }
+            }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "avee/billing_region")
             .setMethodCallHandler { call, result ->
                 if (call.method != "getPlayCountry") {
