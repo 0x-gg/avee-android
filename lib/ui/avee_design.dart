@@ -101,7 +101,11 @@ class AveeLogo extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
-      children: [Text('AVEE', style: textStyle), const SizedBox(height: 4), Text('VPN', style: vpnStyle)],
+      children: [
+        Text('AVEE', style: textStyle),
+        const SizedBox(height: 4),
+        Text('VPN', style: vpnStyle)
+      ],
     );
   }
 }
@@ -180,7 +184,8 @@ class AveePanel extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: AveeColors.outline.withValues(alpha: .95)),
           boxShadow: const [
-            BoxShadow(color: Color(0x22000000), blurRadius: 20, offset: Offset(0, 8)),
+            BoxShadow(
+                color: Color(0x22000000), blurRadius: 20, offset: Offset(0, 8)),
           ],
         ),
         child: child,
