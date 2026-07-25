@@ -405,9 +405,10 @@ class AveeAccountState extends ChangeNotifier {
       _storage.delete(key: _selectedLocationKey),
       _storage.delete(key: _managedProfileKey),
     ];
-    if (removeDeviceKey) {
+    if (removeDeviceKey || (kDebugMode && !kIsPlayBuild)) {
       cleanup.add(_storage.delete(key: _publicKeyKey));
       cleanup.add(_storage.delete(key: _privateKeyKey));
+      cleanup.add(_storage.delete(key: _installationIdKey));
     }
     await Future.wait(cleanup);
     notifyListeners();

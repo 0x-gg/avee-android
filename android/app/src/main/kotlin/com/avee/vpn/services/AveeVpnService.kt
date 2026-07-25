@@ -184,9 +184,7 @@ class AveeVpnService : VpnService(), BaseServiceInterface {
     override suspend fun startForeground(title: String, server: String?, content: String) {
         startForeground(
             notificationBuilder()
-                .setContentTitle(title)
-                .setContentText(content)
-                .setSubText(server ?: "")
+                .applyAveeContent(this, title, content, server)
                 .build()
         )
     }

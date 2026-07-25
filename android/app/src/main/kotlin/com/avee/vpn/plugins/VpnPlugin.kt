@@ -33,6 +33,7 @@ import com.avee.vpn.models.VpnOptions
 import com.avee.vpn.services.BaseServiceInterface
 import com.avee.vpn.services.AveeService
 import com.avee.vpn.services.AveeVpnService
+import com.avee.vpn.services.applyAveeContent
 import com.google.gson.Gson
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
@@ -492,8 +493,7 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
         val builder = NotificationCompat.Builder(context, GlobalState.SUBSCRIPTION_NOTIFICATION_CHANNEL)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle(title)
-            .setContentText(message)
+            .applyAveeContent(context, title, message)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(openAppPendingIntent)

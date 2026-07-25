@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:avee/common/common.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -108,6 +110,22 @@ class DeviceInfoService {
   Future<String?> _getOrCreatePersistentHwid() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+
+      // Sideload debug builds get a fresh fingerprint after each pm clear /
+      // reinstall so emulator screenshot runs can create accounts and start
+      // trials without recovering a previous session on the same AVD.
+      if (kDebugMode && !kIsPlayBuild) {
+        final storedHwid = prefs.getString(_hwidStorageKey);
+        if (storedHwid != null && storedHwid.isNotEmpty) {
+          return storedHwid;
+        }
+        final bytes =
+            List<int>.generate(24, (_) => Random.secure().nextInt(256));
+        final newHwid =
+            _generateCompact16CharId(base64UrlEncode(bytes));
+        await prefs.setString(_hwidStorageKey, newHwid);
+        return newHwid;
+      }
 
       final storedHwid = prefs.getString(_hwidStorageKey);
       if (storedHwid != null && storedHwid.isNotEmpty) {

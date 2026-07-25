@@ -2,6 +2,7 @@ import 'package:avee/common/common.dart';
 import 'package:avee/enum/enum.dart';
 import 'package:avee/models/models.dart';
 import 'package:avee/state.dart';
+import 'package:avee/ui/avee_design.dart';
 import 'package:flutter/material.dart';
 
 import 'deferred_page_body.dart';
@@ -79,7 +80,7 @@ Future<T?> showSheet<T>({
         isScrollControlled: props.isScrollControlled,
         context: context,
         constraints: BoxConstraints(
-          maxWidth: props.maxWidth ?? 360,
+          maxWidth: props.maxWidth ?? AveeLayout.of(context).dialogMaxWidth,
         ),
         filter: props.blur ? commonFilter : null,
         builder: (_) => builder(context, SheetType.sideSheet),
@@ -102,7 +103,7 @@ Future<T?> showExtend<T>(
         useSafeArea: props.useSafeArea,
         context: context,
         constraints: BoxConstraints(
-          maxWidth: props.maxWidth ?? 360,
+          maxWidth: props.maxWidth ?? AveeLayout.of(context).dialogMaxWidth,
         ),
         filter: props.blur ? commonFilter : null,
         builder: (context) => builder(context, SheetType.sideSheet),
@@ -177,20 +178,23 @@ class _AdaptiveSheetScaffoldState extends State<AdaptiveSheetScaffold> {
       ]),
     );
     if (bottomSheet) {
-      const handleSize = Size(32, 4);
+      final layout = AveeLayout.of(context);
+      final handleSize = Size(layout.s(40), layout.s(4));
       return Container(
         clipBehavior: Clip.hardEdge,
         decoration: ShapeDecoration(
           color: backgroundColor,
-          shape: const RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28.0)),
+          shape: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(layout.s(28)),
+            ),
           ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.only(top: 16),
+              padding: EdgeInsets.only(top: layout.s(16)),
               child: Container(
                 alignment: Alignment.center,
                 height: handleSize.height,

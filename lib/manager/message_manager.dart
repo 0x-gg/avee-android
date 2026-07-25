@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:avee/common/common.dart';
 import 'package:avee/models/models.dart';
+import 'package:avee/ui/avee_design.dart';
 import 'package:avee/widgets/fade_box.dart';
 import 'package:flutter/material.dart';
 
@@ -83,41 +84,48 @@ class MessageManagerState extends State<MessageManager> {
           widget.child,
           ValueListenableBuilder(
             valueListenable: _messagesNotifier,
-            builder: (_, messages, __) => FadeThroughBox(
-              margin: const EdgeInsets.only(
-                top: kToolbarHeight + 8,
-                left: 12,
-                right: 12,
-              ),
-              alignment: Alignment.topRight,
-              child: messages.isEmpty
-                  ? const SizedBox()
-                  : LayoutBuilder(
-                      key: Key(messages.last.id),
-                      builder: (_, constraints) => Card(
-                        shape: const RoundedSuperellipseBorder(
-                          borderRadius: BorderRadius.all(
-                            Radius.circular(Lumina.radiusLg),
+            builder: (context, messages, __) {
+              final layout = AveeLayout.of(context);
+              return FadeThroughBox(
+                margin: EdgeInsets.only(
+                  top: kToolbarHeight + layout.s(8),
+                  left: layout.s(12),
+                  right: layout.s(12),
+                ),
+                alignment: Alignment.topRight,
+                child: messages.isEmpty
+                    ? const SizedBox()
+                    : LayoutBuilder(
+                        key: Key(messages.last.id),
+                        builder: (_, constraints) => Card(
+                          shape: RoundedSuperellipseBorder(
+                            borderRadius: BorderRadius.all(
+                              Radius.circular(layout.s(Lumina.radiusLg)),
+                            ),
                           ),
-                        ),
-                        elevation: 10,
-                        color: context.colorScheme.surfaceContainerHigh,
-                        child: Container(
-                          width: min(
-                            constraints.maxWidth,
-                            500,
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 16,
-                          ),
-                          child: Text(
-                            messages.last.text,
+                          elevation: 10,
+                          color: context.colorScheme.surfaceContainerHigh,
+                          child: Container(
+                            width: min(
+                              constraints.maxWidth,
+                              layout.dialogMaxWidth,
+                            ),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: layout.s(16),
+                              vertical: layout.s(18),
+                            ),
+                            child: Text(
+                              messages.last.text,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(fontSize: 15),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-            ),
+              );
+            },
           ),
         ],
       );

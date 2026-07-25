@@ -50,7 +50,7 @@ function Back {
 }
 
 function Launch-App {
-    adb -e shell am force-stop com.avee.vpn.debug | Out-Null
+    adb -e shell pm clear com.avee.vpn.debug | Out-Null
     adb -e shell am start -n com.avee.vpn.debug/com.avee.vpn.MainActivity | Out-Null
     Start-Sleep -Seconds 8
 }

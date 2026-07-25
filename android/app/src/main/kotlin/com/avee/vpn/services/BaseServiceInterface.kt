@@ -7,11 +7,14 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
 import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED
 import android.net.VpnService
 import android.os.Build
+import android.view.View
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.avee.vpn.GlobalState
 import com.avee.vpn.MainActivity
@@ -30,6 +33,46 @@ interface BaseServiceInterface {
     fun stop()
 
     suspend fun startForeground(title: String, server: String?, content: String)
+}
+
+/** Prefer larger notification typography on tablets / large screens. */
+fun Context.aveeNotificationLayoutId(): Int {
+    val shortest = resources.configuration.smallestScreenWidthDp
+    return if (shortest >= 600) R.layout.notification_avee_tablet else R.layout.notification_avee
+}
+
+fun Context.aveeNotificationRemoteViews(
+    title: String,
+    content: String,
+    sub: String? = null,
+): RemoteViews {
+    val views = RemoteViews(packageName, aveeNotificationLayoutId())
+    views.setTextViewText(R.id.notification_title, title)
+    views.setTextViewText(R.id.notification_content, content)
+    if (sub.isNullOrBlank()) {
+        views.setViewVisibility(R.id.notification_sub, View.GONE)
+    } else {
+        views.setViewVisibility(R.id.notification_sub, View.VISIBLE)
+        views.setTextViewText(R.id.notification_sub, sub)
+    }
+    return views
+}
+
+fun NotificationCompat.Builder.applyAveeContent(
+    context: Context,
+    title: String,
+    content: String,
+    sub: String? = null,
+): NotificationCompat.Builder {
+    val views = context.aveeNotificationRemoteViews(title, content, sub)
+    setContentTitle(title)
+    setContentText(content)
+    if (!sub.isNullOrBlank()) {
+        setSubText(sub)
+    }
+    setCustomContentView(views)
+    setStyle(NotificationCompat.DecoratedCustomViewStyle())
+    return this
 }
 
 fun Service.createAveeNotificationBuilder(): Deferred<NotificationCompat.Builder> =
@@ -56,7 +99,7 @@ fun Service.createAveeNotificationBuilder(): Deferred<NotificationCompat.Builder
             )
         ) {
             setSmallIcon(R.drawable.ic_launcher_monochrome)
-            setContentTitle("AVEE")
+            applyAveeContent(this@createAveeNotificationBuilder, "AVEE", "")
             setContentIntent(pendingIntent)
             setCategory(NotificationCompat.CATEGORY_SERVICE)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
