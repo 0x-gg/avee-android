@@ -1,7 +1,7 @@
 name: avee
 description: AVEE VPN — multi-platform client based on mihomo core.
 publish_to: "none"
-version: 0.8.5+2026074507
+version: 0.8.5+2026074508
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
@@ -138,6 +138,6 @@ flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/images/icon.png"
-  adaptive_icon_background: "#202020"
+  adaptive_icon_background: "#000000"
   adaptive_icon_foreground: "assets/images/icon.png"
   adaptive_icon_monochrome: "assets/images/icon_white.png"
