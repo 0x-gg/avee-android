@@ -31,6 +31,48 @@ class AveeRadius {
   static const pill = 999.0;
 }
 
+/// Keeps AVEE screens readable on phones and tablets by centering content and
+/// capping the line length instead of stretching edge-to-edge on wide displays.
+class AveeResponsiveScroll extends StatelessWidget {
+  const AveeResponsiveScroll({
+    required this.children,
+    this.padding = const EdgeInsets.fromLTRB(20, 8, 20, 24),
+    this.maxWidth = 520,
+    this.centerVertically = false,
+    super.key,
+  });
+
+  final List<Widget> children;
+  final EdgeInsets padding;
+  final double maxWidth;
+  final bool centerVertically;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) {
+          final align = centerVertically && constraints.maxHeight > 640
+              ? Alignment.center
+              : Alignment.topCenter;
+          return SingleChildScrollView(
+            padding: padding,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Align(
+                alignment: align,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxWidth),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: children,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      );
+}
+
 class AveePage extends StatelessWidget {
   const AveePage({required this.child, this.bottomNavigationBar, super.key});
   final Widget child;
@@ -78,16 +120,18 @@ class AveeAppBar extends StatelessWidget {
             else
               const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  color: AveeColors.text,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.2,
-                  height: 1.1,
-                ),
-              ),
+              child: title == 'AVEE VPN'
+                  ? const AveeLogo(compact: true, horizontal: true)
+                  : Text(
+                      title,
+                      style: const TextStyle(
+                        color: AveeColors.text,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
+                        height: 1.1,
+                      ),
+                    ),
             ),
             if (onMenu != null)
               IconButton(
@@ -119,8 +163,11 @@ class AveeLogo extends StatelessWidget {
   final bool compact;
   final bool horizontal;
 
+  static const _asset = 'assets/images/icon.png';
+
   @override
   Widget build(BuildContext context) {
+    final size = compact ? 34.0 : 42.0;
     final textStyle = TextStyle(
       color: AveeColors.text,
       fontWeight: FontWeight.w600,
@@ -135,10 +182,16 @@ class AveeLogo extends StatelessWidget {
       letterSpacing: compact ? 0.4 : 0.6,
       height: 1,
     );
+    final mark = ClipRRect(
+      borderRadius: BorderRadius.circular(size * .22),
+      child: Image.asset(_asset, width: size, height: size, fit: BoxFit.cover),
+    );
     if (horizontal) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          mark,
+          const SizedBox(width: 10),
           Text('AVEE', style: textStyle),
           const SizedBox(width: 8),
           Text('VPN', style: vpnStyle),
@@ -149,6 +202,8 @@ class AveeLogo extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
+        mark,
+        const SizedBox(height: 8),
         Text('AVEE', style: textStyle),
         const SizedBox(height: 4),
         Text('VPN', style: vpnStyle),
