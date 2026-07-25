@@ -34,7 +34,11 @@ function Reset-AveeApp {
 }
 
 Write-Host "Stopping current emulator..."
-adb -e emu kill 2>$null | Out-Null
+try {
+    adb -e emu kill 2>$null | Out-Null
+} catch {
+    # No emulator running — safe to continue.
+}
 Start-Sleep -Seconds 3
 
 $launchArgs = @('-avd', $Avd, '-no-snapshot-load')
