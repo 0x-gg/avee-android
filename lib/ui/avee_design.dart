@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// AVEE 2026 mobile visual language — charcoal base + coral accent.
@@ -31,46 +33,71 @@ class AveeRadius {
   static const pill = 999.0;
 }
 
-/// Keeps AVEE screens readable on phones and tablets by centering content and
-/// capping the line length instead of stretching edge-to-edge on wide displays.
+/// Scrollable body with consistent horizontal padding on any screen size.
 class AveeResponsiveScroll extends StatelessWidget {
   const AveeResponsiveScroll({
     required this.children,
     this.padding = const EdgeInsets.fromLTRB(20, 8, 20, 24),
-    this.maxWidth = 520,
-    this.centerVertically = false,
     super.key,
   });
 
   final List<Widget> children;
   final EdgeInsets padding;
-  final double maxWidth;
-  final bool centerVertically;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, constraints) {
-          final align = centerVertically && constraints.maxHeight > 640
-              ? Alignment.center
-              : Alignment.topCenter;
-          return SingleChildScrollView(
-            padding: padding,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Align(
-                alignment: align,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: maxWidth),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: children,
+  Widget build(BuildContext context) => SingleChildScrollView(
+        padding: padding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
+      );
+}
+
+/// Fills the screen height: header at top, footer at bottom, hero grows in between.
+class AveeScreenFill extends StatelessWidget {
+  const AveeScreenFill({
+    required this.header,
+    required this.hero,
+    required this.footer,
+    this.padding = const EdgeInsets.fromLTRB(20, 12, 20, 28),
+    super.key,
+  });
+
+  final Widget header;
+  final Widget hero;
+  final Widget footer;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: padding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            header,
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) => Center(
+                  child: SizedBox(
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight,
+                    child: hero,
                   ),
                 ),
               ),
             ),
-          );
-        },
+            footer,
+          ],
+        ),
       );
+}
+
+/// Scales AVEE hero graphics to the available area while keeping phone proportions.
+double aveeHeroSize(BoxConstraints constraints) {
+  final byWidth = constraints.maxWidth * 0.72;
+  final byHeight = constraints.maxHeight * 0.88;
+  return math.min(byWidth, byHeight).clamp(220.0, 420.0);
 }
 
 class AveePage extends StatelessWidget {
