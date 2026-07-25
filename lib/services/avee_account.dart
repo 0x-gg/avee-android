@@ -30,6 +30,7 @@ class AveeAccountState extends ChangeNotifier {
   static const _privateKeyKey = 'avee.device_private_key';
   static const _managedProfileKey = 'avee.managed_profile';
   static const _installationIdKey = 'avee.installation_id';
+  static const _storedRecoveryCodeKey = 'avee.stored_recovery_code';
 
   static String get _defaultBaseUrl {
     const configured = String.fromEnvironment('AVEE_API_URL');
@@ -50,6 +51,7 @@ class AveeAccountState extends ChangeNotifier {
   String? subscriptionSource;
   String? error;
   String? recoveryCode;
+  String? storedRecoveryCode;
   String? accessReason;
   bool trialAvailable = true;
   String? trialUnavailableReason;
@@ -90,6 +92,7 @@ class AveeAccountState extends ChangeNotifier {
       token: values[3]!,
       expiresAt: expiresAt,
     );
+    storedRecoveryCode = await _storage.read(key: _storedRecoveryCodeKey);
     notifyListeners();
     await refresh();
     await refreshLocations();
@@ -185,6 +188,13 @@ class AveeAccountState extends ChangeNotifier {
       );
       await _save(created);
       recoveryCode = created.recoveryCode;
+      if (created.recoveryCode != null) {
+        storedRecoveryCode = created.recoveryCode;
+        await _storage.write(
+          key: _storedRecoveryCodeKey,
+          value: created.recoveryCode!,
+        );
+      }
       await verifyDevice();
       await refresh();
       await refreshLocations();
@@ -213,6 +223,13 @@ class AveeAccountState extends ChangeNotifier {
       );
       await _save(recovered);
       this.recoveryCode = recovered.recoveryCode;
+      if (recovered.recoveryCode != null) {
+        storedRecoveryCode = recovered.recoveryCode;
+        await _storage.write(
+          key: _storedRecoveryCodeKey,
+          value: recovered.recoveryCode!,
+        );
+      }
       await verifyDevice();
       await refresh();
       await refreshLocations();
@@ -228,17 +245,22 @@ class AveeAccountState extends ChangeNotifier {
     });
   }
 
-  Future<void> deleteAccount() async {
+  Future<void> persistRecoveryCode(String code) async {
+    storedRecoveryCode = code;
+    await _storage.write(key: _storedRecoveryCodeKey, value: code);
+    notifyListeners();
+  }
+
+  Future<bool> deleteAccount() async {
     final current = session;
-    if (current == null) return;
+    if (current == null) return false;
+    var deleted = false;
     await _run(() async {
       await _api.deleteAccount(current);
-      // Account deletion revokes the device identity server-side. Remove the
-      // local key pair too, otherwise a subsequent fresh account on this
-      // device would reuse a public key that the backend correctly rejects as
-      // already registered.
       await clear(removeDeviceKey: true);
+      deleted = true;
     });
+    return deleted;
   }
 
   Future<bool> completeGooglePurchase({
@@ -382,6 +404,7 @@ class AveeAccountState extends ChangeNotifier {
   Future<void> clear({bool removeDeviceKey = false}) async {
     session = null;
     recoveryCode = null;
+    storedRecoveryCode = null;
     access = false;
     accessType = null;
     subscriptionSource = null;
@@ -404,6 +427,7 @@ class AveeAccountState extends ChangeNotifier {
       _storage.delete(key: _sessionExpiresKey),
       _storage.delete(key: _selectedLocationKey),
       _storage.delete(key: _managedProfileKey),
+      _storage.delete(key: _storedRecoveryCodeKey),
     ];
     if (removeDeviceKey || (kDebugMode && !kIsPlayBuild)) {
       cleanup.add(_storage.delete(key: _publicKeyKey));

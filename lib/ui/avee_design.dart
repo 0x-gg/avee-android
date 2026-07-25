@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// AVEE 2026 mobile visual language — charcoal base + coral accent.
 class AveeColors {
@@ -709,4 +710,69 @@ InputDecoration aveeFieldDecoration(
       vertical: layout.s(16),
     ),
   );
+}
+
+/// Label + value row with a one-tap copy action for account credentials.
+class AveeCopyField extends StatelessWidget {
+  const AveeCopyField({
+    required this.label,
+    required this.value,
+    super.key,
+  });
+
+  final String label;
+  final String value;
+
+  Future<void> _copy(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: value));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$label copied'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AveeColors.surfaceRaised,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final layout = AveeLayout.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: AveeColors.secondaryText,
+            fontSize: layout.statusSize,
+          ),
+        ),
+        SizedBox(height: layout.s(6)),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: SelectableText(
+                value,
+                style: TextStyle(
+                  color: AveeColors.text,
+                  fontSize: layout.t(18),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            SizedBox(width: layout.s(8)),
+            IconButton(
+              onPressed: value.isEmpty ? null : () => _copy(context),
+              tooltip: 'Copy $label',
+              icon: Icon(Icons.copy_rounded, size: layout.s(22)),
+              color: AveeColors.primary,
+              visualDensity: VisualDensity.compact,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }

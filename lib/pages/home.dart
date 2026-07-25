@@ -671,8 +671,11 @@ class AveeAccountBanner extends StatelessWidget {
       ),
     );
     if (confirmed == true) {
-      await aveeAccountState.deleteAccount();
-      await globalState.appController.removeManagedProfile();
+      await globalState.appController.updateStatus(false);
+      final deleted = await aveeAccountState.deleteAccount();
+      if (deleted) {
+        await globalState.appController.removeManagedProfile();
+      }
     }
   }
 

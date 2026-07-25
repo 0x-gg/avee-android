@@ -798,7 +798,7 @@ Future<void> _handleConnectUnavailable(
             style: TextStyle(color: AveeColors.text),
           ),
           content: const Text(
-            'This device already activated a trial on another AVEE account. Recover that account to continue.',
+            'A free trial was already used on this device. You can create a new account and subscribe, or recover your previous account with your recovery code.',
             style: TextStyle(color: AveeColors.secondaryText),
           ),
           actions: [
@@ -1347,6 +1347,71 @@ class AveeAccountPage extends StatelessWidget {
                             ),
                           ],
                         ),
+                        SizedBox(height: layout.s(16)),
+                        AveePanel(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Account credentials',
+                                style: TextStyle(
+                                  color: AveeColors.text,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: layout.bodySize,
+                                ),
+                              ),
+                              SizedBox(height: layout.s(4)),
+                              Text(
+                                'Save these to recover access on another device.',
+                                style: TextStyle(
+                                  color: AveeColors.mutedText,
+                                  fontSize: layout.captionSize,
+                                  height: 1.4,
+                                ),
+                              ),
+                              SizedBox(height: layout.s(16)),
+                              AveeCopyField(
+                                label: 'Account number',
+                                value: account,
+                              ),
+                              if (aveeAccountState.storedRecoveryCode !=
+                                  null) ...[
+                                SizedBox(height: layout.s(16)),
+                                AveeCopyField(
+                                  label: 'Recovery code',
+                                  value:
+                                      aveeAccountState.storedRecoveryCode!,
+                                ),
+                              ] else ...[
+                                SizedBox(height: layout.s(12)),
+                                Text(
+                                  'Recovery code is shown once when the account is created. Use Recover account if you saved it elsewhere.',
+                                  style: TextStyle(
+                                    color: AveeColors.mutedText,
+                                    fontSize: layout.captionSize,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        if (!aveeAccountState.trialAvailable) ...[
+                          SizedBox(height: layout.s(16)),
+                          AveePanel(
+                            child: Text(
+                              aveeAccountState.trialUnavailableReason ==
+                                      'TRIAL_ALREADY_USED_ON_DEVICE'
+                                  ? 'A free trial was already used on this device. You can still subscribe or recover your previous account.'
+                                  : 'Free trial is not available on this device.',
+                              style: TextStyle(
+                                color: AveeColors.warning,
+                                fontSize: layout.captionSize,
+                                height: 1.45,
+                              ),
+                            ),
+                          ),
+                        ],
                         if (aveeAccountState.access) ...[
                           SizedBox(height: layout.s(16)),
                           AveeAccessStatusPanel(
@@ -1373,7 +1438,18 @@ class AveeAccountPage extends StatelessWidget {
                           icon: Icons.restore,
                           onPressed: aveeAccountState.loading
                               ? null
-                              : aveeBillingService.restore,
+                              : () => _restorePurchases(context),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.only(top: layout.s(6)),
+                          child: Text(
+                            'Re-links an active Google Play subscription to this AVEE account after reinstall or device change.',
+                            style: TextStyle(
+                              color: AveeColors.mutedText,
+                              fontSize: layout.captionSize,
+                              height: 1.4,
+                            ),
+                          ),
                         ),
                         SizedBox(height: layout.s(12)),
                         AveeSecondaryButton(
@@ -1448,31 +1524,94 @@ class AveeAccountPage extends StatelessWidget {
       );
 
   Future<void> _delete(BuildContext context) async {
+    final accountNumber = aveeAccountState.session?.accountNumber;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AveeColors.surface,
-        title: const Text('Delete account?'),
-        content: const Text('Access and local data will be removed.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final layout = AveeLayout.of(dialogContext);
+        return AlertDialog(
+          backgroundColor: AveeColors.surface,
+          title: Text(
+            'Delete account?',
+            style: TextStyle(
+              color: AveeColors.text,
+              fontSize: layout.t(20),
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+          content: Text(
+            accountNumber == null
+                ? 'This removes your AVEE account, access, and local credentials from this device. This cannot be undone.'
+                : 'Delete account #$accountNumber? Access ends immediately and local credentials are removed. Save your recovery code first if you may need this account again.',
+            style: TextStyle(
+              color: AveeColors.secondaryText,
+              fontSize: layout.bodySize,
+              height: 1.45,
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AveeColors.error),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Delete account'),
+            ),
+          ],
+        );
+      },
+    );
+    if (ok != true || !context.mounted) return;
+
+    await globalState.appController.updateStatus(false);
+    final deleted = await aveeAccountState.deleteAccount();
+    if (!context.mounted) return;
+
+    if (!deleted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            aveeAccountState.error ?? 'Could not delete account. Try again.',
+          ),
+          backgroundColor: AveeColors.error,
+        ),
+      );
+      return;
+    }
+
+    await globalState.appController.removeManagedProfile();
+    if (!context.mounted) return;
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Account deleted. You can create a new one, but this device will not receive another free trial.',
+        ),
+        behavior: SnackBarBehavior.floating,
       ),
     );
-    if (ok == true) {
-      await aveeAccountState.deleteAccount();
-      if (aveeAccountState.session == null) {
-        await globalState.appController.removeManagedProfile();
-        if (context.mounted) Navigator.pop(context);
-      }
-    }
+  }
+
+  Future<void> _restorePurchases(BuildContext context) async {
+    final restored = await aveeBillingService.restore();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          restored
+              ? 'Purchases restored. Subscription access is active.'
+              : aveeAccountState.error ??
+                  'No active Google Play subscription was found for this account.',
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor:
+            restored ? AveeColors.surfaceRaised : AveeColors.error,
+      ),
+    );
   }
 }
 
@@ -1598,10 +1737,22 @@ class AveeSubscriptionPage extends StatelessWidget {
       );
 
   Widget _trialOffer(BuildContext context) {
-    if (!aveeAccountState.trialAvailable) {
-      return const SizedBox.shrink();
-    }
     final layout = AveeLayout.of(context);
+    if (!aveeAccountState.trialAvailable) {
+      return AveePanel(
+        child: Text(
+          aveeAccountState.trialUnavailableReason ==
+                  'TRIAL_ALREADY_USED_ON_DEVICE'
+              ? 'This device already used a free trial. Subscribe below or recover your previous account.'
+              : 'Free trial is not available on this device.',
+          style: TextStyle(
+            color: AveeColors.warning,
+            fontSize: layout.bodySize,
+            height: 1.45,
+          ),
+        ),
+      );
+    }
     final trial = aveeRemoteConfig.value?['trial'];
     final value = trial is Map ? Map<String, dynamic>.from(trial) : const {};
     if (value['enabled'] == false) {
@@ -1856,51 +2007,14 @@ class _AveeRecoveryCodePageState extends State<AveeRecoveryCodePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Account number',
-                          style: TextStyle(
-                            color: AveeColors.secondaryText,
-                            fontSize: layout.statusSize,
-                          ),
-                        ),
-                        SizedBox(height: layout.s(6)),
-                        SelectableText(
-                          widget.account,
-                          style: TextStyle(
-                            color: AveeColors.text,
-                            fontSize: layout.t(18),
-                            fontWeight: FontWeight.w700,
-                          ),
+                        AveeCopyField(
+                          label: 'Account number',
+                          value: widget.account,
                         ),
                         SizedBox(height: layout.s(18)),
-                        Text(
-                          'Recovery code',
-                          style: TextStyle(
-                            color: AveeColors.secondaryText,
-                            fontSize: layout.statusSize,
-                          ),
-                        ),
-                        SizedBox(height: layout.s(6)),
-                        SelectableText(
-                          widget.code,
-                          style: TextStyle(
-                            color: AveeColors.primary,
-                            fontSize: layout.t(18),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(height: layout.s(14)),
-                        TextButton.icon(
-                          onPressed: () => Clipboard.setData(
-                            ClipboardData(
-                              text: '${widget.account}\n${widget.code}',
-                            ),
-                          ),
-                          icon: Icon(Icons.copy, size: layout.s(20)),
-                          label: Text(
-                            'Copy',
-                            style: TextStyle(fontSize: layout.bodySize),
-                          ),
+                        AveeCopyField(
+                          label: 'Recovery code',
+                          value: widget.code,
                         ),
                       ],
                     ),
@@ -1931,7 +2045,14 @@ class _AveeRecoveryCodePageState extends State<AveeRecoveryCodePage> {
                   SizedBox(height: layout.s(14)),
                   AveePrimaryButton(
                     label: 'Continue',
-                    onPressed: saved ? () => Navigator.pop(context) : null,
+                    onPressed: saved
+                        ? () async {
+                            await aveeAccountState.persistRecoveryCode(
+                              widget.code,
+                            );
+                            if (context.mounted) Navigator.pop(context);
+                          }
+                        : null,
                   ),
                 ],
               ),

@@ -68,10 +68,12 @@ class AveeBillingService {
         purchaseParam: PurchaseParam(productDetails: product),
       );
 
-  Future<void> restore() async {
-    await initialize();
+  Future<bool> restore() async {
+    if (account.session == null) return false;
+    if (!await initialize()) return false;
     await store.restorePurchases();
     await account.restoreGooglePurchases();
+    return account.access;
   }
 
   Future<void> dispose() async {
