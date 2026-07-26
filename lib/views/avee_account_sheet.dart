@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:avee/state.dart';
 
 import '../services/avee_account.dart';
@@ -21,12 +20,10 @@ class AveeAccountSheet extends StatefulWidget {
 
 class _AveeAccountSheetState extends State<AveeAccountSheet> {
   final accountController = TextEditingController();
-  final recoveryController = TextEditingController();
 
   @override
   void dispose() {
     accountController.dispose();
-    recoveryController.dispose();
     super.dispose();
   }
 
@@ -58,7 +55,7 @@ class _AveeAccountSheetState extends State<AveeAccountSheet> {
                   const SizedBox(height: 8),
                   Text(state.session == null
                       ? 'Создайте аккаунт, чтобы получить управляемый профиль VPN.'
-                      : 'Аккаунт ${state.session!.accountNumber}'),
+                      : 'AVEE ID ${state.session!.accountId}'),
                   if (state.error != null) ...[
                     const SizedBox(height: 10),
                     Text(state.error!,
@@ -90,11 +87,10 @@ class _AveeAccountSheetState extends State<AveeAccountSheet> {
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
-          onPressed: aveeAccountState.loading ? null : _recover,
+          onPressed: aveeAccountState.loading ? null : _login,
           icon: const Icon(Icons.login),
-          label: const Text('Восстановить аккаунт'),
+          label: const Text('Войти по AVEE ID'),
         ),
-        if (aveeAccountState.recoveryCode != null) _recoveryCard(),
       ];
 
   List<Widget> _loggedIn(BuildContext context, int? remaining) => [
@@ -136,40 +132,15 @@ class _AveeAccountSheetState extends State<AveeAccountSheet> {
         ),
       ];
 
-  Widget _recoveryCard() => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Сохраните код восстановления — он показывается один раз.'),
-              SelectableText(aveeAccountState.recoveryCode!),
-              TextButton.icon(
-                onPressed: () => Clipboard.setData(ClipboardData(
-                    text: aveeAccountState.recoveryCode!)),
-                icon: const Icon(Icons.copy),
-                label: const Text('Скопировать код'),
-              ),
-            ],
-          ),
-        ),
-      );
-
-  Future<void> _recover() async {
+  Future<void> _login() async {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Восстановить аккаунт'),
+        title: const Text('Войти по AVEE ID'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           TextField(
             controller: accountController,
-            decoration: const InputDecoration(labelText: 'Номер аккаунта'),
-            textCapitalization: TextCapitalization.characters,
-          ),
-          TextField(
-            controller: recoveryController,
-            decoration: const InputDecoration(labelText: 'Код восстановления'),
-            obscureText: true,
+            decoration: const InputDecoration(labelText: 'AVEE ID'),
           ),
         ]),
         actions: [
@@ -178,10 +149,7 @@ class _AveeAccountSheetState extends State<AveeAccountSheet> {
               child: const Text('Отмена')),
           FilledButton(
             onPressed: () async {
-              await aveeAccountState.recoverAccount(
-                accountNumber: accountController.text,
-                recoveryCode: recoveryController.text,
-              );
+              await aveeAccountState.loginAccount(accountId: accountController.text);
               if (dialogContext.mounted) Navigator.pop(dialogContext);
             },
             child: const Text('Войти'),

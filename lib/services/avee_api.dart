@@ -15,18 +15,14 @@ class AveeApiException implements Exception {
 class AveeSession {
   const AveeSession(
       {required this.accountId,
-      required this.accountNumber,
       required this.deviceId,
       required this.token,
-      required this.expiresAt,
-      this.recoveryCode});
+      required this.expiresAt});
 
   final String accountId;
-  final String accountNumber;
   final String deviceId;
   final String token;
   final DateTime expiresAt;
-  final String? recoveryCode;
 
   factory AveeSession.fromJson(Map<String, dynamic> json) {
     final account = json['account'] as Map<String, dynamic>;
@@ -34,11 +30,9 @@ class AveeSession {
     final session = json['session'] as Map<String, dynamic>;
     return AveeSession(
         accountId: account['id'] as String,
-        accountNumber: account['accountNumber'] as String,
         deviceId: device['id'] as String,
         token: session['token'] as String,
-        expiresAt: DateTime.parse(session['expiresAt'] as String),
-        recoveryCode: json['recoveryCode'] as String?);
+        expiresAt: DateTime.parse(session['expiresAt'] as String));
   }
 }
 
@@ -71,9 +65,8 @@ class AveeApi {
     return AveeSession.fromJson(response);
   }
 
-  Future<AveeSession> recoverAccount({
-    required String accountNumber,
-    required String recoveryCode,
+  Future<AveeSession> loginAccount({
+    required String accountId,
     required String publicKey,
     String? installationId,
     String? deviceFingerprint,
@@ -82,9 +75,8 @@ class AveeApi {
     String? deviceName,
     String? appVersion,
   }) async {
-    final response = await _request('POST', '/accounts/recover', body: {
-      'accountNumber': accountNumber,
-      'recoveryCode': recoveryCode,
+    final response = await _request('POST', '/accounts/login', body: {
+      'accountId': accountId,
       'publicKey': publicKey,
       if (installationId != null) 'installationId': installationId,
       if (deviceFingerprint != null) 'deviceFingerprint': deviceFingerprint,
@@ -156,7 +148,7 @@ class AveeApi {
           token: session.token,
           extraHeaders: {'x-account-id': session.accountId});
 
-  Future<String> managedMihomoProfile(AveeSession session,
+  Future<Map<String, dynamic>> managedMihomoProfile(AveeSession session,
       {String? hwid}) async {
     final response = await _request('GET', '/config/mihomo',
         token: session.token,
@@ -164,8 +156,8 @@ class AveeApi {
           'x-account-id': session.accountId,
           if (hwid != null) 'x-avee-hwid': hwid
         },
-        acceptYaml: true);
-    return response['_raw'] as String;
+        acceptYaml: false);
+    return response;
   }
 
   Future<Map<String, dynamic>> _request(String method, String path,

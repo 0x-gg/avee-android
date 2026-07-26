@@ -189,10 +189,32 @@ class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
     }
   }
 
-  Future<void> _recover() async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => const AveeRecoveryPage()),
+  Future<void> _loginById(BuildContext context) async {
+    final controller = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AveeColors.surface,
+        title: const Text('Sign in with AVEE ID'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: aveeFieldDecoration(context, label: 'AVEE ID'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () async {
+              if (controller.text.trim().isEmpty) return;
+              await aveeAccountState.loginAccount(accountId: controller.text);
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
+            },
+            child: const Text('Sign in'),
+          ),
+        ],
+      ),
     );
+    controller.dispose();
   }
 
   @override
@@ -202,8 +224,8 @@ class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
           if (aveeAccountState.session == null) {
             return AveePage(
               child: AveeGuestOnboarding(
-                onRecovery: _recover,
                 onSettings: () => openAveeMenu(context),
+                onLogin: () => _loginById(context),
               ),
             );
           }
@@ -221,12 +243,12 @@ class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
 
 class AveeGuestOnboarding extends StatelessWidget {
   const AveeGuestOnboarding({
-    required this.onRecovery,
     required this.onSettings,
+    required this.onLogin,
     super.key,
   });
-  final VoidCallback onRecovery;
   final VoidCallback onSettings;
+  final VoidCallback onLogin;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -286,11 +308,11 @@ class AveeGuestOnboarding extends StatelessWidget {
                             ? null
                             : () => _create(context),
                       ),
-                      SizedBox(height: layout.s(12)),
+                      SizedBox(height: layout.s(10)),
                       AveeSecondaryButton(
-                        label: 'Recover account',
-                        icon: Icons.key_rounded,
-                        onPressed: onRecovery,
+                        label: 'Sign in with AVEE ID',
+                        icon: Icons.login_rounded,
+                        onPressed: onLogin,
                       ),
                       SizedBox(height: layout.s(22)),
                       Text(
@@ -313,17 +335,6 @@ class AveeGuestOnboarding extends StatelessWidget {
 
   Future<void> _create(BuildContext context) async {
     await aveeAccountState.createAccount();
-    if (!context.mounted || aveeAccountState.session == null) return;
-    final code = aveeAccountState.recoveryCode;
-    if (code == null) return;
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => AveeRecoveryCodePage(
-          account: aveeAccountState.session!.accountNumber,
-          code: code,
-        ),
-      ),
-    );
   }
 }
 
@@ -796,22 +807,13 @@ Future<void> _handleConnectUnavailable(
             style: TextStyle(color: AveeColors.text),
           ),
           content: const Text(
-            'A free trial was already used on this device. You can create a new account and subscribe, or recover your previous account with your recovery code.',
+            'A free trial was already used on this device. Subscribe to continue.',
             style: TextStyle(color: AveeColors.secondaryText),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Close'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                Navigator.of(context).push<void>(
-                  MaterialPageRoute(builder: (_) => const AveeRecoveryPage()),
-                );
-              },
-              child: const Text('Recover account'),
             ),
           ],
         ),
@@ -1317,7 +1319,7 @@ class AveeAccountPage extends StatelessWidget {
             listenable: aveeAccountState,
             builder: (context, _) {
               final layout = AveeLayout.of(context);
-              final account = aveeAccountState.session?.accountNumber ?? '—';
+              final account = aveeAccountState.session?.accountId ?? '—';
               final initial =
                   account.isNotEmpty ? account.substring(0, 1) : 'A';
               return Column(
@@ -1375,7 +1377,7 @@ class AveeAccountPage extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Account credentials',
+                                'AVEE ID',
                                 style: TextStyle(
                                   color: AveeColors.text,
                                   fontWeight: FontWeight.w700,
@@ -1384,7 +1386,7 @@ class AveeAccountPage extends StatelessWidget {
                               ),
                               SizedBox(height: layout.s(4)),
                               Text(
-                                'Save these to recover access on another device.',
+                                'Your AVEE ID identifies this account. Access is protected by this device.',
                                 style: TextStyle(
                                   color: AveeColors.mutedText,
                                   fontSize: layout.captionSize,
@@ -1393,27 +1395,9 @@ class AveeAccountPage extends StatelessWidget {
                               ),
                               SizedBox(height: layout.s(16)),
                               AveeCopyField(
-                                label: 'Account number',
+                                label: 'AVEE ID',
                                 value: account,
                               ),
-                              if (aveeAccountState.storedRecoveryCode !=
-                                  null) ...[
-                                SizedBox(height: layout.s(16)),
-                                AveeCopyField(
-                                  label: 'Recovery code',
-                                  value: aveeAccountState.storedRecoveryCode!,
-                                ),
-                              ] else ...[
-                                SizedBox(height: layout.s(12)),
-                                Text(
-                                  'Recovery code is shown once when the account is created. Use Recover account if you saved it elsewhere.',
-                                  style: TextStyle(
-                                    color: AveeColors.mutedText,
-                                    fontSize: layout.captionSize,
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
                         ),
@@ -1423,7 +1407,7 @@ class AveeAccountPage extends StatelessWidget {
                             child: Text(
                               aveeAccountState.trialUnavailableReason ==
                                       'TRIAL_ALREADY_USED_ON_DEVICE'
-                                  ? 'A free trial was already used on this device. You can still subscribe or recover your previous account.'
+                                  ? 'A free trial was already used on this device. Subscribe to continue.'
                                   : 'Free trial is not available on this device.',
                               style: TextStyle(
                                 color: AveeColors.warning,
@@ -1543,7 +1527,7 @@ class AveeAccountPage extends StatelessWidget {
       );
 
   Future<void> _delete(BuildContext context) async {
-    final accountNumber = aveeAccountState.session?.accountNumber;
+    final accountId = aveeAccountState.session?.accountId;
     final ok = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -1560,9 +1544,9 @@ class AveeAccountPage extends StatelessWidget {
             ),
           ),
           content: Text(
-            accountNumber == null
+            accountId == null
                 ? 'This removes your AVEE account, access, and local credentials from this device. This cannot be undone.'
-                : 'Delete account #$accountNumber? Access ends immediately and local credentials are removed. Save your recovery code first if you may need this account again.',
+                : 'Delete AVEE ID $accountId? Access ends immediately and local credentials are removed. This cannot be undone.',
             style: TextStyle(
               color: AveeColors.secondaryText,
               fontSize: layout.bodySize,
@@ -1831,254 +1815,3 @@ class AveeSubscriptionPage extends StatelessWidget {
   }
 }
 
-class AveeRecoveryPage extends StatefulWidget {
-  const AveeRecoveryPage({super.key});
-  @override
-  State<AveeRecoveryPage> createState() => _AveeRecoveryPageState();
-}
-
-class _AveeRecoveryPageState extends State<AveeRecoveryPage> {
-  final account = TextEditingController();
-  final code = TextEditingController();
-  bool obscure = true;
-
-  @override
-  void dispose() {
-    account.dispose();
-    code.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final layout = AveeLayout.of(context);
-    return Scaffold(
-      backgroundColor: AveeColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const AveeAppBar(title: 'Account Recovery', showBack: true),
-            Expanded(
-              child: AveeResponsiveScroll(
-                children: [
-                  Text(
-                    'Recover Your Account',
-                    style: TextStyle(
-                      color: AveeColors.text,
-                      fontWeight: FontWeight.w800,
-                      fontSize: layout.headlineSize,
-                    ),
-                  ),
-                  SizedBox(height: layout.s(8)),
-                  Text(
-                    'Enter your AVEE account number and recovery code to restore access on this device.',
-                    style: TextStyle(
-                      color: AveeColors.secondaryText,
-                      height: 1.4,
-                      fontSize: layout.bodySize,
-                    ),
-                  ),
-                  SizedBox(height: layout.s(28)),
-                  TextField(
-                    controller: account,
-                    keyboardType: TextInputType.number,
-                    style: TextStyle(
-                      color: AveeColors.text,
-                      fontSize: layout.bodySize,
-                    ),
-                    decoration: aveeFieldDecoration(
-                      context,
-                      label: 'Account number',
-                      prefixIcon: Icon(
-                        Icons.badge_outlined,
-                        size: layout.s(22),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: layout.s(16)),
-                  TextField(
-                    controller: code,
-                    obscureText: obscure,
-                    style: TextStyle(
-                      color: AveeColors.text,
-                      fontSize: layout.bodySize,
-                    ),
-                    decoration: aveeFieldDecoration(
-                      context,
-                      label: 'Recovery code',
-                      prefixIcon: Icon(
-                        Icons.vpn_key_outlined,
-                        size: layout.s(22),
-                      ),
-                      suffixIcon: IconButton(
-                        onPressed: () => setState(() => obscure = !obscure),
-                        icon: Icon(
-                          obscure ? Icons.visibility : Icons.visibility_off,
-                          size: layout.s(22),
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (aveeAccountState.error != null)
-                    Padding(
-                      padding: EdgeInsets.only(top: layout.s(16)),
-                      child: Text(
-                        _friendlyError(aveeAccountState.error!),
-                        style: TextStyle(
-                          color: AveeColors.error,
-                          fontSize: layout.bodySize,
-                        ),
-                      ),
-                    ),
-                  SizedBox(height: layout.s(28)),
-                  AveePrimaryButton(
-                    label: aveeAccountState.loading
-                        ? 'Checking…'
-                        : 'Recover Account',
-                    onPressed: aveeAccountState.loading
-                        ? null
-                        : () async {
-                            if (account.text.trim().isEmpty ||
-                                code.text.trim().isEmpty) {
-                              return;
-                            }
-                            await aveeAccountState.recoverAccount(
-                              accountNumber: account.text,
-                              recoveryCode: code.text,
-                            );
-                            if (mounted && aveeAccountState.session != null) {
-                              Navigator.pop(context);
-                            }
-                          },
-                  ),
-                  SizedBox(height: layout.s(24)),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      'Back to create account',
-                      style: TextStyle(
-                        color: AveeColors.primary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: layout.bodySize,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class AveeRecoveryCodePage extends StatefulWidget {
-  const AveeRecoveryCodePage({
-    required this.account,
-    required this.code,
-    super.key,
-  });
-  final String account;
-  final String code;
-  @override
-  State<AveeRecoveryCodePage> createState() => _AveeRecoveryCodePageState();
-}
-
-class _AveeRecoveryCodePageState extends State<AveeRecoveryCodePage> {
-  bool saved = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final layout = AveeLayout.of(context);
-    return Scaffold(
-      backgroundColor: AveeColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            AveeAppBar(
-              title: 'Save Recovery Code',
-              showBack: true,
-              onBack: saved ? () => Navigator.pop(context) : null,
-            ),
-            Expanded(
-              child: AveeResponsiveScroll(
-                children: [
-                  Text(
-                    'Save your account details',
-                    style: TextStyle(
-                      color: AveeColors.text,
-                      fontWeight: FontWeight.w800,
-                      fontSize: layout.headlineSize,
-                    ),
-                  ),
-                  SizedBox(height: layout.s(8)),
-                  Text(
-                    'Your recovery code is shown once. Without it, access cannot be restored.',
-                    style: TextStyle(
-                      color: AveeColors.secondaryText,
-                      height: 1.4,
-                      fontSize: layout.bodySize,
-                    ),
-                  ),
-                  SizedBox(height: layout.s(26)),
-                  AveePanel(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AveeCopyField(
-                          label: 'Account number',
-                          value: widget.account,
-                        ),
-                        SizedBox(height: layout.s(18)),
-                        AveeCopyField(
-                          label: 'Recovery code',
-                          value: widget.code,
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: layout.s(18)),
-                  Text(
-                    'Do not share the code or store it in plain sight.',
-                    style: TextStyle(
-                      color: AveeColors.warning,
-                      fontSize: layout.bodySize,
-                    ),
-                  ),
-                  SizedBox(height: layout.s(20)),
-                  CheckboxListTile(
-                    value: saved,
-                    onChanged: (value) =>
-                        setState(() => saved = value ?? false),
-                    contentPadding: EdgeInsets.zero,
-                    activeColor: AveeColors.primary,
-                    title: Text(
-                      'I saved the code',
-                      style: TextStyle(
-                        color: AveeColors.text,
-                        fontSize: layout.bodySize,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: layout.s(14)),
-                  AveePrimaryButton(
-                    label: 'Continue',
-                    onPressed: saved
-                        ? () async {
-                            await aveeAccountState.persistRecoveryCode(
-                              widget.code,
-                            );
-                            if (context.mounted) Navigator.pop(context);
-                          }
-                        : null,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

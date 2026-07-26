@@ -22,15 +22,14 @@ class AveeAccountState extends ChangeNotifier {
         _storage = storage ?? const FlutterSecureStorage();
 
   static const _accountIdKey = 'avee.account_id';
-  static const _accountNumberKey = 'avee.account_number';
   static const _deviceIdKey = 'avee.device_id';
   static const _sessionTokenKey = 'avee.session_token';
   static const _sessionExpiresKey = 'avee.session_expires_at';
   static const _publicKeyKey = 'avee.device_public_key';
   static const _privateKeyKey = 'avee.device_private_key';
   static const _managedProfileKey = 'avee.managed_profile';
+  static const _managedProfileHashKey = 'avee.managed_profile_hash';
   static const _installationIdKey = 'avee.installation_id';
-  static const _storedRecoveryCodeKey = 'avee.stored_recovery_code';
 
   static String get _defaultBaseUrl {
     const configured = String.fromEnvironment('AVEE_API_URL');
@@ -50,8 +49,6 @@ class AveeAccountState extends ChangeNotifier {
   String? accessType;
   String? subscriptionSource;
   String? error;
-  String? recoveryCode;
-  String? storedRecoveryCode;
   String? accessReason;
   bool trialAvailable = true;
   String? trialUnavailableReason;
@@ -60,6 +57,7 @@ class AveeAccountState extends ChangeNotifier {
   int? trafficUsedBytes;
   int? trafficRemainingBytes;
   DateTime? managedProfileUpdatedAt;
+  String? managedProfileHash;
 
   /// Live Remnawave Host catalog returned by AVEE Backend.
   List<Map<String, dynamic>> locations = const [];
@@ -72,27 +70,24 @@ class AveeAccountState extends ChangeNotifier {
   Future<void> restore() async {
     final values = await Future.wait([
       _storage.read(key: _accountIdKey),
-      _storage.read(key: _accountNumberKey),
       _storage.read(key: _deviceIdKey),
       _storage.read(key: _sessionTokenKey),
       _storage.read(key: _sessionExpiresKey),
       _storage.read(key: _selectedLocationKey),
     ]);
-    selectedLocation = values[5];
-    if (values.take(5).any((value) => value == null)) return;
-    final expiresAt = DateTime.tryParse(values[4]!);
+    selectedLocation = values[4];
+    if (values.take(4).any((value) => value == null)) return;
+    final expiresAt = DateTime.tryParse(values[3]!);
     if (expiresAt == null || expiresAt.isBefore(DateTime.now())) {
       await clear();
       return;
     }
     session = AveeSession(
       accountId: values[0]!,
-      accountNumber: values[1]!,
-      deviceId: values[2]!,
-      token: values[3]!,
+      deviceId: values[1]!,
+      token: values[2]!,
       expiresAt: expiresAt,
     );
-    storedRecoveryCode = await _storage.read(key: _storedRecoveryCodeKey);
     notifyListeners();
     await refresh();
     await refreshLocations();
@@ -187,32 +182,22 @@ class AveeAccountState extends ChangeNotifier {
         appVersion: info.version,
       );
       await _save(created);
-      recoveryCode = created.recoveryCode;
-      if (created.recoveryCode != null) {
-        storedRecoveryCode = created.recoveryCode;
-        await _storage.write(
-          key: _storedRecoveryCodeKey,
-          value: created.recoveryCode!,
-        );
-      }
       await verifyDevice();
       await refresh();
       await refreshLocations();
     });
   }
 
-  Future<void> recoverAccount({
-    required String accountNumber,
-    required String recoveryCode,
+  Future<void> loginAccount({
+    required String accountId,
   }) async {
     await _run(() async {
       final keyPair = await _ensureDeviceKeyPair();
       final fingerprint = (await DeviceInfoService().getDeviceDetails()).hwid;
       final info = await PackageInfo.fromPlatform();
       final integrity = kIsPlayBuild ? await AveePlayIntegrity.request() : null;
-      final recovered = await _api.recoverAccount(
-        accountNumber: accountNumber.trim(),
-        recoveryCode: recoveryCode.trim(),
+      final recovered = await _api.loginAccount(
+        accountId: accountId.trim(),
         publicKey: base64UrlEncode(keyPair.publicKey.bytes),
         installationId: await _ensureInstallationId(),
         deviceFingerprint: fingerprint,
@@ -222,14 +207,6 @@ class AveeAccountState extends ChangeNotifier {
         appVersion: info.version,
       );
       await _save(recovered);
-      this.recoveryCode = recovered.recoveryCode;
-      if (recovered.recoveryCode != null) {
-        storedRecoveryCode = recovered.recoveryCode;
-        await _storage.write(
-          key: _storedRecoveryCodeKey,
-          value: recovered.recoveryCode!,
-        );
-      }
       await verifyDevice();
       await refresh();
       await refreshLocations();
@@ -243,12 +220,6 @@ class AveeAccountState extends ChangeNotifier {
       await _api.startTrial(current);
       await refresh();
     });
-  }
-
-  Future<void> persistRecoveryCode(String code) async {
-    storedRecoveryCode = code;
-    await _storage.write(key: _storedRecoveryCodeKey, value: code);
-    notifyListeners();
   }
 
   Future<bool> deleteAccount() async {
@@ -340,12 +311,26 @@ class AveeAccountState extends ChangeNotifier {
     final current = session;
     if (current == null || !access) return null;
     try {
-      final yaml = await _api.managedMihomoProfile(current);
+      final response = await _api.managedMihomoProfile(current);
+      final yaml = response['profile'] as String?;
+      if (yaml == null || yaml.isEmpty) throw const FormatException('Managed profile is empty');
       final parsed = loadYaml(yaml);
       if (parsed is! YamlMap || parsed['proxies'] is! YamlList) {
         throw const FormatException('Managed profile has no proxies');
       }
+      final nextHash = response['profileHash']?.toString();
+      final previousHash = await _storage.read(key: _managedProfileHashKey);
+      if (nextHash != null && nextHash == previousHash) {
+        managedProfileHash = previousHash;
+        managedProfileUpdatedAt = DateTime.now();
+        notifyListeners();
+        return null;
+      }
       await _storage.write(key: _managedProfileKey, value: yaml);
+      if (nextHash != null) {
+        await _storage.write(key: _managedProfileHashKey, value: nextHash);
+      }
+      managedProfileHash = nextHash;
       managedProfileUpdatedAt = DateTime.now();
       error = null;
       notifyListeners();
@@ -403,8 +388,6 @@ class AveeAccountState extends ChangeNotifier {
 
   Future<void> clear({bool removeDeviceKey = false}) async {
     session = null;
-    recoveryCode = null;
-    storedRecoveryCode = null;
     access = false;
     accessType = null;
     subscriptionSource = null;
@@ -421,13 +404,12 @@ class AveeAccountState extends ChangeNotifier {
     selectedLocation = null;
     final cleanup = <Future<void>>[
       _storage.delete(key: _accountIdKey),
-      _storage.delete(key: _accountNumberKey),
       _storage.delete(key: _deviceIdKey),
       _storage.delete(key: _sessionTokenKey),
       _storage.delete(key: _sessionExpiresKey),
       _storage.delete(key: _selectedLocationKey),
       _storage.delete(key: _managedProfileKey),
-      _storage.delete(key: _storedRecoveryCodeKey),
+      _storage.delete(key: _managedProfileHashKey),
     ];
     if (removeDeviceKey || (kDebugMode && !kIsPlayBuild)) {
       cleanup.add(_storage.delete(key: _publicKeyKey));
@@ -480,7 +462,6 @@ class AveeAccountState extends ChangeNotifier {
     session = value;
     await Future.wait([
       _storage.write(key: _accountIdKey, value: value.accountId),
-      _storage.write(key: _accountNumberKey, value: value.accountNumber),
       _storage.write(key: _deviceIdKey, value: value.deviceId),
       _storage.write(key: _sessionTokenKey, value: value.token),
       _storage.write(

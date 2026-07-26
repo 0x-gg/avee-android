@@ -29,7 +29,6 @@ void main() {
         () => AveeApi(baseUrl: 'http://10.0.2.2:3000', client: client)
             .accountState(AveeSession(
                 accountId: 'a',
-                accountNumber: 'n',
                 deviceId: 'd',
                 token: 'secret',
                 expiresAt: DateTime.utc(2026, 7, 15))),
@@ -45,7 +44,6 @@ void main() {
     });
     final session = AveeSession(
       accountId: 'a',
-      accountNumber: 'n',
       deviceId: 'd',
       token: 'secret',
       expiresAt: DateTime.utc(2026, 7, 15),
