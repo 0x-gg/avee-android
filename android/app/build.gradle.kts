@@ -194,6 +194,10 @@ configurations.all {
         force("androidx.datastore:datastore-android:1.1.7")
         force("androidx.datastore:datastore-preferences:1.1.7")
         force("androidx.datastore:datastore-preferences-android:1.1.7")
+        // Material 1.7.0 uses Window.setStatusBarColor and
+        // Window.setNavigationBarColor from its date picker. Material 1.13+
+        // contains the Android 15 edge-to-edge compatibility updates.
+        force("com.google.android.material:material:1.13.0")
     }
 }
 

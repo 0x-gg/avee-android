@@ -476,8 +476,7 @@ class AveeAccessStatusPanel extends StatelessWidget {
     final expiresAt = state.accessExpiresAt;
     final timeLabel =
         expiresAt == null ? null : _formatTimeRemaining(expiresAt);
-    final untilLabel =
-        expiresAt == null ? null : 'Until ${_date(expiresAt)}';
+    final untilLabel = expiresAt == null ? null : 'Until ${_date(expiresAt)}';
     final traffic = state.trafficRemainingBytes;
 
     return AveePanel(
@@ -683,8 +682,7 @@ class AveeHomeDashboard extends ConsumerWidget {
                             size: layout.orbSize,
                             running: running,
                             connecting: connecting,
-                            canConnect:
-                                aveeAccountState.access && hasProfile,
+                            canConnect: aveeAccountState.access && hasProfile,
                             onUnavailable: () => _handleConnectUnavailable(
                               context,
                               ref,
@@ -1284,6 +1282,30 @@ String _accountAccessHeadline(AveeAccountState state) {
   return time == null ? 'Subscription active' : 'Subscription · $time';
 }
 
+class AveeVersionFooter extends StatelessWidget {
+  const AveeVersionFooter({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final layout = AveeLayout.of(context);
+    final info = globalState.packageInfo;
+    return Padding(
+      padding: EdgeInsets.only(top: layout.s(10), bottom: layout.s(8)),
+      child: Center(
+        child: Text(
+          'AVEE VPN · Version ${info.version} (${info.buildNumber})',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AveeColors.mutedText,
+            fontSize: layout.captionSize,
+            letterSpacing: 0.2,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class AveeAccountPage extends StatelessWidget {
   const AveeAccountPage({super.key});
 
@@ -1379,8 +1401,7 @@ class AveeAccountPage extends StatelessWidget {
                                 SizedBox(height: layout.s(16)),
                                 AveeCopyField(
                                   label: 'Recovery code',
-                                  value:
-                                      aveeAccountState.storedRecoveryCode!,
+                                  value: aveeAccountState.storedRecoveryCode!,
                                 ),
                               ] else ...[
                                 SizedBox(height: layout.s(12)),
@@ -1466,8 +1487,7 @@ class AveeAccountPage extends StatelessWidget {
                               onPressed: () =>
                                   globalState.openUrl(kAveePrivacyPolicyUrl),
                               style: TextButton.styleFrom(
-                                textStyle:
-                                    TextStyle(fontSize: layout.bodySize),
+                                textStyle: TextStyle(fontSize: layout.bodySize),
                               ),
                               child: const Text('Privacy'),
                             ),
@@ -1475,8 +1495,7 @@ class AveeAccountPage extends StatelessWidget {
                               onPressed: () =>
                                   globalState.openUrl(kAveeTermsUrl),
                               style: TextButton.styleFrom(
-                                textStyle:
-                                    TextStyle(fontSize: layout.bodySize),
+                                textStyle: TextStyle(fontSize: layout.bodySize),
                               ),
                               child: const Text('Terms'),
                             ),
@@ -1484,8 +1503,7 @@ class AveeAccountPage extends StatelessWidget {
                               onPressed: () =>
                                   globalState.openUrl(kAveeSupportUrl),
                               style: TextButton.styleFrom(
-                                textStyle:
-                                    TextStyle(fontSize: layout.bodySize),
+                                textStyle: TextStyle(fontSize: layout.bodySize),
                               ),
                               child: const Text('Support'),
                             ),
@@ -1513,6 +1531,7 @@ class AveeAccountPage extends StatelessWidget {
                             ),
                           ),
                         ),
+                        const AveeVersionFooter(),
                       ],
                     ),
                   ),
@@ -1608,8 +1627,7 @@ class AveeAccountPage extends StatelessWidget {
                   'No active Google Play subscription was found for this account.',
         ),
         behavior: SnackBarBehavior.floating,
-        backgroundColor:
-            restored ? AveeColors.surfaceRaised : AveeColors.error,
+        backgroundColor: restored ? AveeColors.surfaceRaised : AveeColors.error,
       ),
     );
   }
@@ -1726,6 +1744,7 @@ class AveeSubscriptionPage extends StatelessWidget {
                             );
                           },
                         ),
+                        const AveeVersionFooter(),
                       ],
                     );
                   },
