@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'avee_account.dart';
 import '../ui/avee_design.dart';
@@ -106,6 +107,13 @@ class AveeBillingService {
 
 final aveeBillingService = AveeBillingService();
 
+Future<void> openAveePlaySubscriptionManagement() async {
+  final uri = Uri.parse(
+    'https://play.google.com/store/account/subscriptions?package=com.avee.vpn',
+  );
+  await launchUrl(uri, mode: LaunchMode.externalApplication);
+}
+
 class AveePaywall extends StatelessWidget {
   const AveePaywall({super.key});
 
@@ -127,6 +135,34 @@ class AveePaywall extends StatelessWidget {
           child: FutureBuilder<AveeBillingOffers>(
             future: aveeBillingService.offers(),
             builder: (context, snapshot) {
+              if (account.isSubscriptionAccess) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Your subscription is active',
+                      style: TextStyle(
+                        color: AveeColors.text,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Manage or cancel it in Google Play. No additional plan can be purchased while this subscription is active.',
+                      style: TextStyle(color: AveeColors.secondaryText),
+                    ),
+                    const SizedBox(height: 16),
+                    AveePrimaryButton(
+                      label: 'Manage subscription',
+                      icon: Icons.open_in_new,
+                      onPressed: () =>
+                          openAveePlaySubscriptionManagement(),
+                    ),
+                  ],
+                );
+              }
               if (snapshot.connectionState != ConnectionState.done) {
                 return const Center(
                     child:

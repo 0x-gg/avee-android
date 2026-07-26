@@ -575,7 +575,7 @@ class AveeAccountBanner extends StatelessWidget {
                                     : 'Пробный период',
                           ),
                         ),
-                        if (state.session != null)
+                        if (state.session != null && !state.isSubscriptionAccess)
                           TextButton(
                             onPressed: () => AveePaywall.show(context),
                             child: const Text('Тарифы'),

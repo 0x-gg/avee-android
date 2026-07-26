@@ -1429,13 +1429,20 @@ class AveeAccountPage extends StatelessWidget {
                         ],
                         SizedBox(height: layout.s(24)),
                         AveePrimaryButton(
-                          label: 'View plans',
-                          icon: Icons.workspace_premium_outlined,
-                          onPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const AveeSubscriptionPage(),
-                            ),
-                          ),
+                          label: aveeAccountState.isSubscriptionAccess
+                              ? 'Manage subscription'
+                              : 'View plans',
+                          icon: aveeAccountState.isSubscriptionAccess
+                              ? Icons.open_in_new
+                              : Icons.workspace_premium_outlined,
+                          onPressed: aveeAccountState.isSubscriptionAccess
+                              ? () => openAveePlaySubscriptionManagement()
+                              : () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const AveeSubscriptionPage(),
+                                  ),
+                                ),
                         ),
                         SizedBox(height: layout.s(12)),
                         AveeSecondaryButton(
@@ -1645,9 +1652,41 @@ class AveeSubscriptionPage extends StatelessWidget {
                           trialPanel,
                           SizedBox(height: layout.s(16)),
                         ],
-                        FutureBuilder<AveeBillingOffers>(
-                          future: aveeBillingService.offers(),
-                          builder: (context, snapshot) {
+                        if (aveeAccountState.isSubscriptionAccess)
+                          AveePanel(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  'Your subscription is active',
+                                  style: TextStyle(
+                                    color: AveeColors.text,
+                                    fontSize: layout.t(20),
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                SizedBox(height: layout.s(8)),
+                                Text(
+                                  'Manage or cancel your subscription in Google Play.',
+                                  style: TextStyle(
+                                    color: AveeColors.secondaryText,
+                                    fontSize: layout.bodySize,
+                                  ),
+                                ),
+                                SizedBox(height: layout.s(14)),
+                                AveePrimaryButton(
+                                  label: 'Manage subscription',
+                                  icon: Icons.open_in_new,
+                                  onPressed: () =>
+                                      openAveePlaySubscriptionManagement(),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          FutureBuilder<AveeBillingOffers>(
+                            future: aveeBillingService.offers(),
+                            builder: (context, snapshot) {
                             if (snapshot.connectionState !=
                                 ConnectionState.done) {
                               return Center(
@@ -1716,7 +1755,7 @@ class AveeSubscriptionPage extends StatelessWidget {
                                           ],
                                           SizedBox(height: layout.s(14)),
                                           AveePrimaryButton(
-                                            label: 'Continue',
+                                            label: 'Subscribe now',
                                             onPressed: () =>
                                                 aveeBillingService.buy(product),
                                           ),
@@ -1726,8 +1765,8 @@ class AveeSubscriptionPage extends StatelessWidget {
                                   ),
                               ],
                             );
-                          },
-                        ),
+                            },
+                          ),
                         const AveeVersionFooter(),
                       ],
                     );
