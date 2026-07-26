@@ -1746,7 +1746,7 @@ class AveeSubscriptionPage extends StatelessWidget {
         child: Text(
           aveeAccountState.trialUnavailableReason ==
                   'TRIAL_ALREADY_USED_ON_DEVICE'
-              ? 'This device already used a free trial. Subscribe below or recover your previous account.'
+              ? 'This device already used a free trial. Subscribe below or sign in with your AVEE ID.'
               : 'Free trial is not available on this device.',
           style: TextStyle(
             color: AveeColors.warning,
