@@ -135,7 +135,7 @@ class AveePaywall extends StatelessWidget {
           child: FutureBuilder<AveeBillingOffers>(
             future: aveeBillingService.offers(),
             builder: (context, snapshot) {
-              if (account.isSubscriptionAccess) {
+              if (aveeAccountState.isSubscriptionAccess) {
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -157,8 +157,7 @@ class AveePaywall extends StatelessWidget {
                     AveePrimaryButton(
                       label: 'Manage subscription',
                       icon: Icons.open_in_new,
-                      onPressed: () =>
-                          openAveePlaySubscriptionManagement(),
+                      onPressed: () => openAveePlaySubscriptionManagement(),
                     ),
                   ],
                 );

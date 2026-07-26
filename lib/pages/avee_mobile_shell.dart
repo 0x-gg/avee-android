@@ -202,7 +202,9 @@ class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
           decoration: aveeFieldDecoration(context, label: 'AVEE ID'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
               if (controller.text.trim().isEmpty) return;
@@ -796,6 +798,22 @@ Future<void> _handleConnectUnavailable(
   WidgetRef ref,
   Future<void> Function() onPrepareProfile,
 ) async {
+  if (aveeAccountState.session != null) {
+    // Pull the latest panel-backed entitlement/user state before deciding
+    // whether to start a trial or prepare a profile.
+    await aveeAccountState.refresh();
+  }
+  if (!aveeAccountState.remnawaveEnabled && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          aveeAccountState.remnawaveError ??
+              'VPN access is currently disabled by the service.',
+        ),
+      ),
+    );
+    return;
+  }
   if (!aveeAccountState.access) {
     if (!aveeAccountState.trialAvailable) {
       await showDialog<void>(
@@ -1438,11 +1456,11 @@ class AveeAccountPage extends StatelessWidget {
                           onPressed: aveeAccountState.isSubscriptionAccess
                               ? () => openAveePlaySubscriptionManagement()
                               : () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const AveeSubscriptionPage(),
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const AveeSubscriptionPage(),
+                                    ),
                                   ),
-                                ),
                         ),
                         SizedBox(height: layout.s(12)),
                         AveeSecondaryButton(
@@ -1687,84 +1705,86 @@ class AveeSubscriptionPage extends StatelessWidget {
                           FutureBuilder<AveeBillingOffers>(
                             future: aveeBillingService.offers(),
                             builder: (context, snapshot) {
-                            if (snapshot.connectionState !=
-                                ConnectionState.done) {
-                              return Center(
-                                child: Padding(
-                                  padding: EdgeInsets.all(layout.s(28)),
-                                  child: const CircularProgressIndicator(
-                                    color: AveeColors.primary,
-                                  ),
-                                ),
-                              );
-                            }
-                            final products =
-                                snapshot.data?.google.productDetails ??
-                                    const [];
-                            if (products.isEmpty) {
-                              return AveePanel(
-                                child: Text(
-                                  aveeAccountState.access
-                                      ? 'Subscription products are not available in this build yet.'
-                                      : 'Paid plans appear here after Play billing is configured. Tap Connect on Home to start the trial first.',
-                                  style: TextStyle(
-                                    color: AveeColors.secondaryText,
-                                    fontSize: layout.bodySize,
-                                  ),
-                                ),
-                              );
-                            }
-                            return Column(
-                              children: [
-                                for (final product in products)
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.only(bottom: layout.s(12)),
-                                    child: AveePanel(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          Text(
-                                            product.title,
-                                            style: TextStyle(
-                                              color: AveeColors.text,
-                                              fontSize: layout.t(20),
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                          SizedBox(height: layout.s(6)),
-                                          Text(
-                                            product.price,
-                                            style: TextStyle(
-                                              color: AveeColors.primary,
-                                              fontSize: layout.t(26),
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                          if (product
-                                              .description.isNotEmpty) ...[
-                                            SizedBox(height: layout.s(8)),
-                                            Text(
-                                              product.description,
-                                              style: TextStyle(
-                                                color: AveeColors.secondaryText,
-                                                fontSize: layout.bodySize,
-                                              ),
-                                            ),
-                                          ],
-                                          SizedBox(height: layout.s(14)),
-                                          AveePrimaryButton(
-                                            label: 'Subscribe now',
-                                            onPressed: () =>
-                                                aveeBillingService.buy(product),
-                                          ),
-                                        ],
-                                      ),
+                              if (snapshot.connectionState !=
+                                  ConnectionState.done) {
+                                return Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(layout.s(28)),
+                                    child: const CircularProgressIndicator(
+                                      color: AveeColors.primary,
                                     ),
                                   ),
-                              ],
-                            );
+                                );
+                              }
+                              final products =
+                                  snapshot.data?.google.productDetails ??
+                                      const [];
+                              if (products.isEmpty) {
+                                return AveePanel(
+                                  child: Text(
+                                    aveeAccountState.access
+                                        ? 'Subscription products are not available in this build yet.'
+                                        : 'Paid plans appear here after Play billing is configured. Tap Connect on Home to start the trial first.',
+                                    style: TextStyle(
+                                      color: AveeColors.secondaryText,
+                                      fontSize: layout.bodySize,
+                                    ),
+                                  ),
+                                );
+                              }
+                              return Column(
+                                children: [
+                                  for (final product in products)
+                                    Padding(
+                                      padding:
+                                          EdgeInsets.only(bottom: layout.s(12)),
+                                      child: AveePanel(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            Text(
+                                              product.title,
+                                              style: TextStyle(
+                                                color: AveeColors.text,
+                                                fontSize: layout.t(20),
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                            SizedBox(height: layout.s(6)),
+                                            Text(
+                                              product.price,
+                                              style: TextStyle(
+                                                color: AveeColors.primary,
+                                                fontSize: layout.t(26),
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                            if (product
+                                                .description.isNotEmpty) ...[
+                                              SizedBox(height: layout.s(8)),
+                                              Text(
+                                                product.description,
+                                                style: TextStyle(
+                                                  color:
+                                                      AveeColors.secondaryText,
+                                                  fontSize: layout.bodySize,
+                                                ),
+                                              ),
+                                            ],
+                                            SizedBox(height: layout.s(14)),
+                                            AveePrimaryButton(
+                                              label: 'Subscribe now',
+                                              onPressed: () =>
+                                                  aveeBillingService
+                                                      .buy(product),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              );
                             },
                           ),
                         const AveeVersionFooter(),
@@ -1853,4 +1873,3 @@ class AveeSubscriptionPage extends StatelessWidget {
     );
   }
 }
-

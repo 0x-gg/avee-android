@@ -45,6 +45,7 @@ class AveeAccountState extends ChangeNotifier {
   bool reachable = false;
   bool access = false;
   DateTime? accessExpiresAt;
+
   /// `TRIAL` or `SUBSCRIPTION` when [access] is true.
   String? accessType;
   String? subscriptionSource;
@@ -53,6 +54,9 @@ class AveeAccountState extends ChangeNotifier {
   bool trialAvailable = true;
   String? trialUnavailableReason;
   String? antiAbuseNotice;
+  bool remnawaveEnabled = true;
+  DateTime? remnawaveLastSyncAt;
+  String? remnawaveError;
   int? trafficLimitBytes;
   int? trafficUsedBytes;
   int? trafficRemainingBytes;
@@ -143,8 +147,7 @@ class AveeAccountState extends ChangeNotifier {
     final candidates = online.isNotEmpty ? online : locations;
     if (candidates.isEmpty) return;
     final pick = candidates[Random.secure().nextInt(candidates.length)];
-    final proxyName =
-        pick['proxyName']?.toString() ?? pick['name']?.toString();
+    final proxyName = pick['proxyName']?.toString() ?? pick['name']?.toString();
     if (proxyName == null || proxyName.isEmpty) return;
     await selectLocation(proxyName);
   }
@@ -313,7 +316,8 @@ class AveeAccountState extends ChangeNotifier {
     try {
       final response = await _api.managedMihomoProfile(current);
       final yaml = response['profile'] as String?;
-      if (yaml == null || yaml.isEmpty) throw const FormatException('Managed profile is empty');
+      if (yaml == null || yaml.isEmpty)
+        throw const FormatException('Managed profile is empty');
       final parsed = loadYaml(yaml);
       if (parsed is! YamlMap || parsed['proxies'] is! YamlList) {
         throw const FormatException('Managed profile has no proxies');
@@ -374,6 +378,17 @@ class AveeAccountState extends ChangeNotifier {
           DateTime.tryParse(state['entitlementExpiresAt'] as String? ?? '');
       accessType = state['accessType'] as String?;
       subscriptionSource = state['subscriptionSource'] as String?;
+      final remnawave = state['remnawave'];
+      if (remnawave is Map) {
+        remnawaveEnabled = remnawave['enabled'] != false;
+        remnawaveLastSyncAt =
+            DateTime.tryParse(remnawave['lastSyncAt']?.toString() ?? '');
+        remnawaveError = remnawave['lastError']?.toString();
+      } else {
+        remnawaveEnabled = true;
+        remnawaveLastSyncAt = null;
+        remnawaveError = null;
+      }
       error = null;
     } on AveeApiException catch (exception) {
       reachable = true;
@@ -395,6 +410,9 @@ class AveeAccountState extends ChangeNotifier {
     trialAvailable = true;
     trialUnavailableReason = null;
     antiAbuseNotice = null;
+    remnawaveEnabled = true;
+    remnawaveLastSyncAt = null;
+    remnawaveError = null;
     managedProfileUpdatedAt = null;
     trafficLimitBytes = null;
     trafficUsedBytes = null;
