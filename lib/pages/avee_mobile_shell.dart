@@ -226,7 +226,6 @@ class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
           if (aveeAccountState.session == null) {
             return AveePage(
               child: AveeGuestOnboarding(
-                onSettings: () => openAveeMenu(context),
                 onLogin: () => _loginById(context),
               ),
             );
@@ -245,11 +244,9 @@ class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
 
 class AveeGuestOnboarding extends StatelessWidget {
   const AveeGuestOnboarding({
-    required this.onSettings,
     required this.onLogin,
     super.key,
   });
-  final VoidCallback onSettings;
   final VoidCallback onLogin;
 
   @override
@@ -259,9 +256,6 @@ class AveeGuestOnboarding extends StatelessWidget {
           children: [
             AveeAppBar(
               title: 'AVEE VPN',
-              onMenu: onSettings,
-              actionIcon: Icons.settings_outlined,
-              actionTooltip: 'Settings',
             ),
             Expanded(
               child: Builder(
@@ -278,15 +272,6 @@ class AveeGuestOnboarding extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                           height: 1.1,
                           fontSize: layout.headlineSize,
-                        ),
-                      ),
-                      SizedBox(height: layout.s(12)),
-                      Text(
-                        'Create an account and connect without manual setup.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AveeColors.secondaryText,
-                          fontSize: layout.bodySize,
                         ),
                       ),
                       SizedBox(height: layout.s(28)),
@@ -315,16 +300,6 @@ class AveeGuestOnboarding extends StatelessWidget {
                         label: 'Sign in with AVEE ID',
                         icon: Icons.login_rounded,
                         onPressed: onLogin,
-                      ),
-                      SizedBox(height: layout.s(22)),
-                      Text(
-                        'Only the data needed to run the service. Traffic content is not recorded.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AveeColors.mutedText,
-                          fontSize: layout.captionSize,
-                          height: 1.4,
-                        ),
                       ),
                     ],
                   );
