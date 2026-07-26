@@ -89,6 +89,9 @@ class AveeApi {
     return AveeSession.fromJson(response);
   }
 
+  Future<Map<String, dynamic>> logout(AveeSession session) =>
+      _request('POST', '/accounts/logout', token: session.token);
+
   Future<Map<String, dynamic>> accountState(AveeSession session) =>
       _request('GET', '/accounts/${session.accountId}/state',
           token: session.token);

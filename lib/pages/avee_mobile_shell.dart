@@ -434,9 +434,17 @@ String _formatRuntime(int? elapsedMilliseconds) {
   return '$h:$m:$s';
 }
 
-String _friendlyError(String error) => error == 'Backend unavailable'
-    ? 'AVEE server is temporarily unavailable. Try again.'
-    : error;
+String _friendlyError(String error) {
+  if (error == 'Backend unavailable') {
+    return 'AVEE server is temporarily unavailable. Try again.';
+  }
+  final normalized = error.toLowerCase();
+  if (normalized.contains('remnawave') ||
+      normalized.contains('binding is missing')) {
+    return 'Your VPN profile is temporarily unavailable. Refresh your account and try again shortly.';
+  }
+  return error;
+}
 
 String _bytesEnglish(int value) => value >= 1000000000
     ? '${(value / 1000000000).toStringAsFixed(1)} GB'
@@ -808,7 +816,18 @@ Future<void> _handleConnectUnavailable(
       SnackBar(
         content: Text(
           aveeAccountState.remnawaveError ??
-              'VPN access is currently disabled by the service.',
+              'VPN access is temporarily disabled by the service. Your account is valid, but access has been paused. Please try again later or contact support.',
+        ),
+      ),
+    );
+    return;
+  }
+  if (aveeAccountState.accessReason == 'REMNAWAVE_BINDING_MISSING' &&
+      context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Your subscription is active, but the VPN profile is still being prepared. Refresh your account and try again in a moment.',
         ),
       ),
     );
@@ -825,7 +844,7 @@ Future<void> _handleConnectUnavailable(
             style: TextStyle(color: AveeColors.text),
           ),
           content: const Text(
-            'A free trial was already used on this device. Subscribe to continue.',
+            'This device has already used its one-time free trial. Reinstalling or creating another AVEE ID will not reset it. Sign in with an AVEE ID that has an active subscription or purchase a subscription to get VPN access.',
             style: TextStyle(color: AveeColors.secondaryText),
           ),
           actions: [
@@ -1026,6 +1045,45 @@ class _SignalOrbPainter extends CustomPainter {
       oldDelegate.connecting != connecting;
 }
 
+class _LatencyBars extends StatelessWidget {
+  const _LatencyBars({required this.quality, required this.size});
+
+  final String quality;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = switch (quality) {
+      'excellent' => 3,
+      'good' => 2,
+      'poor' => 1,
+      _ => 0,
+    };
+    final color = switch (quality) {
+      'excellent' => Colors.green,
+      'good' => Colors.amber,
+      'poor' => Colors.redAccent,
+      _ => AveeColors.mutedText,
+    };
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: List.generate(3, (index) {
+        return Container(
+          width: size,
+          height: size * (index + 1.5),
+          margin: EdgeInsets.only(left: size * .6),
+          decoration: BoxDecoration(
+            color: index < active
+                ? color
+                : AveeColors.mutedText.withValues(alpha: .28),
+            borderRadius: BorderRadius.circular(size),
+          ),
+        );
+      }),
+    );
+  }
+}
+
 class AveeLocationsPage extends ConsumerStatefulWidget {
   const AveeLocationsPage({super.key});
   @override
@@ -1106,6 +1164,29 @@ class _AveeLocationsPageState extends ConsumerState<AveeLocationsPage> {
                                     ),
                                   ),
                                   SizedBox(height: layout.s(16)),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: TextButton.icon(
+                                      onPressed: () => showDialog<void>(
+                                        context: context,
+                                        builder: (dialogContext) => AlertDialog(
+                                          title: const Text('About ping'),
+                                          content: const Text(
+                                            'Ping measures the time needed to reach a location. Lower is better for games, calls and other real-time activity. It does not increase your internet speed or reduce normal browsing speed.',
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(dialogContext),
+                                              child: const Text('Got it'),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      icon: const Icon(Icons.info_outline),
+                                      label: const Text('What does ping mean?'),
+                                    ),
+                                  ),
                                   if (aveeAccountState.locationsLoading)
                                     Padding(
                                       padding: EdgeInsets.all(layout.s(32)),
@@ -1161,6 +1242,15 @@ class _AveeLocationsPageState extends ConsumerState<AveeLocationsPage> {
     final flag = item['flag']?.toString();
     final offline = item['status'] == 'offline';
     final selected = aveeAccountState.selectedLocation == proxyName;
+    final latency = int.tryParse(item['latencyMs']?.toString() ?? '');
+    final quality = item['latencyQuality']?.toString() ?? 'offline';
+    final bestLatency = aveeAccountState.locations
+        .map(
+            (location) => int.tryParse(location['latencyMs']?.toString() ?? ''))
+        .whereType<int>()
+        .fold<int?>(
+            null, (best, value) => best == null || value < best ? value : best);
+    final isBest = latency != null && latency == bestLatency;
     final radius = layout.s(16);
 
     return Container(
@@ -1203,13 +1293,38 @@ class _AveeLocationsPageState extends ConsumerState<AveeLocationsPage> {
                         ),
                       ),
                       SizedBox(height: layout.s(2)),
-                      Text(
-                        offline ? 'Unavailable' : 'Available',
-                        style: TextStyle(
-                          color:
-                              offline ? AveeColors.error : AveeColors.mutedText,
-                          fontSize: layout.captionSize,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            offline
+                                ? 'Unavailable'
+                                : latency == null
+                                    ? 'Checking…'
+                                    : '$latency ms',
+                            style: TextStyle(
+                              color: offline
+                                  ? AveeColors.error
+                                  : AveeColors.mutedText,
+                              fontSize: layout.captionSize,
+                            ),
+                          ),
+                          if (isBest) ...[
+                            SizedBox(width: layout.s(8)),
+                            Text(
+                              'Best',
+                              style: TextStyle(
+                                color: AveeColors.success,
+                                fontSize: layout.captionSize,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                          const Spacer(),
+                          _LatencyBars(
+                            quality: quality,
+                            size: layout.s(5),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1424,8 +1539,8 @@ class AveeAccountPage extends StatelessWidget {
                           AveePanel(
                             child: Text(
                               aveeAccountState.trialUnavailableReason ==
-                                      'TRIAL_ALREADY_USED_ON_DEVICE'
-                                  ? 'A free trial was already used on this device. Subscribe to continue.'
+                                      'DEVICE_TRIAL_USED'
+                                  ? 'This device has already used its one-time free trial. Sign in with an AVEE ID that has an active subscription or purchase a subscription to get VPN access.'
                                   : 'Free trial is not available on this device.',
                               style: TextStyle(
                                 color: AveeColors.warning,
@@ -1803,9 +1918,8 @@ class AveeSubscriptionPage extends StatelessWidget {
     if (!aveeAccountState.trialAvailable) {
       return AveePanel(
         child: Text(
-          aveeAccountState.trialUnavailableReason ==
-                  'TRIAL_ALREADY_USED_ON_DEVICE'
-              ? 'This device already used a free trial. Subscribe below or sign in with your AVEE ID.'
+          aveeAccountState.trialUnavailableReason == 'DEVICE_TRIAL_USED'
+              ? 'This device already used its one-time free trial. Subscribe below or sign in with an AVEE ID that has an active subscription.'
               : 'Free trial is not available on this device.',
           style: TextStyle(
             color: AveeColors.warning,

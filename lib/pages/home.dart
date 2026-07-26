@@ -575,7 +575,8 @@ class AveeAccountBanner extends StatelessWidget {
                                     : 'Пробный период',
                           ),
                         ),
-                        if (state.session != null && !state.isSubscriptionAccess)
+                        if (state.session != null &&
+                            !state.isSubscriptionAccess)
                           TextButton(
                             onPressed: () => AveePaywall.show(context),
                             child: const Text('Тарифы'),
@@ -605,7 +606,7 @@ class AveeAccountBanner extends StatelessWidget {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Удалить аккаунт?'),
         content: const Text(
-            'Сессии и устройства будут отозваны, доступ Remnawave отключён. Google Play подписка автоматически не отменяется.'),
+            'Сессии и устройства будут отозваны, доступ к VPN будет отключён. Подписка Google Play автоматически не отменяется.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),

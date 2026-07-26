@@ -104,12 +104,13 @@ class AveeAccountState extends ChangeNotifier {
     try {
       final response = await _api.locations();
       final raw = response['locations'];
-      locations = raw is List
+      final snapshotLocations = raw is List
           ? raw
               .whereType<Map>()
               .map((item) => Map<String, dynamic>.from(item))
               .toList(growable: false)
-          : const [];
+          : <Map<String, dynamic>>[];
+      locations = await _measureLocationLatency(snapshotLocations);
       if (selectedLocation != null &&
           !locations.any(
             (item) => item['proxyName'] == selectedLocation,
@@ -438,7 +439,59 @@ class AveeAccountState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> logOut() => clear();
+  Future<void> logOut() async {
+    final current = session;
+    if (current != null) {
+      try {
+        await _api.logout(current);
+      } catch (_) {
+        // Local logout must still work if the backend is temporarily offline.
+      }
+    }
+    await clear();
+  }
+
+  Future<List<Map<String, dynamic>>> _measureLocationLatency(
+    List<Map<String, dynamic>> items,
+  ) async {
+    final measured = await Future.wait(
+      items.map(_measureLocation),
+    );
+    return measured;
+  }
+
+  Future<Map<String, dynamic>> _measureLocation(
+    Map<String, dynamic> item,
+  ) async {
+    final next = Map<String, dynamic>.from(item);
+    final host = item['host']?.toString() ?? item['proxyName']?.toString();
+    final port = int.tryParse(item['port']?.toString() ?? '') ?? 443;
+    if (host == null || host.isEmpty || item['status'] == 'offline') {
+      next['latencyMs'] = null;
+      next['latencyQuality'] = 'offline';
+      return next;
+    }
+    final stopwatch = Stopwatch()..start();
+    try {
+      final socket = await Socket.connect(
+        host,
+        port,
+        timeout: const Duration(seconds: 2),
+      );
+      await socket.close();
+      final latency = stopwatch.elapsedMilliseconds;
+      next['latencyMs'] = latency;
+      next['latencyQuality'] = latency <= 80
+          ? 'excellent'
+          : latency <= 160
+              ? 'good'
+              : 'poor';
+    } catch (_) {
+      next['latencyMs'] = null;
+      next['latencyQuality'] = 'offline';
+    }
+    return next;
+  }
 
   Future<SimpleKeyPairData> _ensureDeviceKeyPair() async {
     final existingPrivate = await _storage.read(key: _privateKeyKey);
