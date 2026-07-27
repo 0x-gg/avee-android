@@ -1,7 +1,7 @@
 name: avee
 description: AVEE VPN — multi-platform client based on mihomo core.
 publish_to: "none"
-version: 0.8.15+2026074907
+version: 0.9.0+2026074908
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
