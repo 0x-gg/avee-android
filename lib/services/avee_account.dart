@@ -101,30 +101,50 @@ class AveeAccountState extends ChangeNotifier {
     locationsLoading = true;
     locationsError = null;
     notifyListeners();
+    Object? lastError;
     try {
-      final response = await _api.locations();
-      final raw = response['locations'];
-      final snapshotLocations = raw is List
-          ? raw
-              .whereType<Map>()
-              .map((item) => Map<String, dynamic>.from(item))
-              .toList(growable: false)
-          : <Map<String, dynamic>>[];
-      locations = await _measureLocationLatency(snapshotLocations);
-      if (selectedLocation != null &&
-          !locations.any(
-            (item) => item['proxyName'] == selectedLocation,
-          )) {
-        selectedLocation = null;
-        await _storage.delete(key: _selectedLocationKey);
+      for (var attempt = 0; attempt < 3; attempt++) {
+        try {
+          final response = await _api.locations();
+          final raw = response['locations'];
+          final snapshotLocations = raw is List
+              ? raw
+                  .whereType<Map>()
+                  .map((item) => Map<String, dynamic>.from(item))
+                  .toList(growable: false)
+              : <Map<String, dynamic>>[];
+          final measured = await _measureLocationLatency(snapshotLocations);
+          if (measured.isNotEmpty) locations = measured;
+          if (selectedLocation != null &&
+              !locations.any(
+                (item) => item['proxyName'] == selectedLocation,
+              )) {
+            selectedLocation = null;
+            await _storage.delete(key: _selectedLocationKey);
+          }
+          await _ensureDefaultLocation();
+          locationsError = null;
+          return;
+        } on AveeApiException catch (exception) {
+          lastError = exception;
+        } catch (exception) {
+          lastError = exception;
+        }
+        if (attempt < 2) {
+          await Future<void>.delayed(
+            Duration(milliseconds: 350 * (attempt + 1)),
+          );
+        }
       }
-      await _ensureDefaultLocation();
-    } on AveeApiException catch (exception) {
-      locations = const [];
-      locationsError = exception.message;
-    } catch (_) {
-      locations = const [];
-      locationsError = 'Locations are temporarily unavailable';
+      if (locations.isEmpty) {
+        locationsError = lastError is AveeApiException
+            ? (lastError as AveeApiException).message
+            : 'Locations are temporarily unavailable';
+      } else {
+        // Keep the last known locations visible during a transient refresh
+        // failure instead of replacing a usable list with an empty screen.
+        locationsError = 'Location status is temporarily unavailable';
+      }
     } finally {
       locationsLoading = false;
       notifyListeners();
