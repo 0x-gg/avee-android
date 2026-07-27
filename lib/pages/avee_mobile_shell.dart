@@ -5,103 +5,11 @@ import 'package:avee/providers/providers.dart';
 import 'package:avee/common/constant.dart';
 import 'package:avee/services/avee_account.dart';
 import 'package:avee/services/avee_billing.dart';
-import 'package:avee/services/avee_remote_config.dart';
 import 'package:avee/state.dart';
 import 'package:avee/ui/avee_design.dart';
 import 'package:avee/views/dashboard/widgets/start_button.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-Future<void> openAveeMenu(BuildContext context) async {
-  final layout = AveeLayout.of(context);
-  await showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: AveeColors.surface,
-    showDragHandle: true,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(layout.s(28))),
-    ),
-    builder: (sheetContext) {
-      final sheetLayout = AveeLayout.of(sheetContext);
-      return SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: sheetLayout.contentMaxWidth),
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                sheetLayout.s(12),
-                sheetLayout.s(4),
-                sheetLayout.s(12),
-                sheetLayout.s(20),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      sheetLayout.s(12),
-                      sheetLayout.s(4),
-                      sheetLayout.s(12),
-                      sheetLayout.s(12),
-                    ),
-                    child: const Align(
-                      alignment: Alignment.centerLeft,
-                      child: AveeLogo(compact: true, horizontal: true),
-                    ),
-                  ),
-                  _aveeMenuTile(
-                    sheetContext,
-                    Icons.person_outline,
-                    'Account',
-                    () => _pushAveePage(context, const AveeAccountPage()),
-                  ),
-                  _aveeMenuTile(
-                    sheetContext,
-                    Icons.workspace_premium_outlined,
-                    'Subscription',
-                    () => _pushAveePage(context, const AveeSubscriptionPage()),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    },
-  );
-}
-
-Widget _aveeMenuTile(
-  BuildContext sheetContext,
-  IconData icon,
-  String label,
-  VoidCallback action,
-) {
-  final layout = AveeLayout.of(sheetContext);
-  return ListTile(
-    leading: Icon(icon, color: AveeColors.primary, size: layout.s(24)),
-    title: Text(
-      label,
-      style: TextStyle(
-        color: AveeColors.text,
-        fontSize: layout.bodySize,
-        fontWeight: FontWeight.w600,
-      ),
-    ),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(layout.s(14)),
-    ),
-    contentPadding: EdgeInsets.symmetric(
-      horizontal: layout.s(16),
-      vertical: layout.s(4),
-    ),
-    onTap: () {
-      Navigator.pop(sheetContext);
-      action();
-    },
-  );
-}
 
 Future<void> _pushAveePage(BuildContext context, Widget page) async {
   // Replace stacked sub-screens so Back always returns to Home.
@@ -751,10 +659,7 @@ class AveeHomeDashboard extends ConsumerWidget {
                         SizedBox(height: layout.s(28)),
                         AveeAccessStatusPanel(
                           compact: true,
-                          onSubscribe: () => _pushAveePage(
-                            context,
-                            const AveeSubscriptionPage(),
-                          ),
+                          onSubscribe: () => AveePaywall.show(context),
                         ),
                         if (aveeAccountState.session != null &&
                             !aveeAccountState.access &&
@@ -785,10 +690,7 @@ class AveeHomeDashboard extends ConsumerWidget {
                                 AveePrimaryButton(
                                   label: 'Subscribe now',
                                   icon: Icons.workspace_premium_outlined,
-                                  onPressed: () => _pushAveePage(
-                                    context,
-                                    const AveeSubscriptionPage(),
-                                  ),
+                                  onPressed: () => AveePaywall.show(context),
                                 ),
                               ],
                             ),
@@ -1544,11 +1446,7 @@ class AveeAccountPage extends StatelessWidget {
                         if (aveeAccountState.access) ...[
                           SizedBox(height: layout.s(16)),
                           AveeAccessStatusPanel(
-                            onSubscribe: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const AveeSubscriptionPage(),
-                              ),
-                            ),
+                            onSubscribe: () => AveePaywall.show(context),
                           ),
                         ],
                         SizedBox(height: layout.s(24)),
@@ -1561,12 +1459,7 @@ class AveeAccountPage extends StatelessWidget {
                               : Icons.workspace_premium_outlined,
                           onPressed: aveeAccountState.isSubscriptionAccess
                               ? () => openAveePlaySubscriptionManagement()
-                              : () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const AveeSubscriptionPage(),
-                                    ),
-                                  ),
+                              : () => AveePaywall.show(context),
                         ),
                         SizedBox(height: layout.s(12)),
                         AveeSecondaryButton(
@@ -1743,221 +1636,6 @@ class AveeAccountPage extends StatelessWidget {
         ),
         behavior: SnackBarBehavior.floating,
         backgroundColor: restored ? AveeColors.surfaceRaised : AveeColors.error,
-      ),
-    );
-  }
-}
-
-class AveeSubscriptionPage extends StatelessWidget {
-  const AveeSubscriptionPage({super.key});
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: AveeColors.background,
-        body: SafeArea(
-          child: Column(
-            children: [
-              const AveeAppBar(title: 'Subscription', showBack: true),
-              Expanded(
-                child: ListenableBuilder(
-                  listenable: Listenable.merge([
-                    aveeAccountState,
-                  ]),
-                  builder: (context, _) {
-                    final layout = AveeLayout.of(context);
-                    return AveeResponsiveScroll(
-                      children: [
-                        if (aveeAccountState.access)
-                          AveePanel(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Text(
-                                  'Subscription details are in Account',
-                                  style: TextStyle(
-                                    color: AveeColors.text,
-                                    fontSize: layout.t(20),
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                SizedBox(height: layout.s(8)),
-                                Text(
-                                  'Your access status, remaining time and Google Play management are shown on the Account screen.',
-                                  style: TextStyle(
-                                    color: AveeColors.secondaryText,
-                                    fontSize: layout.bodySize,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        else
-                          FutureBuilder<AveeBillingOffers>(
-                            future: aveeBillingService.offers(),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState !=
-                                  ConnectionState.done) {
-                                return Center(
-                                  child: Padding(
-                                    padding: EdgeInsets.all(layout.s(28)),
-                                    child: const CircularProgressIndicator(
-                                      color: AveeColors.primary,
-                                    ),
-                                  ),
-                                );
-                              }
-                              final products =
-                                  snapshot.data?.google.productDetails ??
-                                      const [];
-                              if (products.isEmpty) {
-                                return AveePanel(
-                                  child: Text(
-                                    aveeAccountState.access
-                                        ? 'Subscription products are not available in this build yet.'
-                                        : 'Paid plans appear here after Play billing is configured. Tap Connect on Home to start the trial first.',
-                                    style: TextStyle(
-                                      color: AveeColors.secondaryText,
-                                      fontSize: layout.bodySize,
-                                    ),
-                                  ),
-                                );
-                              }
-                              return Column(
-                                children: [
-                                  for (final product in products)
-                                    Padding(
-                                      padding:
-                                          EdgeInsets.only(bottom: layout.s(12)),
-                                      child: AveePanel(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: [
-                                            Text(
-                                              product.title,
-                                              style: TextStyle(
-                                                color: AveeColors.text,
-                                                fontSize: layout.t(20),
-                                                fontWeight: FontWeight.w800,
-                                              ),
-                                            ),
-                                            SizedBox(height: layout.s(6)),
-                                            Text(
-                                              product.price,
-                                              style: TextStyle(
-                                                color: AveeColors.primary,
-                                                fontSize: layout.t(26),
-                                                fontWeight: FontWeight.w800,
-                                              ),
-                                            ),
-                                            if (product
-                                                .description.isNotEmpty) ...[
-                                              SizedBox(height: layout.s(8)),
-                                              Text(
-                                                product.description,
-                                                style: TextStyle(
-                                                  color:
-                                                      AveeColors.secondaryText,
-                                                  fontSize: layout.bodySize,
-                                                ),
-                                              ),
-                                            ],
-                                            SizedBox(height: layout.s(14)),
-                                            AveePrimaryButton(
-                                              label: 'Subscribe now',
-                                              onPressed: () =>
-                                                  aveeBillingService
-                                                      .buy(product),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              );
-                            },
-                          ),
-                        const AveeVersionFooter(),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-
-  Widget _trialOffer(BuildContext context) {
-    final layout = AveeLayout.of(context);
-    if (!aveeAccountState.trialAvailable) {
-      return AveePanel(
-        child: Text(
-          aveeAccountState.trialUnavailableReason == 'DEVICE_TRIAL_USED'
-              ? 'This device already used its one-time free trial. Subscribe below or sign in with an AVEE ID that has an active subscription.'
-              : 'Free trial is not available on this device.',
-          style: TextStyle(
-            color: AveeColors.warning,
-            fontSize: layout.bodySize,
-            height: 1.45,
-          ),
-        ),
-      );
-    }
-    final trial = aveeRemoteConfig.value?['trial'];
-    final value = trial is Map ? Map<String, dynamic>.from(trial) : const {};
-    if (value['enabled'] == false) {
-      return const SizedBox.shrink();
-    }
-    final days = value['durationDays'] as int? ?? 3;
-    final bytes =
-        int.tryParse('${value['trafficLimitBytes'] ?? ''}') ?? 1073741824;
-    final details = [
-      if (days > 0) '$days days',
-      _bytesEnglish(bytes),
-    ].join(' · ');
-    return AveePanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Free trial',
-            style: TextStyle(
-              color: AveeColors.text,
-              fontSize: layout.t(20),
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          if (details.isNotEmpty) ...[
-            SizedBox(height: layout.s(6)),
-            Text(
-              details,
-              style: TextStyle(
-                color: AveeColors.secondaryText,
-                fontSize: layout.bodySize,
-              ),
-            ),
-          ],
-          SizedBox(height: layout.s(14)),
-          AveePrimaryButton(
-            label:
-                aveeAccountState.loading ? 'Activating…' : 'Start free trial',
-            onPressed: aveeAccountState.loading
-                ? null
-                : () async {
-                    await aveeAccountState.startTrial();
-                    if (!context.mounted) return;
-                    final message = aveeAccountState.access
-                        ? 'Trial activated'
-                        : _friendlyError(
-                            aveeAccountState.error ?? 'Could not start trial',
-                          );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(message)),
-                    );
-                  },
-          ),
-        ],
       ),
     );
   }

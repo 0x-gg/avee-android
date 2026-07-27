@@ -13,15 +13,12 @@ void main() {
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(320, 700));
     await tester.pumpWidget(host(AveeGuestOnboarding(
-      onSettings: _noop,
       onLogin: _noop,
     )));
 
     expect(find.text('Create account'), findsOneWidget);
-    expect(find.text('Recover account'), findsNothing);
-    expect(find.textContaining('Only the data needed to run the service'),
-        findsOneWidget);
-    expect(find.text('Добавить подписку'), findsNothing);
+    expect(find.text('Sign in with AVEE ID'), findsOneWidget);
+    expect(find.textContaining('Private internet.'), findsOneWidget);
     await tester.binding.setSurfaceSize(null);
   });
 
