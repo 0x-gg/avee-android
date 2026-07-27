@@ -194,6 +194,7 @@ class AveeAccountState extends ChangeNotifier {
 
   Future<void> loginAccount({
     required String accountId,
+    VoidCallback? onAuthenticated,
   }) async {
     await _run(() async {
       final keyPair = await _ensureDeviceKeyPair();
@@ -211,6 +212,7 @@ class AveeAccountState extends ChangeNotifier {
         appVersion: info.version,
       );
       await _save(recovered);
+      onAuthenticated?.call();
       await verifyDevice();
       await refresh();
       await refreshLocations();

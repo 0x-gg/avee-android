@@ -208,7 +208,12 @@ class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
           FilledButton(
             onPressed: () async {
               if (controller.text.trim().isEmpty) return;
-              await aveeAccountState.loginAccount(accountId: controller.text);
+              await aveeAccountState.loginAccount(
+                accountId: controller.text,
+                onAuthenticated: () {
+                  if (dialogContext.mounted) Navigator.pop(dialogContext);
+                },
+              );
               if (dialogContext.mounted) Navigator.pop(dialogContext);
             },
             child: const Text('Sign in'),
@@ -1513,7 +1518,8 @@ class AveeAccountPage extends StatelessWidget {
                             ],
                           ),
                         ),
-                        if (!aveeAccountState.trialAvailable) ...[
+                        if (!aveeAccountState.trialAvailable &&
+                            !aveeAccountState.isSubscriptionAccess) ...[
                           SizedBox(height: layout.s(16)),
                           AveePanel(
                             child: Text(
