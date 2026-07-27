@@ -756,6 +756,44 @@ class AveeHomeDashboard extends ConsumerWidget {
                             const AveeSubscriptionPage(),
                           ),
                         ),
+                        if (aveeAccountState.session != null &&
+                            !aveeAccountState.access &&
+                            !aveeAccountState.trialAvailable) ...[
+                          SizedBox(height: layout.s(12)),
+                          AveePanel(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Your free trial has ended',
+                                  style: TextStyle(
+                                    color: AveeColors.text,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: layout.bodySize,
+                                  ),
+                                ),
+                                SizedBox(height: layout.s(6)),
+                                Text(
+                                  'Subscribe to restore VPN access. Reinstalling the app or creating another AVEE ID will not start a new trial on this device.',
+                                  style: TextStyle(
+                                    color: AveeColors.secondaryText,
+                                    fontSize: layout.captionSize,
+                                    height: 1.4,
+                                  ),
+                                ),
+                                SizedBox(height: layout.s(12)),
+                                AveePrimaryButton(
+                                  label: 'Subscribe now',
+                                  icon: Icons.workspace_premium_outlined,
+                                  onPressed: () => _pushAveePage(
+                                    context,
+                                    const AveeSubscriptionPage(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         if (aveeAccountState.access)
                           SizedBox(height: layout.s(12)),
                         AveePanel(
@@ -1415,20 +1453,6 @@ class _AveeLocationsPageState extends ConsumerState<AveeLocationsPage> {
   }
 }
 
-String _accountAccessHeadline(AveeAccountState state) {
-  if (!state.access) return 'No active access';
-  if (state.isTrialAccess) {
-    final time = state.accessExpiresAt == null
-        ? null
-        : _formatTimeRemaining(state.accessExpiresAt!);
-    return time == null ? 'Trial active' : 'Trial · $time';
-  }
-  final time = state.accessExpiresAt == null
-      ? null
-      : _formatTimeRemaining(state.accessExpiresAt!);
-  return time == null ? 'Subscription active' : 'Subscription · $time';
-}
-
 class AveeVersionFooter extends StatelessWidget {
   const AveeVersionFooter({super.key});
 
@@ -1465,58 +1489,12 @@ class AveeAccountPage extends StatelessWidget {
             builder: (context, _) {
               final layout = AveeLayout.of(context);
               final account = aveeAccountState.session?.accountId ?? '—';
-              final initial =
-                  account.isNotEmpty ? account.substring(0, 1) : 'A';
               return Column(
                 children: [
                   const AveeAppBar(title: 'Account', showBack: true),
                   Expanded(
                     child: AveeResponsiveScroll(
                       children: [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              radius: layout.s(28),
-                              backgroundColor: AveeColors.primary,
-                              child: Text(
-                                initial,
-                                style: TextStyle(
-                                  color: AveeColors.background,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: layout.t(22),
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: layout.s(14)),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  SelectableText(
-                                    'Account #$account',
-                                    style: TextStyle(
-                                      color: AveeColors.text,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: layout.bodySize,
-                                    ),
-                                  ),
-                                  SizedBox(height: layout.s(4)),
-                                  Text(
-                                    _accountAccessHeadline(aveeAccountState),
-                                    style: TextStyle(
-                                      color: aveeAccountState.access
-                                          ? AveeColors.primary
-                                          : AveeColors.warning,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: layout.statusSize,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: layout.s(16)),
                         AveePanel(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
