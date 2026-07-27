@@ -415,8 +415,13 @@ class AveeAccountState extends ChangeNotifier {
       error = null;
     } on AveeApiException catch (exception) {
       reachable = true;
-      error = exception.message;
-      if (exception.statusCode == 401) await clear();
+      if (exception.statusCode == 401) {
+        await clear();
+        error =
+            'This device was signed out because its AVEE access was revoked. Sign in again or use another active device.';
+      } else {
+        error = exception.message;
+      }
     } catch (_) {
       reachable = false;
       error = 'Backend unavailable';
