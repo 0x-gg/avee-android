@@ -406,6 +406,9 @@ class AveeAccountState extends ChangeNotifier {
 
   Future<void> clear({bool removeDeviceKey = false}) async {
     session = null;
+    error = null;
+    loading = false;
+    reachable = true;
     access = false;
     accessType = null;
     subscriptionSource = null;
