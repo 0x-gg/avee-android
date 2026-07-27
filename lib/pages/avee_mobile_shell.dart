@@ -246,7 +246,6 @@ class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
           }
           return AveePage(
             child: AveeHomeDashboard(
-              onSettings: () => openAveeMenu(context),
               onPrepareProfile: _syncManagedProfile,
               onOpenLocations: () =>
                   _pushAveePage(context, const AveeLocationsPage()),
@@ -647,13 +646,11 @@ class AveeAccessStatusPanel extends StatelessWidget {
 
 class AveeHomeDashboard extends ConsumerWidget {
   const AveeHomeDashboard({
-    required this.onSettings,
     required this.onPrepareProfile,
     required this.onOpenLocations,
     super.key,
   });
 
-  final VoidCallback onSettings;
   final Future<void> Function() onPrepareProfile;
   final VoidCallback onOpenLocations;
 
@@ -677,9 +674,12 @@ class AveeHomeDashboard extends ConsumerWidget {
           children: [
             AveeAppBar(
               title: 'AVEE VPN',
-              onMenu: onSettings,
-              actionIcon: Icons.settings_outlined,
-              actionTooltip: 'Settings',
+              onMenu: () => _pushAveePage(
+                context,
+                const AveeAccountPage(),
+              ),
+              actionIcon: Icons.person_outline,
+              actionTooltip: 'Account',
             ),
             Expanded(
               child: RefreshIndicator(
@@ -1762,27 +1762,18 @@ class AveeSubscriptionPage extends StatelessWidget {
                 child: ListenableBuilder(
                   listenable: Listenable.merge([
                     aveeAccountState,
-                    aveeRemoteConfig,
                   ]),
                   builder: (context, _) {
                     final layout = AveeLayout.of(context);
-                    final trialPanel = _trialOffer(context);
                     return AveeResponsiveScroll(
                       children: [
-                        if (aveeAccountState.access) ...[
-                          const AveeAccessStatusPanel(),
-                          SizedBox(height: layout.s(16)),
-                        ] else ...[
-                          trialPanel,
-                          SizedBox(height: layout.s(16)),
-                        ],
-                        if (aveeAccountState.isSubscriptionAccess)
+                        if (aveeAccountState.access)
                           AveePanel(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Text(
-                                  'Your subscription is active',
+                                  'Subscription details are in Account',
                                   style: TextStyle(
                                     color: AveeColors.text,
                                     fontSize: layout.t(20),
@@ -1791,18 +1782,11 @@ class AveeSubscriptionPage extends StatelessWidget {
                                 ),
                                 SizedBox(height: layout.s(8)),
                                 Text(
-                                  'Manage or cancel your subscription in Google Play.',
+                                  'Your access status, remaining time and Google Play management are shown on the Account screen.',
                                   style: TextStyle(
                                     color: AveeColors.secondaryText,
                                     fontSize: layout.bodySize,
                                   ),
-                                ),
-                                SizedBox(height: layout.s(14)),
-                                AveePrimaryButton(
-                                  label: 'Manage subscription',
-                                  icon: Icons.open_in_new,
-                                  onPressed: () =>
-                                      openAveePlaySubscriptionManagement(),
                                 ),
                               ],
                             ),
