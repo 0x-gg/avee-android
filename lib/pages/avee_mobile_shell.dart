@@ -414,6 +414,10 @@ String _friendlyError(String error) {
     return 'AVEE server is temporarily unavailable. Try again.';
   }
   final normalized = error.toLowerCase();
+  if (normalized.contains('hwid') &&
+      (normalized.contains('limit') || normalized.contains('previous device'))) {
+    return 'This subscription is already active on another device. Sign out there, or remove the old device in your AVEE account, then try again.';
+  }
   if (normalized.contains('remnawave') ||
       normalized.contains('binding is missing')) {
     return 'Your VPN profile is temporarily unavailable. Refresh your account and try again shortly.';
