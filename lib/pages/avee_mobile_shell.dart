@@ -168,6 +168,15 @@ class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
   Future<void> _removeManagedProfile() async {
     _removingManagedProfile = true;
     try {
+      // A server-side HWID deletion revokes the AVEE session. Stop the local
+      // tunnel before removing its profile so an already-running connection
+      // cannot continue after the account is revoked.
+      try {
+        await globalState.appController.updateStatus(false);
+      } catch (_) {
+        // Removing the managed profile is still required if the core is
+        // already stopped or unavailable.
+      }
       await globalState.appController.removeManagedProfile();
     } finally {
       _removingManagedProfile = false;
@@ -420,7 +429,8 @@ String _friendlyError(String error) {
   }
   final normalized = error.toLowerCase();
   if (normalized.contains('hwid') &&
-      (normalized.contains('limit') || normalized.contains('previous device'))) {
+      (normalized.contains('limit') ||
+          normalized.contains('previous device'))) {
     return 'This subscription is already active on another device. Sign out there, or remove the old device in your AVEE account, then try again.';
   }
   if (normalized.contains('remnawave') ||
@@ -489,48 +499,63 @@ class AveeAccessStatusPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                isTrial
-                    ? Icons.card_giftcard_outlined
-                    : Icons.workspace_premium_outlined,
-                color: isTrial ? AveeColors.warning : AveeColors.primary,
-                size: layout.s(22),
+              SizedBox(
+                width: layout.s(30),
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: Icon(
+                    isTrial
+                        ? Icons.card_giftcard_outlined
+                        : Icons.workspace_premium_outlined,
+                    color: isTrial ? AveeColors.warning : AveeColors.primary,
+                    size: layout.s(22),
+                  ),
+                ),
               ),
               SizedBox(width: layout.s(10)),
               Expanded(
-                child: Text(
-                  isTrial
-                      ? 'Free trial'
-                      : _subscriptionSourceLabel(state.subscriptionSource),
-                  style: TextStyle(
-                    color: AveeColors.text,
-                    fontWeight: FontWeight.w800,
-                    fontSize: layout.bodySize,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isTrial
+                          ? 'Free trial'
+                          : _subscriptionSourceLabel(state.subscriptionSource),
+                      style: TextStyle(
+                        color: AveeColors.text,
+                        fontWeight: FontWeight.w800,
+                        fontSize: layout.bodySize,
+                      ),
+                    ),
+                    if (timeLabel != null) ...[
+                      SizedBox(height: layout.s(4)),
+                      Text(
+                        compact ? timeLabel : 'Time remaining: $timeLabel',
+                        style: TextStyle(
+                          color: AveeColors.secondaryText,
+                          fontWeight: FontWeight.w600,
+                          fontSize: layout.statusSize,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
           ),
-          if (timeLabel != null) ...[
-            SizedBox(height: layout.s(10)),
-            _accessDetailRow(
-              context,
-              Icons.schedule_outlined,
-              compact ? timeLabel : 'Time remaining: $timeLabel',
-            ),
-            if (!compact && untilLabel != null)
-              Padding(
-                padding: EdgeInsets.only(top: layout.s(4), left: layout.s(30)),
-                child: Text(
-                  untilLabel,
-                  style: TextStyle(
-                    color: AveeColors.mutedText,
-                    fontSize: layout.t(13),
-                  ),
+          if (!compact && untilLabel != null)
+            Padding(
+              padding: EdgeInsets.only(top: layout.s(4), left: layout.s(40)),
+              child: Text(
+                untilLabel,
+                style: TextStyle(
+                  color: AveeColors.mutedText,
+                  fontSize: layout.t(13),
                 ),
               ),
-          ],
+            ),
           if (isTrial && traffic != null && !compact) ...[
             SizedBox(height: layout.s(8)),
             _accessDetailRow(
@@ -600,7 +625,10 @@ class AveeAccessStatusPanel extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: layout.s(18), color: AveeColors.primary),
+        SizedBox(
+          width: layout.s(30),
+          child: Icon(icon, size: layout.s(18), color: AveeColors.primary),
+        ),
         SizedBox(width: layout.s(10)),
         Expanded(
           child: Text(

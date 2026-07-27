@@ -506,9 +506,9 @@ class AveeAccountState extends ChangeNotifier {
       await socket.close();
       final latency = stopwatch.elapsedMilliseconds;
       next['latencyMs'] = latency;
-      next['latencyQuality'] = latency <= 80
+      next['latencyQuality'] = latency <= 200
           ? 'excellent'
-          : latency <= 160
+          : latency <= 500
               ? 'good'
               : 'poor';
     } catch (_) {
