@@ -96,8 +96,8 @@ class ConnectService {
   /// in-memory writes with no MethodChannel/notification side effect, so calling
   /// this while disconnected is a cheap, harmless cache prime (never flashes a
   /// notification).
-  void initForegroundCache() {
-    final profile = globalState.config.currentProfile;
+  void initForegroundCache({Profile? profileOverride}) {
+    final profile = profileOverride ?? globalState.config.currentProfile;
     if (profile == null) return;
 
     final profileName = profile.label ?? profile.id;
@@ -278,7 +278,10 @@ class ConnectService {
         // FlClashX parity: the long-lived mihomo executor (DNS resolver, fake-ip
         // pool, providers) survives stop→start and degrades over long sessions —
         // force a full profile re-setup on every Android connect.
-        globalState.appController.applyProfileDebounce();
+        // The mobile shell does not mount the legacy home scaffold. Passing
+        // silence=true makes applyProfile run through the shell-safe path
+        // instead of returning early when the old scaffold is absent.
+        globalState.appController.applyProfileDebounce(silence: true);
         return;
       }
       final currentLastModified =

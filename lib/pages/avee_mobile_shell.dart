@@ -8,6 +8,7 @@ import 'package:avee/services/avee_billing.dart';
 import 'package:avee/state.dart';
 import 'package:avee/ui/avee_design.dart';
 import 'package:avee/views/dashboard/widgets/start_button.dart';
+import 'package:avee/models/common.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -1322,6 +1323,16 @@ class _AveeLocationsPageState extends ConsumerState<AveeLocationsPage> {
           proxyName: proxyName,
         );
         await globalState.appController.updateGroups();
+        Group? appliedGroup;
+        for (final group in ref.read(groupsProvider)) {
+          if (group.name == groupName) {
+            appliedGroup = group;
+            break;
+          }
+        }
+        if (appliedGroup?.realNow != proxyName) {
+          throw StateError('Mihomo did not apply the selected location.');
+        }
         // Persist the location only after Mihomo accepted the new proxy.
         // This prevents the UI from reporting a location that the running
         // profile has not actually selected when a profile refresh fails.
@@ -1378,6 +1389,18 @@ class _AveeLocationsPageState extends ConsumerState<AveeLocationsPage> {
   String? _findGroupName(String proxyName) {
     final groups = ref.read(groupsProvider);
     final currentGroupName = ref.read(currentProfileProvider)?.currentGroupName;
+    for (final group in groups) {
+      if (group.name == currentGroupName &&
+          group.all.any((proxy) => proxy.name == proxyName)) {
+        return group.name;
+      }
+    }
+    for (final group in groups) {
+      if (group.name.toUpperCase() == 'GLOBAL' &&
+          group.all.any((proxy) => proxy.name == proxyName)) {
+        return group.name;
+      }
+    }
     for (final group in groups) {
       if (group.name == currentGroupName &&
           group.all.any((proxy) => proxy.name == proxyName)) {

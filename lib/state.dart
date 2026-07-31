@@ -538,13 +538,17 @@ class GlobalState {
 
   Future<SetupParams> getSetupParams({
     required ClashConfig pathConfig,
+    Map<String, String>? selectedMap,
   }) async {
     final clashConfig = await patchRawConfig(
       patchConfig: pathConfig,
     );
     final params = SetupParams(
       config: clashConfig,
-      selectedMap: config.currentProfile?.selectedMap ?? {},
+      // Callers that have a Riverpod ref can provide the freshest profile
+      // selection explicitly. The mirror is kept as a fallback for service
+      // isolate/quick-start callers.
+      selectedMap: selectedMap ?? config.currentProfile?.selectedMap ?? {},
       testUrl: config.appSetting.testUrl,
     );
     return params;

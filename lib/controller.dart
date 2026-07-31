@@ -221,7 +221,8 @@ class AppController {
       _connectService.updateForegroundServerName(groupName, serverName);
 
   /// Delegates to [ConnectService.initForegroundCache].
-  void initForegroundCache() => _connectService.initForegroundCache();
+  void initForegroundCache({Profile? profileOverride}) =>
+      _connectService.initForegroundCache(profileOverride: profileOverride);
 
   /// Delegates to [ConnectService.restartCore].
   Future<void> restartCore() => _connectService.restartCore();
@@ -727,6 +728,7 @@ class AppController {
 
     final params = await globalState.getSetupParams(
       pathConfig: realPatchConfig,
+      selectedMap: _ref.read(currentProfileProvider)?.selectedMap,
     );
     // Invalidate BEFORE mutating the core. setupConfig can THROW (the
     // fail-fast completeError path in handleResult for malformed payloads),
@@ -816,7 +818,57 @@ class AppController {
       await setupClashConfig();
       await updateGroups();
       await updateProviders();
+      await _reapplySelectedMap();
     });
+  }
+
+  /// A full Mihomo setup rebuilds selector objects. Re-apply the user's
+  /// persisted choices after the rebuild so the UI selection and actual
+  /// egress cannot diverge (Android reconnects are the important case).
+  /// Invalid/stale entries are ignored because a subscription can legitimately
+  /// remove a proxy or group between updates.
+  Future<void> _reapplySelectedMap() async {
+    final selectedMap = _ref.read(currentProfileProvider)?.selectedMap;
+    if (selectedMap == null || selectedMap.isEmpty) return;
+
+    final groups = _ref.read(groupsProvider);
+    final restoreEntries = <String, String>{...selectedMap};
+    // Keep all selectors that contain the chosen proxy in sync. This bridges
+    // profiles created by older releases (GLOBAL) and newer releases (AVEE),
+    // so a reconnect cannot silently fall back to the first node.
+    for (final entry in selectedMap.entries) {
+      for (final group in groups) {
+        if (!group.all.any((proxy) => proxy.name == entry.value)) {
+          continue;
+        }
+        restoreEntries[group.name] = entry.value;
+      }
+    }
+    for (final entry in restoreEntries.entries) {
+      final group = groups.getGroup(entry.key);
+      if (group == null ||
+          !group.all.any((proxy) => proxy.name == entry.value)) {
+        continue;
+      }
+      try {
+        final result = await clashCore.changeProxy(
+          ChangeProxyParams(
+            groupName: entry.key,
+            proxyName: entry.value,
+          ),
+        );
+        if (result.isNotEmpty) {
+          commonPrint.log(
+            '[location] selector restore failed for ${entry.key}: $result',
+          );
+        }
+      } catch (error) {
+        commonPrint.log(
+          '[location] selector restore failed for ${entry.key}: $error',
+        );
+      }
+    }
+    await updateGroups();
   }
 
   Future applyProfile({bool silence = false}) async {
@@ -976,12 +1028,20 @@ class AppController {
     required String groupName,
     required String proxyName,
   }) async {
-    await clashCore.changeProxy(
+    final result = await clashCore.changeProxy(
       ChangeProxyParams(
         groupName: groupName,
         proxyName: proxyName,
       ),
     );
+    // Mihomo reports failures as a non-empty response string. Treating that
+    // response as success leaves the UI pointing at the requested location
+    // while the core keeps routing through the previous node (usually the
+    // first one, Denmark). Fail closed so callers can retry and never persist
+    // a location that the running core did not accept.
+    if (result.isNotEmpty) {
+      throw StateError(result);
+    }
     if (_ref.read(appSettingProvider).closeConnections) {
       clashCore.closeConnections();
     }
@@ -1608,11 +1668,14 @@ class AppController {
       final selectedMap = Map<String, String>.from(
         currentProfile.selectedMap,
       )..[groupName] = proxyName;
-      _ref.read(profilesProvider.notifier).setProfile(
-            currentProfile.copyWith(
-              selectedMap: selectedMap,
-            ),
-          );
+      final updatedProfile = currentProfile.copyWith(selectedMap: selectedMap);
+      _ref.read(profilesProvider.notifier).setProfile(updatedProfile);
+      // Android keeps the Mihomo core in the VPN service isolate. Mirror the
+      // updated profile immediately so that a subsequent connect/reconnect
+      // does not see an empty selectedMap and fall back to the first proxy.
+      // Pass the freshly-created immutable snapshot explicitly: the mirrored
+      // global config can lag one provider notification behind this write.
+      _connectService.initForegroundCache(profileOverride: updatedProfile);
     }
   }
 
