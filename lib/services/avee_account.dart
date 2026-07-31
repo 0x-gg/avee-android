@@ -350,6 +350,7 @@ class AveeAccountState extends ChangeNotifier {
       if (nextHash != null && nextHash == previousHash) {
         managedProfileHash = previousHash;
         managedProfileUpdatedAt = DateTime.now();
+        error = null;
         notifyListeners();
         return null;
       }

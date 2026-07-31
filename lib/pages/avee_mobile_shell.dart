@@ -1297,27 +1297,50 @@ class _AveeLocationsPageState extends ConsumerState<AveeLocationsPage> {
   }
 
   Future<void> _selectLocation(Map<String, dynamic> item) async {
-    final proxyName = item['proxyName']?.toString();
-    if (proxyName == null || proxyName.isEmpty) return;
+    final locationProxyName = item['proxyName']?.toString();
+    if (locationProxyName == null || locationProxyName.isEmpty) return;
 
-    await aveeAccountState.selectLocation(proxyName);
-    var groupName = _findGroupName(proxyName);
+    var proxyName = _findProfileProxyName(item);
+    var groupName = proxyName == null ? null : _findGroupName(proxyName);
     if (groupName == null) {
       await _refreshManagedProfile();
-      groupName = _findGroupName(proxyName);
+      proxyName = _findProfileProxyName(item);
+      groupName = proxyName == null ? null : _findGroupName(proxyName);
     }
 
-    if (groupName != null) {
+    if (groupName != null && proxyName != null) {
       globalState.appController.updateCurrentSelectedMap(
         groupName,
         proxyName,
       );
-      globalState.appController.changeProxyDebounce(groupName, proxyName);
+      try {
+        // Apply the choice before closing the location screen. A debounced
+        // change could still be pending when the user immediately taps
+        // Connect, leaving the previous node active (usually Denmark).
+        await globalState.appController.changeProxy(
+          groupName: groupName,
+          proxyName: proxyName,
+        );
+        await globalState.appController.updateGroups();
+        // Persist the location only after Mihomo accepted the new proxy.
+        // This prevents the UI from reporting a location that the running
+        // profile has not actually selected when a profile refresh fails.
+        await aveeAccountState.selectLocation(locationProxyName);
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not switch to this location.')),
+          );
+        }
+        return;
+      }
     } else if (mounted) {
+      final profileError = aveeAccountState.error;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'The VPN profile is still syncing. Try again in a moment.',
+            profileError ??
+                'The VPN profile is still syncing. Try again in a moment.',
           ),
         ),
       );
@@ -1326,6 +1349,31 @@ class _AveeLocationsPageState extends ConsumerState<AveeLocationsPage> {
 
     if (mounted) Navigator.pop(context);
   }
+
+  String? _findProfileProxyName(Map<String, dynamic> item) {
+    final candidates = <String>{
+      item['proxyName']?.toString() ?? '',
+      item['name']?.toString() ?? '',
+    }..removeWhere((value) => value.isEmpty);
+    final normalizedCandidates = candidates
+        .map(_normalizeLocationName)
+        .where((value) => value.isNotEmpty)
+        .toSet();
+    for (final group in ref.read(groupsProvider)) {
+      for (final proxy in group.all) {
+        final normalizedProxyName = _normalizeLocationName(proxy.name);
+        if (candidates.contains(proxy.name) ||
+            (normalizedProxyName.isNotEmpty &&
+                normalizedCandidates.contains(normalizedProxyName))) {
+          return proxy.name;
+        }
+      }
+    }
+    return null;
+  }
+
+  String _normalizeLocationName(String value) =>
+      value.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '');
 
   String? _findGroupName(String proxyName) {
     final groups = ref.read(groupsProvider);
