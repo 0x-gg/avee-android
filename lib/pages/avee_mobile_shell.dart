@@ -95,7 +95,13 @@ class _AveeMobileShellState extends ConsumerState<AveeMobileShell> {
   Future<void> _syncManagedProfile() async {
     _syncingManagedProfile = true;
     try {
-      final yaml = await aveeAccountState.refreshManagedProfile();
+      // A hash match normally means the installed profile is current. After
+      // login, logout, revocation, or a process restart the local profile can
+      // be absent even though the cached hash is still present, so force the
+      // last-known-good YAML back into Mihomo in that case.
+      final yaml = await aveeAccountState.refreshManagedProfile(
+        forceApply: ref.read(currentProfileProvider) == null,
+      );
       if (yaml != null) {
         await globalState.appController.installManagedProfile(yaml);
       }
@@ -348,11 +354,18 @@ String _friendlyError(String error) {
   return error;
 }
 
-String _bytesEnglish(int value) => value >= 1000000000
-    ? '${(value / 1000000000).toStringAsFixed(1)} GB'
-    : value >= 1000000
-        ? '${(value / 1000000).toStringAsFixed(0)} MB'
-        : '${(value / 1000).toStringAsFixed(0)} KB';
+String _bytesEnglish(int value) {
+  const kilobyte = 1024;
+  const megabyte = kilobyte * 1024;
+  const gigabyte = megabyte * 1024;
+  if (value >= gigabyte) {
+    return '${(value / gigabyte).toStringAsFixed(1)} GB';
+  }
+  if (value >= megabyte) {
+    return '${(value / megabyte).toStringAsFixed(0)} MB';
+  }
+  return '${(value / kilobyte).toStringAsFixed(0)} KB';
+}
 
 String _date(DateTime value) => '${value.day.toString().padLeft(2, '0')}.'
     '${value.month.toString().padLeft(2, '0')}.'
@@ -401,6 +414,11 @@ class AveeAccessStatusPanel extends StatelessWidget {
         expiresAt == null ? null : _formatTimeRemaining(expiresAt);
     final untilLabel = expiresAt == null ? null : 'Until ${_date(expiresAt)}';
     final traffic = state.trafficRemainingBytes;
+    final trafficLabel = traffic != null
+        ? '${_bytesEnglish(traffic)} left'
+        : state.trafficLimitBytes == null
+            ? 'Unlimited'
+            : 'Updating…';
 
     return AveePanel(
       child: Column(
@@ -446,6 +464,35 @@ class AveeAccessStatusPanel extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                           fontSize: layout.statusSize,
                         ),
+                      ),
+                    ],
+                    if (compact) ...[
+                      SizedBox(height: layout.s(5)),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.data_usage_outlined,
+                            color: AveeColors.primary,
+                            size: layout.s(16),
+                          ),
+                          SizedBox(width: layout.s(6)),
+                          Text(
+                            'Data left',
+                            style: TextStyle(
+                              color: AveeColors.mutedText,
+                              fontSize: layout.captionSize,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            trafficLabel,
+                            style: TextStyle(
+                              color: AveeColors.text,
+                              fontWeight: FontWeight.w700,
+                              fontSize: layout.statusSize,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ],
@@ -822,12 +869,15 @@ Future<void> _handleConnectUnavailable(
       );
       return;
     }
-    await onPrepareProfile();
+    final prepared = await _prepareProfileWithRetry(
+      ref,
+      onPrepareProfile,
+    );
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          ref.read(currentProfileProvider) != null
+          prepared
               ? 'Trial started. Tap Connect again.'
               : (aveeAccountState.error ??
                   'Trial started, but the VPN profile is not ready yet.'),
@@ -836,9 +886,12 @@ Future<void> _handleConnectUnavailable(
     );
     return;
   }
-  await onPrepareProfile();
+  final prepared = await _prepareProfileWithRetry(
+    ref,
+    onPrepareProfile,
+  );
   if (!context.mounted) return;
-  if (ref.read(currentProfileProvider) != null) {
+  if (prepared) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('VPN profile is ready. Tap Connect again.'),
@@ -853,6 +906,20 @@ Future<void> _handleConnectUnavailable(
       ),
     ),
   );
+}
+
+Future<bool> _prepareProfileWithRetry(
+  WidgetRef ref,
+  Future<void> Function() onPrepareProfile,
+) async {
+  for (var attempt = 0; attempt < 2; attempt++) {
+    await onPrepareProfile();
+    if (ref.read(currentProfileProvider) != null) return true;
+    if (attempt == 0) {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+  }
+  return ref.read(currentProfileProvider) != null;
 }
 
 class _SignalOrb extends StatefulWidget {

@@ -333,7 +333,7 @@ class AveeAccountState extends ChangeNotifier {
     });
   }
 
-  Future<String?> refreshManagedProfile() async {
+  Future<String?> refreshManagedProfile({bool forceApply = false}) async {
     final current = session;
     if (current == null || !access) return null;
     try {
@@ -342,17 +342,32 @@ class AveeAccountState extends ChangeNotifier {
       if (yaml == null || yaml.isEmpty)
         throw const FormatException('Managed profile is empty');
       final parsed = loadYaml(yaml);
-      if (parsed is! YamlMap || parsed['proxies'] is! YamlList) {
-        throw const FormatException('Managed profile has no proxies');
+      if (parsed is! YamlMap ||
+          parsed['proxies'] is! YamlList ||
+          parsed['proxy-groups'] is! YamlList ||
+          parsed['rules'] is! YamlList) {
+        throw const FormatException(
+          'Managed profile must contain proxies, proxy-groups and rules',
+        );
       }
       final nextHash = response['profileHash']?.toString();
       final previousHash = await _storage.read(key: _managedProfileHashKey);
-      if (nextHash != null && nextHash == previousHash) {
+      if (!forceApply && nextHash != null && nextHash == previousHash) {
         managedProfileHash = previousHash;
         managedProfileUpdatedAt = DateTime.now();
         error = null;
         notifyListeners();
         return null;
+      }
+      if (forceApply && nextHash != null && nextHash == previousHash) {
+        final cached = await _storage.read(key: _managedProfileKey);
+        if (cached != null && cached.isNotEmpty) {
+          managedProfileHash = previousHash;
+          managedProfileUpdatedAt = DateTime.now();
+          error = null;
+          notifyListeners();
+          return cached;
+        }
       }
       await _storage.write(key: _managedProfileKey, value: yaml);
       if (nextHash != null) {
