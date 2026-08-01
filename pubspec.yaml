@@ -1,7 +1,7 @@
 name: avee
 description: AVEE VPN — multi-platform client based on mihomo core.
 publish_to: "none"
-version: 0.9.4+2026080103
+version: 0.9.6+2026080105
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
@@ -23,7 +23,7 @@ dependencies:
     path: plugins/window_ext
   launch_at_startup: ^0.5.1
   json_annotation: ^4.9.0
-  file_picker: ^10.3.8
+  file_picker: ^11.0.3
   mobile_scanner: ^7.1.4
   app_links: ^6.4.1
   win32_registry: ^2.1.0
@@ -141,3 +141,9 @@ flutter_launcher_icons:
   adaptive_icon_background: "#000000"
   adaptive_icon_foreground: "assets/images/icon.png"
   adaptive_icon_monochrome: "assets/images/icon_white.png"
+
+dependency_overrides:
+  # Keep the Android bitmap decode fix in the repository until the upstream
+  # package ships a bounded decode implementation.
+  file_picker:
+    path: third_party/file_picker

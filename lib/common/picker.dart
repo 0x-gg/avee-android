@@ -8,7 +8,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 class Picker {
   Future<PlatformFile?> pickerFile() async {
-    final filePickerResult = await FilePicker.platform.pickFiles(
+    final filePickerResult = await FilePicker.pickFiles(
       withData: true,
       allowMultiple: false,
       initialDirectory: await appPath.downloadDirPath,
@@ -17,7 +17,7 @@ class Picker {
   }
 
   Future<String?> saveFile(String fileName, Uint8List bytes) async {
-    final path = await FilePicker.platform.saveFile(
+    final path = await FilePicker.saveFile(
       fileName: fileName,
       initialDirectory: await appPath.downloadDirPath,
       bytes: Platform.isAndroid ? bytes : null,

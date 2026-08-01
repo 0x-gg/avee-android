@@ -11,6 +11,7 @@ import 'package:avee/views/dashboard/widgets/start_button.dart';
 import 'package:avee/models/common.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 
 Future<void> _pushAveePage(BuildContext context, Widget page) async {
   // Replace stacked sub-screens so Back always returns to Home.
@@ -1772,12 +1773,7 @@ class AveeAccountPage extends StatelessWidget {
                         AveeSecondaryButton(
                           label: 'Log Out',
                           icon: Icons.logout_rounded,
-                          onPressed: () async {
-                            await globalState.appController
-                                .removeManagedProfile();
-                            await aveeAccountState.logOut();
-                            if (context.mounted) Navigator.pop(context);
-                          },
+                          onPressed: () => _logout(context),
                         ),
                         SizedBox(height: layout.s(12)),
                         AveeDangerButton(
@@ -1828,6 +1824,94 @@ class AveeAccountPage extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    final accountId = aveeAccountState.session?.accountId;
+    if (accountId == null || accountId.isEmpty) return;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final layout = AveeLayout.of(dialogContext);
+        var copied = false;
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            backgroundColor: AveeColors.surface,
+            title: Text(
+              'Log out of AVEE?',
+              style: TextStyle(
+                color: AveeColors.text,
+                fontSize: layout.t(20),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Logging out ends this session on the current device. Your AVEE account and subscription stay active, but you will need this AVEE ID to sign in again.',
+                  style: TextStyle(
+                    color: AveeColors.secondaryText,
+                    fontSize: layout.bodySize,
+                    height: 1.45,
+                  ),
+                ),
+                SizedBox(height: layout.s(16)),
+                Text(
+                  'Your AVEE ID',
+                  style: TextStyle(
+                    color: AveeColors.mutedText,
+                    fontSize: layout.captionSize,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: layout.s(6)),
+                SelectableText(
+                  accountId,
+                  style: TextStyle(
+                    color: AveeColors.text,
+                    fontSize: layout.bodySize,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                SizedBox(height: layout.s(12)),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: accountId));
+                    if (!dialogContext.mounted) return;
+                    setState(() => copied = true);
+                  },
+                  icon: Icon(
+                    copied ? Icons.check_rounded : Icons.copy_rounded,
+                    size: layout.s(17),
+                  ),
+                  label: Text(copied ? 'Copied' : 'Copy AVEE ID'),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Log out'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (ok != true || !context.mounted) return;
+
+    await globalState.appController.removeManagedProfile();
+    await aveeAccountState.logOut();
+    if (context.mounted) Navigator.pop(context);
   }
 
   Future<void> _delete(BuildContext context) async {
