@@ -562,17 +562,20 @@ class AveeAccessStatusPanel extends StatelessWidget {
             ),
           ] else if (compact && onSubscribe != null) ...[
             SizedBox(height: layout.s(8)),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  textStyle: TextStyle(fontSize: layout.bodySize),
+            Padding(
+              padding: EdgeInsets.only(left: layout.s(40)),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: TextStyle(fontSize: layout.bodySize),
+                  ),
+                  onPressed: onSubscribe,
+                  child: Text(isTrial ? 'View plans' : 'Manage subscription'),
                 ),
-                onPressed: onSubscribe,
-                child: Text(isTrial ? 'View plans' : 'Manage subscription'),
               ),
             ),
           ],
@@ -1604,20 +1607,20 @@ class AveeAccountPage extends StatelessWidget {
                                       fontSize: layout.bodySize,
                                     ),
                                   ),
-                                  SizedBox(width: layout.s(4)),
+                                  SizedBox(width: layout.s(1)),
                                   IconButton(
                                     onPressed: () => _showAveeIdHelp(context),
                                     tooltip: 'About AVEE ID',
                                     visualDensity: VisualDensity.compact,
                                     padding: EdgeInsets.zero,
-                                    constraints: BoxConstraints(
-                                      minWidth: layout.s(28),
-                                      minHeight: layout.s(28),
+                                    constraints: BoxConstraints.tightFor(
+                                      width: layout.s(24),
+                                      height: layout.s(24),
                                     ),
                                     icon: Icon(
                                       Icons.help_outline,
                                       color: AveeColors.mutedText,
-                                      size: layout.s(18),
+                                      size: layout.s(17),
                                     ),
                                   ),
                                 ],
