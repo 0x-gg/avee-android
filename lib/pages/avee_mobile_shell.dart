@@ -367,6 +367,46 @@ String _bytesEnglish(int value) {
   return '${(value / kilobyte).toStringAsFixed(0)} KB';
 }
 
+class _TrafficUsage {
+  const _TrafficUsage({
+    required this.usedBytes,
+    required this.remainingBytes,
+    required this.limitBytes,
+  });
+
+  final int usedBytes;
+  final int remainingBytes;
+  final int limitBytes;
+
+  double get progress => (usedBytes / limitBytes).clamp(0.0, 1.0).toDouble();
+}
+
+_TrafficUsage? _trafficUsage({
+  required int? limitBytes,
+  required int? usedBytes,
+  required int? remainingBytes,
+}) {
+  if (limitBytes == null || limitBytes <= 0) return null;
+
+  final normalizedRemaining = remainingBytes != null
+      ? remainingBytes.clamp(0, limitBytes).toInt()
+      : usedBytes == null
+          ? null
+          : (limitBytes - usedBytes).clamp(0, limitBytes).toInt();
+  final normalizedUsed = usedBytes != null
+      ? usedBytes.clamp(0, limitBytes).toInt()
+      : normalizedRemaining == null
+          ? null
+          : limitBytes - normalizedRemaining;
+
+  if (normalizedUsed == null || normalizedRemaining == null) return null;
+  return _TrafficUsage(
+    usedBytes: normalizedUsed,
+    remainingBytes: normalizedRemaining,
+    limitBytes: limitBytes,
+  );
+}
+
 String _date(DateTime value) => '${value.day.toString().padLeft(2, '0')}.'
     '${value.month.toString().padLeft(2, '0')}.'
     '${value.year}';
@@ -416,6 +456,11 @@ class AveeAccessStatusPanel extends StatelessWidget {
         expiresAt == null ? null : _formatTimeRemaining(expiresAt);
     final untilLabel = expiresAt == null ? null : 'Until ${_date(expiresAt)}';
     final traffic = state.trafficRemainingBytes;
+    final usage = _trafficUsage(
+      limitBytes: state.trafficLimitBytes,
+      usedBytes: state.trafficUsedBytes,
+      remainingBytes: state.trafficRemainingBytes,
+    );
     final trafficLabel = traffic != null
         ? '${_bytesEnglish(traffic)} left'
         : state.trafficLimitBytes == null
@@ -514,12 +559,56 @@ class AveeAccessStatusPanel extends StatelessWidget {
                 ),
               ),
             ),
-          if (isTrial && traffic != null && !compact) ...[
+          if (!compact && usage != null) ...[
             SizedBox(height: layout.s(8)),
-            _accessDetailRow(
-              context,
-              Icons.data_usage_outlined,
-              'Data remaining: ${_bytesEnglish(traffic)}',
+            Padding(
+              padding: EdgeInsets.only(left: layout.s(40)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'Data used',
+                        style: TextStyle(
+                          color: AveeColors.secondaryText,
+                          fontSize: layout.statusSize,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${_bytesEnglish(usage.usedBytes)} / ${_bytesEnglish(usage.limitBytes)}',
+                        style: TextStyle(
+                          color: AveeColors.text,
+                          fontSize: layout.statusSize,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: layout.s(7)),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(layout.s(4)),
+                    child: LinearProgressIndicator(
+                      value: usage.progress,
+                      minHeight: layout.s(6),
+                      backgroundColor: AveeColors.background,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        isTrial ? AveeColors.warning : AveeColors.primary,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: layout.s(5)),
+                  Text(
+                    '${_bytesEnglish(usage.remainingBytes)} left',
+                    style: TextStyle(
+                      color: AveeColors.mutedText,
+                      fontSize: layout.captionSize,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
           if (!compact && onSubscribe != null) ...[
@@ -581,34 +670,6 @@ class AveeAccessStatusPanel extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
-
-  Widget _accessDetailRow(
-    BuildContext context,
-    IconData icon,
-    String text,
-  ) {
-    final layout = AveeLayout.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: layout.s(30),
-          child: Icon(icon, size: layout.s(18), color: AveeColors.primary),
-        ),
-        SizedBox(width: layout.s(10)),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              color: AveeColors.text,
-              fontWeight: FontWeight.w600,
-              fontSize: layout.statusSize,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -1607,15 +1668,16 @@ class AveeAccountPage extends StatelessWidget {
                                       fontSize: layout.bodySize,
                                     ),
                                   ),
-                                  SizedBox(width: layout.s(1)),
+                                  SizedBox(width: layout.s(2)),
                                   IconButton(
                                     onPressed: () => _showAveeIdHelp(context),
                                     tooltip: 'About AVEE ID',
+                                    alignment: Alignment.centerLeft,
                                     visualDensity: VisualDensity.compact,
                                     padding: EdgeInsets.zero,
                                     constraints: BoxConstraints.tightFor(
-                                      width: layout.s(24),
-                                      height: layout.s(24),
+                                      width: layout.s(28),
+                                      height: layout.s(28),
                                     ),
                                     icon: Icon(
                                       Icons.help_outline,
