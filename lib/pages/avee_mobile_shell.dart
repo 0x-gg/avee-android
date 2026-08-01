@@ -355,9 +355,13 @@ String _friendlyError(String error) {
 }
 
 String _bytesEnglish(int value) {
-  const kilobyte = 1024;
-  const megabyte = kilobyte * 1024;
-  const gigabyte = megabyte * 1024;
+  const kilobyte = 1000;
+  const megabyte = kilobyte * 1000;
+  const gigabyte = megabyte * 1000;
+  const terabyte = gigabyte * 1000;
+  if (value >= terabyte) {
+    return '${(value / terabyte).toStringAsFixed(1)} TB';
+  }
   if (value >= gigabyte) {
     return '${(value / gigabyte).toStringAsFixed(1)} GB';
   }
