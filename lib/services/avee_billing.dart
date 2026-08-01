@@ -8,9 +8,55 @@ import 'avee_account.dart';
 import '../ui/avee_design.dart';
 
 class AveeBillingOffers {
-  const AveeBillingOffers({required this.google});
+  const AveeBillingOffers({required this.google, required this.plans});
 
   final ProductDetailsResponse google;
+  final List<Map<String, dynamic>> plans;
+}
+
+Map<String, dynamic>? _planForProduct(
+  List<Map<String, dynamic>> plans,
+  ProductDetails product,
+) {
+  for (final plan in plans) {
+    if (plan['code']?.toString() == product.id) return plan;
+  }
+  return null;
+}
+
+String _planTrafficLabel(dynamic raw) {
+  final bytes = int.tryParse(raw?.toString() ?? '');
+  if (bytes == null) return 'Unlimited data';
+  const units = <String>['B', 'KB', 'MB', 'GB', 'TB'];
+  var value = bytes.toDouble();
+  var unit = 0;
+  // Plan limits are configured in the billing catalog using decimal
+  // marketing units, so a configured 1 TB plan should be shown as 1.0 TB
+  // instead of 931 GB.
+  while (value >= 1000 && unit < units.length - 1) {
+    value /= 1000;
+    unit++;
+  }
+  final formatted = value >= 10 || unit == 0
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(1);
+  return '$formatted ${units[unit]} data';
+}
+
+String _planDurationLabel(dynamic raw) {
+  final days = int.tryParse(raw?.toString() ?? '');
+  if (days == null || days <= 0) return 'Flexible duration';
+  if (days % 30 == 0) {
+    final months = days ~/ 30;
+    return '$months ${months == 1 ? 'month' : 'months'}';
+  }
+  return '$days ${days == 1 ? 'day' : 'days'}';
+}
+
+String _planDevicesLabel(dynamic raw) {
+  final devices = int.tryParse(raw?.toString() ?? '');
+  if (devices == null || devices <= 0) return 'Device limit set by plan';
+  return '$devices ${devices == 1 ? 'device' : 'devices'}';
 }
 
 /// Google Play purchase boundary. Store state never grants access locally;
@@ -62,7 +108,7 @@ class AveeBillingService {
         // A Play catalog outage is reported by the paywall.
       }
     }
-    return AveeBillingOffers(google: google);
+    return AveeBillingOffers(google: google, plans: plans);
   }
 
   Future<bool> buy(ProductDetails product) => store.buyNonConsumable(
@@ -197,9 +243,9 @@ class AveePaywall extends StatelessWidget {
                   for (final product in products)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: AveePrimaryButton(
-                        icon: Icons.arrow_forward_rounded,
-                        label: '${product.title}  ·  ${product.price}',
+                      child: _PlanOfferCard(
+                        product: product,
+                        plan: _planForProduct(snapshot.data!.plans, product),
                         onPressed: () async {
                           await aveeBillingService.buy(product);
                           if (context.mounted) Navigator.pop(context);
@@ -212,4 +258,69 @@ class AveePaywall extends StatelessWidget {
           ),
         ),
       );
+}
+
+class _PlanOfferCard extends StatelessWidget {
+  const _PlanOfferCard({
+    required this.product,
+    required this.plan,
+    required this.onPressed,
+  });
+
+  final ProductDetails product;
+  final Map<String, dynamic>? plan;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final details = plan;
+    final duration = _planDurationLabel(details?['durationDays']);
+    final traffic = _planTrafficLabel(details?['trafficLimitBytes']);
+    final devices = _planDevicesLabel(details?['maxDevices']);
+    return AveePanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  product.title,
+                  style: const TextStyle(
+                    color: AveeColors.text,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Text(
+                product.price,
+                style: const TextStyle(
+                  color: AveeColors.primary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$duration  •  $traffic  •  $devices',
+            style: const TextStyle(color: AveeColors.secondaryText),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Auto-renewing. Manage or cancel anytime in Google Play.',
+            style: TextStyle(color: AveeColors.mutedText, fontSize: 12),
+          ),
+          const SizedBox(height: 12),
+          AveePrimaryButton(
+            icon: Icons.arrow_forward_rounded,
+            label: 'Subscribe now',
+            onPressed: onPressed,
+          ),
+        ],
+      ),
+    );
+  }
 }

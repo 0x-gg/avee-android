@@ -436,6 +436,48 @@ class AveeSecondaryButton extends StatelessWidget {
   }
 }
 
+class AveeDangerButton extends StatelessWidget {
+  const AveeDangerButton({
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    super.key,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final layout = AveeLayout.of(context);
+    return SizedBox(
+      height: layout.buttonHeightSecondary,
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: icon == null
+            ? const SizedBox.shrink()
+            : Icon(icon, size: layout.s(22)),
+        label: Text(label),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AveeColors.error,
+          backgroundColor: AveeColors.error.withValues(alpha: 0.08),
+          side: BorderSide(
+              color: AveeColors.error.withValues(alpha: 0.72), width: 1.4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(layout.buttonRadius),
+          ),
+          textStyle: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: layout.buttonFontSize,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class AveePanel extends StatelessWidget {
   const AveePanel({
     required this.child,

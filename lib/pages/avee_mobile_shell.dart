@@ -395,11 +395,13 @@ String _subscriptionSourceLabel(String? source) {
 class AveeAccessStatusPanel extends StatelessWidget {
   const AveeAccessStatusPanel({
     this.onSubscribe,
+    this.onTap,
     this.compact = false,
     super.key,
   });
 
   final VoidCallback? onSubscribe;
+  final VoidCallback? onTap;
   final bool compact;
 
   @override
@@ -421,6 +423,7 @@ class AveeAccessStatusPanel extends StatelessWidget {
             : 'Updating…';
 
     return AveePanel(
+      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -519,38 +522,45 @@ class AveeAccessStatusPanel extends StatelessWidget {
               'Data remaining: ${_bytesEnglish(traffic)}',
             ),
           ],
-          if (isTrial && !compact) ...[
+          if (!compact && onSubscribe != null) ...[
             SizedBox(height: layout.s(12)),
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.all(layout.s(12)),
-              decoration: BoxDecoration(
-                color: AveeColors.background,
-                borderRadius: BorderRadius.circular(layout.s(12)),
-                border: Border.all(
-                  color: AveeColors.warning.withValues(alpha: 0.35),
+            if (isTrial)
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(layout.s(12)),
+                decoration: BoxDecoration(
+                  color: AveeColors.background,
+                  borderRadius: BorderRadius.circular(layout.s(12)),
+                  border: Border.all(
+                    color: AveeColors.warning.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Text(
+                  'When your trial ends, purchase a subscription to keep using AVEE VPN.',
+                  style: TextStyle(
+                    color: AveeColors.secondaryText,
+                    fontSize: layout.t(13),
+                    height: 1.35,
+                  ),
                 ),
               ),
-              child: Text(
-                'When your trial ends, purchase a subscription to keep using AVEE VPN.',
-                style: TextStyle(
-                  color: AveeColors.secondaryText,
-                  fontSize: layout.t(13),
-                  height: 1.35,
-                ),
-              ),
-            ),
-            if (onSubscribe != null) ...[
-              SizedBox(height: layout.s(10)),
-              TextButton(
+            SizedBox(height: layout.s(10)),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
                 onPressed: onSubscribe,
                 style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   textStyle: TextStyle(fontSize: layout.bodySize),
                 ),
-                child: const Text('View subscription plans'),
+                child: Text(isTrial
+                    ? 'View subscription plans'
+                    : 'Manage subscription'),
               ),
-            ],
-          ] else if (isTrial && compact && onSubscribe != null) ...[
+            ),
+          ] else if (compact && onSubscribe != null) ...[
             SizedBox(height: layout.s(8)),
             Align(
               alignment: Alignment.centerLeft,
@@ -562,7 +572,7 @@ class AveeAccessStatusPanel extends StatelessWidget {
                   textStyle: TextStyle(fontSize: layout.bodySize),
                 ),
                 onPressed: onSubscribe,
-                child: const Text('View plans'),
+                child: Text(isTrial ? 'View plans' : 'Manage subscription'),
               ),
             ),
           ],
@@ -596,6 +606,76 @@ class AveeAccessStatusPanel extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class AveeTrialUnavailablePanel extends StatelessWidget {
+  const AveeTrialUnavailablePanel({
+    required this.reason,
+    this.onOpenPlans,
+    super.key,
+  });
+
+  final String? reason;
+  final VoidCallback? onOpenPlans;
+
+  @override
+  Widget build(BuildContext context) {
+    final layout = AveeLayout.of(context);
+    final deviceUsed = reason == 'DEVICE_TRIAL_USED';
+    return AveePanel(
+      onTap: onOpenPlans,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.card_giftcard_outlined,
+                color: AveeColors.warning,
+                size: layout.s(22),
+              ),
+              SizedBox(width: layout.s(10)),
+              Text(
+                'Free trial',
+                style: TextStyle(
+                  color: AveeColors.text,
+                  fontWeight: FontWeight.w800,
+                  fontSize: layout.bodySize,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: layout.s(10)),
+          Text(
+            deviceUsed
+                ? 'Free trial is not available on this device. This device has already used its one-time free trial. Sign in with an AVEE ID that has an active subscription or purchase a subscription to get VPN access.'
+                : 'Free trial is not available on this device.',
+            style: TextStyle(
+              color: AveeColors.warning,
+              fontSize: layout.captionSize,
+              height: 1.45,
+            ),
+          ),
+          if (onOpenPlans != null) ...[
+            SizedBox(height: layout.s(10)),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: onOpenPlans,
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  textStyle: TextStyle(fontSize: layout.bodySize),
+                ),
+                child: const Text('View plans'),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -708,40 +788,15 @@ class AveeHomeDashboard extends ConsumerWidget {
                         AveeAccessStatusPanel(
                           compact: true,
                           onSubscribe: () => AveePaywall.show(context),
+                          onTap: () => AveePaywall.show(context),
                         ),
                         if (aveeAccountState.session != null &&
                             !aveeAccountState.access &&
                             !aveeAccountState.trialAvailable) ...[
                           SizedBox(height: layout.s(12)),
-                          AveePanel(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Your free trial has ended',
-                                  style: TextStyle(
-                                    color: AveeColors.text,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: layout.bodySize,
-                                  ),
-                                ),
-                                SizedBox(height: layout.s(6)),
-                                Text(
-                                  'Subscribe to restore VPN access. Reinstalling the app or creating another AVEE ID will not start a new trial on this device.',
-                                  style: TextStyle(
-                                    color: AveeColors.secondaryText,
-                                    fontSize: layout.captionSize,
-                                    height: 1.4,
-                                  ),
-                                ),
-                                SizedBox(height: layout.s(12)),
-                                AveePrimaryButton(
-                                  label: 'Subscribe now',
-                                  icon: Icons.workspace_premium_outlined,
-                                  onPressed: () => AveePaywall.show(context),
-                                ),
-                              ],
-                            ),
+                          AveeTrialUnavailablePanel(
+                            reason: aveeAccountState.trialUnavailableReason,
+                            onOpenPlans: () => AveePaywall.show(context),
                           ),
                         ],
                         if (aveeAccountState.access)
@@ -1539,22 +1594,33 @@ class AveeAccountPage extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'AVEE ID',
-                                style: TextStyle(
-                                  color: AveeColors.text,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: layout.bodySize,
-                                ),
-                              ),
-                              SizedBox(height: layout.s(4)),
-                              Text(
-                                'Your AVEE ID identifies this account. Access is protected by this device.',
-                                style: TextStyle(
-                                  color: AveeColors.mutedText,
-                                  fontSize: layout.captionSize,
-                                  height: 1.4,
-                                ),
+                              Row(
+                                children: [
+                                  Text(
+                                    'AVEE ID',
+                                    style: TextStyle(
+                                      color: AveeColors.text,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: layout.bodySize,
+                                    ),
+                                  ),
+                                  SizedBox(width: layout.s(4)),
+                                  IconButton(
+                                    onPressed: () => _showAveeIdHelp(context),
+                                    tooltip: 'About AVEE ID',
+                                    visualDensity: VisualDensity.compact,
+                                    padding: EdgeInsets.zero,
+                                    constraints: BoxConstraints(
+                                      minWidth: layout.s(28),
+                                      minHeight: layout.s(28),
+                                    ),
+                                    icon: Icon(
+                                      Icons.help_outline,
+                                      color: AveeColors.mutedText,
+                                      size: layout.s(18),
+                                    ),
+                                  ),
+                                ],
                               ),
                               SizedBox(height: layout.s(16)),
                               AveeCopyField(
@@ -1565,41 +1631,25 @@ class AveeAccountPage extends StatelessWidget {
                           ),
                         ),
                         if (!aveeAccountState.trialAvailable &&
-                            !aveeAccountState.isSubscriptionAccess) ...[
+                            !aveeAccountState.access) ...[
                           SizedBox(height: layout.s(16)),
-                          AveePanel(
-                            child: Text(
-                              aveeAccountState.trialUnavailableReason ==
-                                      'DEVICE_TRIAL_USED'
-                                  ? 'This device has already used its one-time free trial. Sign in with an AVEE ID that has an active subscription or purchase a subscription to get VPN access.'
-                                  : 'Free trial is not available on this device.',
-                              style: TextStyle(
-                                color: AveeColors.warning,
-                                fontSize: layout.captionSize,
-                                height: 1.45,
-                              ),
-                            ),
+                          AveeTrialUnavailablePanel(
+                            reason: aveeAccountState.trialUnavailableReason,
+                            onOpenPlans: () => AveePaywall.show(context),
                           ),
                         ],
                         if (aveeAccountState.access) ...[
                           SizedBox(height: layout.s(16)),
                           AveeAccessStatusPanel(
-                            onSubscribe: () => AveePaywall.show(context),
+                            onSubscribe: aveeAccountState.isSubscriptionAccess
+                                ? () => openAveePlaySubscriptionManagement()
+                                : () => AveePaywall.show(context),
+                            onTap: aveeAccountState.isSubscriptionAccess
+                                ? () => openAveePlaySubscriptionManagement()
+                                : () => AveePaywall.show(context),
                           ),
                         ],
                         SizedBox(height: layout.s(24)),
-                        AveePrimaryButton(
-                          label: aveeAccountState.isSubscriptionAccess
-                              ? 'Manage subscription'
-                              : 'View plans',
-                          icon: aveeAccountState.isSubscriptionAccess
-                              ? Icons.open_in_new
-                              : Icons.workspace_premium_outlined,
-                          onPressed: aveeAccountState.isSubscriptionAccess
-                              ? () => openAveePlaySubscriptionManagement()
-                              : () => AveePaywall.show(context),
-                        ),
-                        SizedBox(height: layout.s(12)),
                         AveeSecondaryButton(
                           label: 'Restore purchases',
                           icon: Icons.restore,
@@ -1617,12 +1667,6 @@ class AveeAccountPage extends StatelessWidget {
                               height: 1.4,
                             ),
                           ),
-                        ),
-                        SizedBox(height: layout.s(12)),
-                        AveeSecondaryButton(
-                          label: 'Delete account',
-                          icon: Icons.delete_outline,
-                          onPressed: () => _delete(context),
                         ),
                         SizedBox(height: layout.s(28)),
                         Wrap(
@@ -1656,26 +1700,21 @@ class AveeAccountPage extends StatelessWidget {
                           ],
                         ),
                         SizedBox(height: layout.s(12)),
-                        TextButton.icon(
+                        AveeSecondaryButton(
+                          label: 'Log Out',
+                          icon: Icons.logout_rounded,
                           onPressed: () async {
                             await globalState.appController
                                 .removeManagedProfile();
                             await aveeAccountState.logOut();
                             if (context.mounted) Navigator.pop(context);
                           },
-                          icon: Icon(
-                            Icons.logout_rounded,
-                            color: AveeColors.error,
-                            size: layout.s(22),
-                          ),
-                          label: Text(
-                            'Log Out',
-                            style: TextStyle(
-                              color: AveeColors.error,
-                              fontWeight: FontWeight.w700,
-                              fontSize: layout.bodySize,
-                            ),
-                          ),
+                        ),
+                        SizedBox(height: layout.s(12)),
+                        AveeDangerButton(
+                          label: 'Delete account',
+                          icon: Icons.delete_outline,
+                          onPressed: () => _delete(context),
                         ),
                         const AveeVersionFooter(),
                       ],
@@ -1687,6 +1726,40 @@ class AveeAccountPage extends StatelessWidget {
           ),
         ),
       );
+
+  Future<void> _showAveeIdHelp(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final layout = AveeLayout.of(dialogContext);
+        return AlertDialog(
+          backgroundColor: AveeColors.surface,
+          title: Text(
+            'About AVEE ID',
+            style: TextStyle(
+              color: AveeColors.text,
+              fontSize: layout.t(20),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: Text(
+            'Your AVEE ID identifies this account. Use it to sign in on another device. The number of active devices is limited by your plan, while this device remains protected by AVEE anti-abuse controls.',
+            style: TextStyle(
+              color: AveeColors.secondaryText,
+              fontSize: layout.bodySize,
+              height: 1.45,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Got it'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Future<void> _delete(BuildContext context) async {
     final accountId = aveeAccountState.session?.accountId;
@@ -1707,8 +1780,8 @@ class AveeAccountPage extends StatelessWidget {
           ),
           content: Text(
             accountId == null
-                ? 'This removes your AVEE account, access, and local credentials from this device. This cannot be undone.'
-                : 'Delete AVEE ID $accountId? Access ends immediately and local credentials are removed. This cannot be undone.',
+                ? 'This permanently removes your AVEE account, access, and local credentials from this device. This cannot be undone. If you have a Google Play subscription, cancel it separately in Google Play.'
+                : 'Delete AVEE ID $accountId? Access ends immediately and local credentials are removed. This cannot be undone. Deleting the AVEE account does not cancel a Google Play subscription; cancel it separately in Google Play.',
             style: TextStyle(
               color: AveeColors.secondaryText,
               fontSize: layout.bodySize,
