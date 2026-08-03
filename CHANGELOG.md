@@ -1,3 +1,10 @@
+## v1.0.8
+
+- ci: rename production Android APK sources (#14)
+- build: use production flavor for main Android APK (#13)
+- build: publish main Android release artifacts (#12)
+- Update changelog
+
 ## v1.0.7
 
 - fix: generate valid GitHub update manifest
