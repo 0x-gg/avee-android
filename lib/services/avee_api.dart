@@ -156,7 +156,7 @@ class AveeApi {
 
   Future<Map<String, dynamic>> managedMihomoProfile(AveeSession session,
       {String? hwid}) async {
-    final response = await _request('GET', '/config/mihomo',
+    final response = await _request('GET', '/profile/managed',
         token: session.token,
         extraHeaders: {
           'x-account-id': session.accountId,
