@@ -44,11 +44,11 @@ jobs:
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
       - name: Unit tests
         run: flutter test
-      - name: Build native core for all Android ABIs
+      - name: Build native core for arm64 CI smoke target
         shell: bash
         run: |
           export ANDROID_NDK="$ANDROID_SDK_ROOT/ndk/28.2.13676358"
-          dart setup.dart android --out core
+          dart setup.dart android --arch arm64 --out core
       - name: Build debug APK
         shell: bash
         run: |
@@ -56,6 +56,7 @@ jobs:
           # resolver looks for app-debug.apk even though AGP emits the
           # flavored artifact. Invoke the exact Gradle variant and normalize
           # the artifact name for the CI upload step.
+          export AVEE_CI_ABI=arm64-v8a
           cd android
           ./gradlew :app:assembleSideloadDebug --no-daemon --stacktrace
           cd ..
