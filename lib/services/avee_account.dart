@@ -10,6 +10,7 @@ import 'package:yaml/yaml.dart';
 
 import 'avee_api.dart';
 import 'avee_play_integrity.dart';
+import 'backend_compatibility.dart';
 import '../common/constant.dart';
 import '../utils/device_info_service.dart';
 
@@ -68,6 +69,7 @@ class AveeAccountState extends ChangeNotifier {
   bool locationsLoading = false;
   String? locationsError;
   String? selectedLocation;
+  BackendCompatibility? backendCompatibility;
 
   static const _selectedLocationKey = 'avee.selected_location';
 
@@ -149,6 +151,13 @@ class AveeAccountState extends ChangeNotifier {
       locationsLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<BackendCompatibility?> checkBackendCompatibility() async {
+    final result = await backendCompatibilityService.check();
+    backendCompatibility = result;
+    notifyListeners();
+    return result;
   }
 
   Future<void> selectLocation(String proxyName) async {

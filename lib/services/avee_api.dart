@@ -121,6 +121,9 @@ class AveeApi {
   Future<Map<String, dynamic>> clientConfig() =>
       _request('GET', '/config/client');
 
+  Future<Map<String, dynamic>> compatibility({required String appVersion}) =>
+      _request('GET', '/config/compatibility', query: {'appVersion': appVersion});
+
   Future<Map<String, dynamic>> billingMethods() =>
       _request('GET', '/config/billing/methods');
 
@@ -167,6 +170,7 @@ class AveeApi {
       {String? token,
       Map<String, dynamic>? body,
       Map<String, String>? extraHeaders,
+      Map<String, String>? query,
       bool acceptYaml = false}) async {
     final headers = <String, String>{
       'accept': acceptYaml ? 'application/yaml' : 'application/json',
@@ -174,7 +178,7 @@ class AveeApi {
       if (token != null) 'x-session-token': token,
       ...?extraHeaders
     };
-    final uri = Uri.parse('$baseUrl/v1$path');
+    final uri = Uri.parse('$baseUrl/v1$path').replace(queryParameters: query);
     final response = switch (method) {
       'GET' => await client.get(uri, headers: headers),
       'POST' => await client.post(uri,

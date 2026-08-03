@@ -56,4 +56,34 @@ void main() {
     expect(request.headers['x-session-token'], 'secret');
     expect(jsonDecode(request.body)['confirmation'], 'DELETE');
   });
+
+  test('requests compatibility for the installed app version', () async {
+    late http.Request request;
+    final client = MockClient((value) async {
+      request = value;
+      return http.Response(
+        jsonEncode({
+          'schemaVersion': 1,
+          'clientVersion': '0.9.7',
+          'compatible': true,
+          'updateAvailable': true,
+          'requiredUpdate': false,
+          'minimumVersion': '0.9.7',
+          'recommendedVersion': '1.0.0',
+          'storeUrl': 'https://play.google.com/store/apps/details?id=com.avee.vpn',
+          'message': 'Update available',
+          'stack': {'apiContract': 'avee-v1'},
+        }),
+        200,
+      );
+    });
+
+    final result = await AveeApi(
+      baseUrl: 'http://10.0.2.2:3000',
+      client: client,
+    ).compatibility(appVersion: '0.9.7');
+
+    expect(result['recommendedVersion'], '1.0.0');
+    expect(request.url.queryParameters['appVersion'], '0.9.7');
+  });
 }

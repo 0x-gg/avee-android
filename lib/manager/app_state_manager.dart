@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:avee/common/common.dart';
 import 'package:avee/providers/providers.dart';
+import 'package:avee/services/backend_compatibility.dart';
 import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -91,6 +92,9 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
       globalState.appController.savePreferencesDebounce();
     } else if (state == AppLifecycleState.resumed) {
       render?.resume();
+      // One foreground check; there is no periodic background compatibility
+      // polling or battery work.
+      unawaited(backendCompatibilityService.checkAndNotify());
       // Reconcile FAB with native state — QS tile / notification STOP don't notify us.
       unawaited(globalState.appController.syncRunStateFromNative());
       // HWID device-limit recovery: the user likely just freed a slot in the

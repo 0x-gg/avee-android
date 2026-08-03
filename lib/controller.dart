@@ -12,6 +12,7 @@ import 'package:avee/enum/enum.dart';
 import 'package:avee/plugins/app.dart';
 import 'package:avee/providers/providers.dart';
 import 'package:avee/services/app_update_service.dart';
+import 'package:avee/services/backend_compatibility.dart';
 import 'package:avee/services/connect_service.dart';
 import 'package:avee/services/profile_service.dart';
 import 'package:avee/state.dart';
@@ -1294,6 +1295,9 @@ class AppController {
         const Duration(seconds: 1), _updateCurrentProfileSubscription);
     autoUpdateProfiles();
     autoCheckUpdate();
+    // Foreground-only compatibility notice. ConnectService repeats the check
+    // immediately before VPN start; there is no battery-draining poll.
+    unawaited(backendCompatibilityService.checkAndNotify());
     // Android sideload in-app updater — self-gates on Play/desktop, the
     // autoCheckUpdate setting, and the once/day cadence. Surfaces only via the
     // Settings update entry (no dashboard banner).

@@ -16,6 +16,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../common/common.dart';
+import 'backend_compatibility.dart';
 
 /// Connect-lifecycle concern carved out of [AppController].
 ///
@@ -231,6 +232,13 @@ class ConnectService {
     // Fresh user action — new core-restart budget for requestAdmin.
     _coreRealignAttempts = 0;
     if (isStart) {
+      // A panel/node/API upgrade may deliberately invalidate the old client
+      // contract. Check just before connection so a stale app cannot present a
+      // misleading "connected" state. Network failure is fail-open here; the
+      // entitlement and managed-profile checks below remain authoritative.
+      if (!await backendCompatibilityService.requireCompatibleOrExplain()) {
+        return;
+      }
       ConnectTrace.mark('updateStatus');
       // Central safety gate: every code path that turns the VPN on must
       // pass through here, so first-run disclosure consent is enforced
@@ -264,6 +272,7 @@ class ConnectService {
         } catch (error) {
           commonPrint
               .log('[connect] profile apply before start failed: $error');
+          unawaited(backendCompatibilityService.checkAndNotify());
           globalState.showNotifier(
             'The VPN profile could not be applied. Refresh your account and try again.',
           );
@@ -283,6 +292,7 @@ class ConnectService {
       // have been flipped on by an optimistic UI) and surface the error.
       if (started == false) {
         await StatusBarManager.updateIcon(isConnected: false);
+        unawaited(backendCompatibilityService.checkAndNotify());
         globalState.showNotifier(ErrorMapper.vpnStartFailed);
         return;
       }
@@ -296,6 +306,7 @@ class ConnectService {
         final verified = await _verifyAndroidTunnel();
         if (!verified) {
           await updateStatus(false);
+          unawaited(backendCompatibilityService.checkAndNotify());
           globalState.showNotifier(
             'The VPN tunnel started, but internet access could not be verified. Try another location or refresh the profile.',
           );
