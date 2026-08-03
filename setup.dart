@@ -858,6 +858,8 @@ class BuildCommand extends Command {
               "build",
               "apk",
               "--release",
+              "--flavor",
+              "sideload",
               "--dart-define=APP_ENV=$env",
               "--dart-define=CORE_VERSION=$coreVersion",
               if ((Platform.environment["AVEE_CONFIG_PUBLIC_KEY"] ?? '').isNotEmpty)
