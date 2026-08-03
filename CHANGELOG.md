@@ -1,3 +1,10 @@
+## v1.0.6
+
+- ci: build only Android and Linux artifacts
+
+- Target AVEE ecosystem is Android client plus Linux server stack.
+- Update changelog
+
 ## v1.0.5
 
 - release: bump app to 1.0.1
