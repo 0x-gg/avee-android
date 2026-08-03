@@ -11,7 +11,13 @@ android {
     defaultConfig {
         minSdk = 23
         ndk {
-            abiFilters += setOf("armeabi-v7a", "arm64-v8a", "x86_64")
+            val ciAbi = System.getenv("AVEE_CI_ABI")
+                ?.split(',')
+                ?.map(String::trim)
+                ?.filter(String::isNotEmpty)
+                ?.toSet()
+                ?.takeIf { it.isNotEmpty() }
+            abiFilters += ciAbi ?: setOf("armeabi-v7a", "arm64-v8a", "x86_64")
         }
     }
 
