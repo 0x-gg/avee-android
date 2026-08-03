@@ -123,6 +123,15 @@ class _HomePageViewState extends ConsumerState<_HomePageView> {
     } else {
       _pageController.jumpToPage(index);
     }
+    if (!mounted) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      FocusManager.instance.primaryFocus?.unfocus();
+    });
   }
 
   void _updatePageController() {

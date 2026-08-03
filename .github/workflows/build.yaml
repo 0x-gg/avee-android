@@ -79,14 +79,14 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24.0"
+          go-version: "1.26.0"
           cache-dependency-path: |
             core/go.sum
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: "stable"
+          flutter-version: 3.41.6
           cache: true
           flutter-version: 3.41.6
 

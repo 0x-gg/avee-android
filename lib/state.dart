@@ -27,6 +27,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'common/common.dart';
 import 'common/proxy_credentials.dart';
 import 'controller.dart';
+import 'core_version.dart';
 import 'models/models.dart';
 
 typedef UpdateTasks = List<FutureOr Function()>;
@@ -179,7 +180,9 @@ class GlobalState {
 
   Future<void> initApp(int version) async {
     coreSHA256 = const String.fromEnvironment("CORE_SHA256");
-    coreVersion = const String.fromEnvironment("CORE_VERSION");
+    final coreVersionEnv = const String.fromEnvironment("CORE_VERSION");
+    coreVersion =
+        coreVersionEnv.isEmpty ? kCoreVersionFromSource : coreVersionEnv;
     isPre = const String.fromEnvironment("APP_ENV") != 'stable';
     appState = AppState(
       version: version,
@@ -530,7 +533,7 @@ class GlobalState {
     final currentProfile = config.currentProfile;
     return CoreState(
       vpnProps: config.vpnProps,
-      onlyStatisticsProxy: config.appSetting.onlyStatisticsProxy,
+      onlyStatisticsProxy: false,
       currentProfileName: currentProfile?.label ?? currentProfile?.id ?? "",
       bypassDomain: config.networkProps.bypassDomain,
     );
@@ -635,12 +638,38 @@ class GlobalState {
         rawConfig["external-ui-url"] == "") {
       rawConfig["external-ui-url"] = "";
     }
-    rawConfig["tcp-concurrent"] = realPatchConfig.tcpConcurrent;
-    rawConfig["unified-delay"] = realPatchConfig.unifiedDelay;
-    rawConfig["log-level"] = realPatchConfig.logLevel.name;
+    // These follow the same overrideNetworkSettings gate as other fields:
+    //   override ON  → UI value wins (always written)
+    //   override OFF → profile value wins, UI is fallback only if missing
+    // Effective values are exposed so the UI reflects what's actually applied
+    // when override is OFF (otherwise widgets would still show stored UI prefs).
+    final profileTcpConcurrent = rawConfig["tcp-concurrent"] as bool?;
+    final profileUnifiedDelay = rawConfig["unified-delay"] as bool?;
+    final profileLogLevel = rawConfig["log-level"] as String?;
+    final profileKeepAlive = (rawConfig["keep-alive-interval"] as num?)?.toInt();
+    final isOverride = config.appSetting.overrideNetworkSettings;
+    final effTcpConcurrent = isOverride
+        ? realPatchConfig.tcpConcurrent
+        : (profileTcpConcurrent ?? realPatchConfig.tcpConcurrent);
+    final effUnifiedDelay = isOverride
+        ? realPatchConfig.unifiedDelay
+        : (profileUnifiedDelay ?? realPatchConfig.unifiedDelay);
+    final effLogLevel = isOverride
+        ? realPatchConfig.logLevel.name
+        : (profileLogLevel ?? realPatchConfig.logLevel.name);
+    final effKeepAlive = isOverride
+        ? realPatchConfig.keepAliveInterval
+        : (profileKeepAlive ?? realPatchConfig.keepAliveInterval);
+    rawConfig["tcp-concurrent"] = effTcpConcurrent;
+    rawConfig["unified-delay"] = effUnifiedDelay;
+    rawConfig["log-level"] = effLogLevel;
+    rawConfig["keep-alive-interval"] = effKeepAlive;
+    effectiveTcpConcurrent.value = effTcpConcurrent;
+    effectiveUnifiedDelay.value = effUnifiedDelay;
+    effectiveLogLevel.value = effLogLevel;
+    effectiveKeepAliveInterval.value = effKeepAlive;
     rawConfig["port"] = 0;
     rawConfig["socks-port"] = 0;
-    rawConfig["keep-alive-interval"] = realPatchConfig.keepAliveInterval;
     rawConfig["port"] = realPatchConfig.port;
     rawConfig["socks-port"] = realPatchConfig.socksPort;
     rawConfig["redir-port"] = realPatchConfig.redirPort;

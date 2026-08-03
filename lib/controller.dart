@@ -661,6 +661,26 @@ class AppController {
       patchConfig = syncedConfig;
     }
 
+    // flclashx-androidsecure header: on Android, when the current profile
+    // declares "androidsecure: true", force mixedPort=0 on the Dart-side
+    // ClashConfig so that all downstream providers (coreStateProvider,
+    // proxyStateProvider, http.handleFindProxy) observe the disabled inbound
+    // and behave consistently with patchRawConfig's forced override. Applied
+    // after syncFromProvider so it overrides both user and provider values.
+    if (Platform.isAndroid) {
+      final profile = _ref.read(currentProfileProvider);
+      final secure = profile?.providerHeaders['flclashx-androidsecure']
+              ?.trim()
+              .toLowerCase() ==
+          'true';
+      if (secure && patchConfig.mixedPort != 0) {
+        patchConfig = patchConfig.copyWith(mixedPort: 0);
+        _ref
+            .read(patchClashConfigProvider.notifier)
+            .updateState((state) => state.copyWith(mixedPort: 0));
+      }
+    }
+
     final res = await _requestAdmin(patchConfig.tun.enable);
     if (res.isError) {
       return;

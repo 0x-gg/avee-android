@@ -105,6 +105,7 @@ const (
 	crashMethod                    Method = "crash"
 	setupConfigMethod              Method = "setupConfig"
 	getConfigMethod                Method = "getConfig"
+	getCoreVersionMethod           Method = "getCoreVersion"
 )
 
 type Method string

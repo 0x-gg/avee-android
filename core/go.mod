@@ -2,10 +2,8 @@ module core
 
 go 1.20
 
-replace github.com/metacubex/mihomo => ./Clash.Meta
-
 require (
-	github.com/metacubex/mihomo v0.0.0-00010101000000-000000000000
+	github.com/metacubex/mihomo v1.19.23
 	golang.org/x/sync v0.11.0
 )
 
@@ -141,5 +139,6 @@ require (
 	golang.org/x/time v0.10.0 // indirect
 	golang.org/x/tools v0.24.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
+	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

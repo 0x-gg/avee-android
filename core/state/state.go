@@ -20,6 +20,8 @@ type AndroidVpnOptions struct {
 	Ipv4Address      string         `json:"ipv4Address"`
 	Ipv6Address      string         `json:"ipv6Address"`
 	DnsServerAddress string         `json:"dnsServerAddress"`
+	IncludePackage   []string       `json:"includePackage"`
+	ExcludePackage   []string       `json:"excludePackage"`
 }
 
 type AccessControl struct {
@@ -38,10 +40,9 @@ type AndroidVpnRawOptions struct {
 }
 
 type State struct {
-	VpnProps            AndroidVpnRawOptions `json:"vpn-props"`
-	CurrentProfileName  string               `json:"current-profile-name"`
-	OnlyStatisticsProxy bool                 `json:"only-statistics-proxy"`
-	BypassDomain        []string             `json:"bypass-domain"`
+	VpnProps           AndroidVpnRawOptions `json:"vpn-props"`
+	CurrentProfileName string               `json:"current-profile-name"`
+	BypassDomain       []string             `json:"bypass-domain"`
 }
 
 // stateMu guards the CurrentState pointer only. The State value it points to is
