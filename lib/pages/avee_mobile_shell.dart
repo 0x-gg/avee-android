@@ -3,11 +3,13 @@ import 'dart:math' as math;
 
 import 'package:avee/providers/providers.dart';
 import 'package:avee/common/constant.dart';
+import 'package:avee/common/vpn_consent.dart';
 import 'package:avee/services/avee_account.dart';
 import 'package:avee/services/avee_billing.dart';
 import 'package:avee/state.dart';
 import 'package:avee/ui/avee_design.dart';
 import 'package:avee/views/dashboard/widgets/start_button.dart';
+import 'package:avee/views/dashboard/widgets/vpn_disclosure_dialog.dart';
 import 'package:avee/models/common.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -998,16 +1000,16 @@ Future<void> _handleConnectUnavailable(
       onPrepareProfile,
     );
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          prepared
-              ? 'Trial started. Tap Connect again.'
-              : (aveeAccountState.error ??
-                  'Trial started, but the VPN profile is not ready yet.'),
+    if (!prepared) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(aveeAccountState.error ??
+              'Trial started, but the VPN profile is not ready yet.'),
         ),
-      ),
-    );
+      );
+      return;
+    }
+    await _startPreparedConnection(context);
     return;
   }
   final prepared = await _prepareProfileWithRetry(
@@ -1016,11 +1018,7 @@ Future<void> _handleConnectUnavailable(
   );
   if (!context.mounted) return;
   if (prepared) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('VPN profile is ready. Tap Connect again.'),
-      ),
-    );
+    await _startPreparedConnection(context);
     return;
   }
   ScaffoldMessenger.of(context).showSnackBar(
@@ -1030,6 +1028,23 @@ Future<void> _handleConnectUnavailable(
       ),
     ),
   );
+}
+
+Future<void> _startPreparedConnection(BuildContext context) async {
+  if (!await vpnConsent.isAccepted()) {
+    final accepted = await showVpnDisclosureDialog(context);
+    if (accepted != true) return;
+    if (!await vpnConsent.markAccepted()) return;
+  }
+  await globalState.appController.updateStatus(true);
+  if (!context.mounted) return;
+  if (globalState.isStart != true) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text(
+              'Could not connect. Try another location or refresh the profile.')),
+    );
+  }
 }
 
 Future<bool> _prepareProfileWithRetry(

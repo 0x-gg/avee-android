@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:avee/clash/clash.dart';
 import 'package:avee/common/connect_trace.dart';
 import 'package:avee/common/error_mapper.dart';
+import 'package:avee/common/request.dart';
 import 'package:avee/controller.dart';
 import 'package:avee/enum/enum.dart';
 import 'package:avee/models/models.dart';
@@ -251,6 +252,24 @@ class ConnectService {
       globalState.regenerateProxyCredentials();
       // Initialize foreground notification cache before starting
       initForegroundCache();
+      // The managed profile can have been refreshed or a location can have
+      // been selected immediately before the tap. Apply the complete config
+      // synchronously before starting Android's VPN service; a debounced apply
+      // after start allowed the service to come up with the previous selector
+      // (often the first node in the profile) and made the first tap appear to
+      // do nothing until the user opened Locations.
+      if (Platform.isAndroid && _ref.read(currentProfileProvider) != null) {
+        try {
+          await globalState.appController.applyProfile(silence: true);
+        } catch (error) {
+          commonPrint
+              .log('[connect] profile apply before start failed: $error');
+          globalState.showNotifier(
+            'The VPN profile could not be applied. Refresh your account and try again.',
+          );
+          return;
+        }
+      }
       final started = await globalState.handleStart([
         updateRunTime,
         updateTraffic,
@@ -268,8 +287,21 @@ class ConnectService {
         return;
       }
       // true => connected. Only now is it honest to show the connected icon.
-      await StatusBarManager.updateIcon(isConnected: true);
       if (Platform.isAndroid) {
+        // TUN readiness proves that the local VPN service is alive, but not
+        // that traffic can actually reach the outside network through the
+        // selected proxy. Confirm an external IP response before presenting a
+        // successful connection. On failure the tunnel is rolled back so the
+        // UI cannot claim a working VPN while traffic is going direct/stuck.
+        final verified = await _verifyAndroidTunnel();
+        if (!verified) {
+          await updateStatus(false);
+          globalState.showNotifier(
+            'The VPN tunnel started, but internet access could not be verified. Try another location or refresh the profile.',
+          );
+          return;
+        }
+        await StatusBarManager.updateIcon(isConnected: true);
         unawaited(
           const MethodChannel('com.avee.vpn/navigation')
               .invokeMethod<void>('requestBatteryExemption')
@@ -281,9 +313,9 @@ class ConnectService {
         // The mobile shell does not mount the legacy home scaffold. Passing
         // silence=true makes applyProfile run through the shell-safe path
         // instead of returning early when the old scaffold is absent.
-        globalState.appController.applyProfileDebounce(silence: true);
         return;
       }
+      await StatusBarManager.updateIcon(isConnected: true);
       final currentLastModified =
           await _ref.read(currentProfileProvider)?.profileLastModified;
       if (currentLastModified == null ||
@@ -317,6 +349,26 @@ class ConnectService {
       _ref.read(runTimeProvider.notifier).value = null;
       globalState.appController.addCheckIpNumDebounce();
     }
+  }
+
+  /// Confirms the Android VPN is usable beyond the local TUN handshake.
+  ///
+  /// [request.checkIp] uses the normal platform network stack, so on Android
+  /// its request is routed through the newly-created VPN tunnel. Multiple
+  /// attempts tolerate the short DNS/proxy warm-up after the service starts.
+  Future<bool> _verifyAndroidTunnel() async {
+    for (var attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) {
+        await Future<void>.delayed(const Duration(milliseconds: 700));
+      }
+      try {
+        final result = await request.checkIp();
+        if (result.isSuccess && result.data != null) return true;
+      } catch (error) {
+        commonPrint.log('[connect] Android tunnel verification failed: $error');
+      }
+    }
+    return false;
   }
 
   void updateRunTime() {
