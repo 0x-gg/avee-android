@@ -26,7 +26,7 @@ class AppUpdate extends _$AppUpdate {
   @override
   AppUpdateState build() => const AppUpdateState();
 
-  /// Checks aveevpn.com/update.json for a newer build. [manual] bypasses the
+  /// Checks the GitHub Release manifest for a newer build. [manual] bypasses the
   /// once/day cadence + the autoCheckUpdate setting; the Play gate is ALWAYS
   /// honoured. Tunnel-aware: routes via the proxy when the core is running.
   Future<void> check({bool manual = false}) async {
@@ -48,8 +48,8 @@ class AppUpdate extends _$AppUpdate {
 
     state = state.copyWith(status: AppUpdateStatus.checking, error: null);
     final viaProxy = ref.read(runTimeProvider) != null;
-    // Tunnel up: try via the active node first (ТСПУ may block aveevpn.com/YC),
-    // fall back to direct. Tunnel down: direct only.
+    // Tunnel up: try via the active node first, then fall back to direct.
+    // Tunnel down: direct only.
     final manifest = await request.fetchUpdateManifest(viaProxy: viaProxy) ??
         (viaProxy ? await request.fetchUpdateManifest() : null);
     ref.read(appSettingProvider.notifier).updateState(
@@ -72,8 +72,7 @@ class AppUpdate extends _$AppUpdate {
           );
   }
 
-  /// Downloads the APK then verifies it. Source order: YC primary (direct, then
-  /// via tunnel) → GitHub fallback (via tunnel when up, else direct).
+  /// Downloads the APK then verifies it from GitHub Releases.
   Future<void> download() async {
     final info = state.info;
     if (info == null || state.status == AppUpdateStatus.downloading) return;

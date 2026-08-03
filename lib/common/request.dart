@@ -132,9 +132,8 @@ class Request {
     return MemoryImage(data);
   }
 
-  /// Update check against our own update server (aveevpn.com/update.json,
-  /// backed by YC Object Storage) instead of the GitHub API. РФ-reliable and
-  /// independent of GitHub. The manifest is adapted to the shape
+  /// Update check against our GitHub Release manifest instead of the GitHub
+  /// API. The manifest is adapted to the shape
   /// [Controller.checkUpdateResultHandle] expects (tag_name / body / html_url),
   /// so downstream handling is unchanged. Absent manifest (404) => no update.
   Future<Map<String, dynamic>?> checkForUpdate() async {
@@ -182,14 +181,13 @@ class Request {
     }
   }
 
-  /// Raw fetch of the update manifest (aveevpn.com/update.json → Vercel → YC),
-  /// reused by the Android in-app updater. Returns the decoded JSON map, or null
+  /// Raw fetch of the GitHub Release update manifest, reused by the Android
+  /// in-app updater. Returns the decoded JSON map, or null
   /// on any non-200 / parse failure / network error.
   ///
-  /// Tunnel-aware (the RU update path): when [viaProxy] is true — the caller
-  /// knows the tunnel is connected — the request goes through the proxy-routed
-  /// [_clashDio] so a ТСПУ block on aveevpn.com/YC is bypassed via the active
-  /// node; otherwise it goes direct via [_dio]. The caller owns the tunnel-state
+  /// Tunnel-aware: when [viaProxy] is true — the caller knows the tunnel is
+  /// connected — the request goes through the proxy-routed [_clashDio];
+  /// otherwise it goes direct via [_dio]. The caller owns the tunnel-state
   /// decision and the direct→proxy fallback ordering.
   Future<Map<String, dynamic>?> fetchUpdateManifest(
       {bool viaProxy = false}) async {
@@ -210,9 +208,8 @@ class Request {
   }
 
   /// Tunnel-aware APK download for the in-app updater. Streams [url] to
-  /// [savePath] through the proxy-routed client when [viaProxy] is true (the
-  /// caller knows the tunnel is up) so a ТСПУ block on YC/GitHub is bypassed via
-  /// the active node; direct otherwise. Returns true on a completed download. A
+  /// [savePath] through the proxy-routed client when [viaProxy] is true; direct
+  /// otherwise. Returns true on a completed download. A
   /// user cancel via [cancelToken] is rethrown so the caller can tell cancel from
   /// failure; any other error returns false.
   Future<bool> downloadUpdateApk({

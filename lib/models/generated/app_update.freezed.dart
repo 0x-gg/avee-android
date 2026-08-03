@@ -25,7 +25,7 @@ mixin _$AppUpdateInfo {
   /// Release notes (bullets), already split per line.
   List<String> get notes => throw _privateConstructorUsedError;
 
-  /// Primary download URL: Yandex Cloud (RU-reliable).
+  /// Primary download URL: GitHub Release asset.
   String get primaryUrl => throw _privateConstructorUsedError;
 
   /// Fallback download URL: the GitHub release asset (computed from
@@ -241,7 +241,7 @@ class _$AppUpdateInfoImpl implements _AppUpdateInfo {
     return EqualUnmodifiableListView(_notes);
   }
 
-  /// Primary download URL: Yandex Cloud (RU-reliable).
+  /// Primary download URL: GitHub Release asset.
   @override
   final String primaryUrl;
 
@@ -334,7 +334,7 @@ abstract class _AppUpdateInfo implements AppUpdateInfo {
   @override
   List<String> get notes;
 
-  /// Primary download URL: Yandex Cloud (RU-reliable).
+  /// Primary download URL: GitHub Release asset.
   @override
   String get primaryUrl;
 
