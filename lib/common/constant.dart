@@ -78,11 +78,12 @@ const kAveeSupportUrl = 'https://aveevpn.com/#support';
 const kAveeAccountDeletionUrl = 'https://aveevpn.com/#account-deletion';
 const kAveeMarketingSiteUrl = 'https://aveevpn.com';
 
-/// Update manifest endpoint: aveevpn.com → Vercel → Yandex Cloud Object Storage.
-const kUpdateManifestUrl = "https://aveevpn.com/update.json";
+/// Update manifest published as a GitHub Release asset.
+const kUpdateManifestUrl =
+    "https://github.com/0x-gg/avee-android/releases/latest/download/update.json";
 
-/// GitHub release asset filename SUFFIX per platform key — the YC→GitHub
-/// fallback source. Since v0.8.5-pre.5 release assets are versioned as
+/// GitHub release asset filename SUFFIX per platform key. Release assets are
+/// versioned as
 /// `avee-<version>-<suffix>` (CI "Version asset filenames" step), so the
 /// resolver interpolates the version WITHOUT the leading 'v'
 /// (e.g. `avee-0.8.5-android-arm64-v8a.apk`), combined with [repository] +

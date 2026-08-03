@@ -30,7 +30,7 @@ class AppUpdateInfo with _$AppUpdateInfo {
     /// Release notes (bullets), already split per line.
     @Default(<String>[]) List<String> notes,
 
-    /// Primary download URL: Yandex Cloud (RU-reliable).
+    /// Primary download URL: GitHub Release asset.
     required String primaryUrl,
 
     /// Fallback download URL: the GitHub release asset (computed from

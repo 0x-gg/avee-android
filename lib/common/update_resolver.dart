@@ -5,10 +5,9 @@ import 'package:avee/models/models.dart';
 /// Pure: maps a fetched `update.json` manifest to an [AppUpdateInfo] for the
 /// android-arm64 platform, or null when there is no newer/valid update.
 ///
-/// Single source of truth for the GitHub fallback URL is the `repository`
-/// const (matching `AppUpdateService._resolveReleaseUrl`). The YC `url` from
-/// the manifest is the primary source; the GitHub release asset is the
-/// fallback (RU ТСПУ throttles GitHub, so YC goes first).
+/// Single source of truth for the GitHub Release URL is the `repository`
+/// const. The manifest and fallback both resolve to signed GitHub Release
+/// assets.
 ///
 /// No IO: callers fetch the manifest (tunnel-aware) and pass it in, which keeps
 /// this unit-testable without a network.

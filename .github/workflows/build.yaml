@@ -201,8 +201,8 @@ jobs:
           merge-multiple: true
 
       # GitHub release assets carry the version in the filename
-      # (avee-<version>-<platform>-<arch>.<ext>); the YC update bucket
-      # keeps the historical fixed names — the in-app updater's contract.
+      # (avee-<version>-<platform>-<arch>.<ext>); the in-app updater uses
+      # the versioned GitHub Release assets directly.
       - name: Version asset filenames
         run: |
           set -euo pipefail
@@ -278,6 +278,28 @@ jobs:
             sha256sum "$file" > "${file}.sha256"
           done
 
+      - name: Generate GitHub update manifest (stable only)
+        if: ${{ env.IS_STABLE == 'true' }}
+        run: |
+          set -euo pipefail
+          tag="${{ github.ref_name }}"; version="${tag#v}"
+          build=$(grep '^version:' pubspec.yaml | sed -E 's/.*\\+([0-9]+).*/\\1/')
+          base="https://github.com/${{ github.repository }}/releases/download/$tag"
+          notes_raw=$(grep '^- ' release.md | head -3 | sed 's/^- //' || true)
+          [ -z "$notes_raw" ] && notes_raw="Release $version"
+          notes_json=$(printf '%s\\n' "$notes_raw" | jq -R . | jq -s .)
+          sha() { [ -f "./dist/$1.sha256" ] && cut -d' ' -f1 "./dist/$1.sha256" || echo ""; }
+          apk="avee-$version-android-arm64-v8a.apk"
+          universal="avee-$version-android-universal.apk"
+          exe="avee-$version-windows-amd64-setup.exe"
+          dmg="avee-$version-macos-arm64.dmg"
+          dmg_amd64="avee-$version-macos-amd64.dmg"
+          appimage="avee-$version-linux-amd64.AppImage"
+          jq -n --arg version "$version" --argjson build "${build:-0}" --arg pubDate "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson notes "$notes_json" \\
+            --arg apk "$base/$apk" --arg universal "$base/$universal" --arg exe "$base/$exe" --arg dmg "$base/$dmg" --arg dmgAmd "$base/$dmg_amd64" --arg appimage "$base/$appimage" \\
+            --arg apkSha "$(sha "$apk")" --arg universalSha "$(sha "$universal")" --arg exeSha "$(sha "$exe")" --arg dmgSha "$(sha "$dmg")" --arg dmgAmdSha "$(sha "$dmg_amd64")" --arg appimageSha "$(sha "$appimage")" \\
+            '{version:$version,build:$build,mandatory:false,minSupported:"0.7.0",pubDate:$pubDate,notes:$notes,platforms:{"android-arm64":{url:$apk,sha256:$apkSha},"android-universal":{url:$universal,sha256:$universalSha},"windows-amd64":{url:$exe,sha256:$exeSha},"windows-arm64":{url:"",sha256:""},"linux-amd64":{url:$appimage,sha256:$appimageSha},"linux-arm64":{url:"",sha256:""},"macos":{url:$dmg,sha256:$dmgSha},"macos-amd64":{url:$dmgAmd,sha256:$dmgAmdSha},"ios":{url:"",sha256:""}}}' > ./dist/update.json
+
       - name: Release (Stable)
         if: ${{ env.IS_STABLE == 'true' }}
         uses: softprops/action-gh-release@v2
@@ -293,60 +315,6 @@ jobs:
           files: ./dist/*
           body_path: "./release.md"
           prerelease: true
-
-      - name: Publish to YC update server (stable only)
-        if: ${{ env.IS_STABLE == 'true' && secrets.YC_S3_KEY_ID != '' && secrets.YC_S3_SECRET != '' }}
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.YC_S3_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.YC_S3_SECRET }}
-          AWS_DEFAULT_REGION: ru-central1
-        run: |
-          set -euo pipefail
-          tag="${{ github.ref_name }}"; version="${tag#v}"
-          build=$(grep '^version:' pubspec.yaml | sed -E 's/.*\+([0-9]+).*/\1/')
-          ep="--endpoint-url=https://storage.yandexcloud.net"
-          B="s3://avee-downloads"
-          for pair in \
-            "avee-$version-android-arm64-v8a.apk:avee-arm64-v8a.apk" \
-            "avee-$version-android-universal.apk:avee-universal.apk" \
-            "avee-$version-windows-amd64-setup.exe:avee-amd64-setup.exe" \
-            "avee-$version-macos-arm64.dmg:avee-arm64.dmg" \
-            "avee-$version-macos-amd64.dmg:avee-amd64.dmg" \
-            "avee-$version-linux-amd64.AppImage:avee-amd64.AppImage"; do
-            local_f="${pair%%:*}"; remote_f="${pair##*:}"
-            if [ -f "./dist/$local_f" ]; then
-              aws s3 cp "./dist/$local_f" "$B/v$version/$remote_f" $ep
-              aws s3 cp "./dist/$local_f" "$B/latest/$remote_f" $ep
-            else
-              echo "WARN: ./dist/$local_f not found, skipping"
-            fi
-          done
-          base="https://storage.yandexcloud.net/avee-downloads/latest"
-          notes_raw=$(grep '^- ' release.md | head -3 | sed 's/^- //' || true)
-          [ -z "$notes_raw" ] && notes_raw="Релиз $version"
-          notes_json=$(printf '%s\n' "$notes_raw" | jq -R . | jq -s .)
-          # Per-platform sha256 for the in-app updater's CORRUPTION check (the
-          # app's REAL integrity gate is the native signing-cert pin). Read from
-          # the .sha256 files produced by the "Generate sha256" step; a missing
-          # binary yields an empty string, which the app treats as "unverified,
-          # install anyway" (graceful).
-          sha() { [ -f "./dist/$1.sha256" ] && cut -d' ' -f1 "./dist/$1.sha256" || echo ""; }
-          apk_sha=$(sha avee-$version-android-arm64-v8a.apk)
-          universal_sha=$(sha avee-$version-android-universal.apk)
-          exe_sha=$(sha avee-$version-windows-amd64-setup.exe)
-          dmg_sha=$(sha avee-$version-macos-arm64.dmg)
-          dmg_amd64_sha=$(sha avee-$version-macos-amd64.dmg)
-          appimage_sha=$(sha avee-$version-linux-amd64.AppImage)
-          jq -n --arg version "$version" --argjson build "${build:-0}" --arg pubDate "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson notes "$notes_json" \
-            --arg apk "$base/avee-arm64-v8a.apk" --arg universal "$base/avee-universal.apk" --arg exe "$base/avee-amd64-setup.exe" --arg dmg "$base/avee-arm64.dmg" --arg dmgAmd "$base/avee-amd64.dmg" --arg appimage "$base/avee-amd64.AppImage" \
-            --arg apkSha "$apk_sha" --arg universalSha "$universal_sha" --arg exeSha "$exe_sha" --arg dmgSha "$dmg_sha" --arg dmgAmdSha "$dmg_amd64_sha" --arg appimageSha "$appimage_sha" \
-            '{version:$version,build:$build,mandatory:false,minSupported:"0.7.0",pubDate:$pubDate,notes:$notes,platforms:{"android-arm64":{url:$apk,sha256:$apkSha},"android-universal":{url:$universal,sha256:$universalSha},"windows-amd64":{url:$exe,sha256:$exeSha},"windows-arm64":{url:"",sha256:""},"linux-amd64":{url:$appimage,sha256:$appimageSha},"linux-arm64":{url:"",sha256:""},"macos":{url:$dmg,sha256:$dmgSha},"macos-amd64":{url:$dmgAmd,sha256:$dmgAmdSha},"ios":{url:"",sha256:""}}}' > update.json
-          aws s3 cp update.json "$B/update.json" $ep --content-type application/json --cache-control no-cache
-          echo "Published v$version binaries + manifest to YC (avee-downloads)."
-
-      - name: Skip YC update server when credentials are not configured
-        if: ${{ env.IS_STABLE == 'true' && (secrets.YC_S3_KEY_ID == '' || secrets.YC_S3_SECRET == '') }}
-        run: echo "::warning::YC update storage is not configured; GitHub Release remains the distribution source."
 
       # Rich Message release post (Bot API 10.1). Stable tags post to
       # TELEGRAM_CHAT_IDS; pre-release tags post to TELEGRAM_PRERELEASE_CHAT_IDS

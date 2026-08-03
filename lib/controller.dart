@@ -91,7 +91,7 @@ bool shouldHandleUpdateResult({
 /// forbids in-app update from an external source). Every other channel —
 /// crucially the sideloaded RU Android build, our primary RU update path —
 /// honours the user's `autoCheckUpdate` preference and self-updates from
-/// aveevpn.com/update.json.
+/// the latest GitHub Release manifest.
 ///
 /// Pure update policy shared by [AppController.autoCheckUpdate] (the facade)
 /// and its implementation in [AppUpdateService]; also unit-tested directly via

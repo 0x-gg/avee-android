@@ -34,7 +34,6 @@ import urllib.error
 import urllib.request
 
 REPO = os.environ.get("GITHUB_REPOSITORY", "0x-gg/avee-android")
-YC_BASE = "https://storage.yandexcloud.net/avee-downloads"
 RICH_LIMIT = 32000   # official cap is 32768 rendered chars; keep headroom
 LEGACY_LIMIT = 4000  # sendMessage cap is 4096 rendered chars
 
@@ -71,17 +70,13 @@ GROUPS = [  # (conventional type, emoji, title)
 ]
 OTHER = ("📟", "Под капотом")
 
-PLATFORMS = [  # (emoji, name, label, yc_name, gh_suffix)
-    # yc_name = fixed YC-bucket asset name (the in-app updater's contract);
-    # gh_suffix = the "<platform>-<arch>[...].<ext>" tail of the versioned
-    # GitHub release asset (avee-<version>-<suffix>) from build.yaml's
-    # "Version asset filenames" step.
-    ("🤖", "Android", "APK · arm64", "avee-arm64-v8a.apk", "android-arm64-v8a.apk"),
-    ("🤖", "Android (старые устройства)", "APK · universal", "avee-universal.apk", "android-universal.apk"),
-    ("🪟", "Windows", "Установщик · x64", "avee-amd64-setup.exe", "windows-amd64-setup.exe"),
-    ("🍎", "macOS", "DMG · Apple Silicon", "avee-arm64.dmg", "macos-arm64.dmg"),
-    ("🍎", "macOS (Intel)", "DMG · Intel", "avee-amd64.dmg", "macos-amd64.dmg"),
-    ("🐧", "Linux", "AppImage · x64", "avee-amd64.AppImage", "linux-amd64.AppImage"),
+PLATFORMS = [  # (emoji, name, label, GitHub release suffix)
+    ("🤖", "Android", "APK · arm64", "android-arm64-v8a.apk"),
+    ("🤖", "Android (старые устройства)", "APK · universal", "android-universal.apk"),
+    ("🪟", "Windows", "Установщик · x64", "windows-amd64-setup.exe"),
+    ("🍎", "macOS", "DMG · Apple Silicon", "macos-arm64.dmg"),
+    ("🍎", "macOS (Intel)", "DMG · Intel", "macos-amd64.dmg"),
+    ("🐧", "Linux", "AppImage · x64", "linux-amd64.AppImage"),
 ]
 
 
@@ -140,15 +135,10 @@ def classify(commits: list[str]) -> list[tuple[str, str, list[str]]]:
 
 
 def platform_urls(version: str, is_stable: bool) -> list[tuple[str, str, str, str]]:
-    """Stable -> YC versioned links (RU-friendly, fixed bucket names = the
-    in-app updater's contract); pre -> GitHub release assets (versioned names
-    avee-<version>-<suffix> from build.yaml's "Version asset filenames")."""
-    if is_stable:
-        base = f"{YC_BASE}/v{version}"
-        return [(e, name, label, f"{base}/{yc}") for e, name, label, yc, _ in PLATFORMS]
+    """Return versioned GitHub Release asset links for every channel."""
     gh = f"https://github.com/{REPO}/releases/download/v{version}"
-    return [(e, name, label, f"{gh}/avee-{version}-{suf}")
-            for e, name, label, _, suf in PLATFORMS]
+    return [(e, name, label, f"{gh}/avee-{version}-{suffix}")
+            for e, name, label, suffix in PLATFORMS]
 
 
 def load_release_notes(tag: str) -> tuple[str, list[tuple[str, str]]]:
