@@ -743,10 +743,15 @@ class BuildCommand extends Command {
     final configDefine = configPublicKey == null || configPublicKey.isEmpty
         ? ''
         : ' --build-dart-define=AVEE_CONFIG_PUBLIC_KEY=$configPublicKey';
+    // The Android app has explicit `play` and `sideload` flavors. The
+    // distributor's default is flavor-less and then looks for app-release.apk,
+    // while the direct-download package is intentionally app-sideload-release.apk.
+    // Pass the flavor to the distributor itself so it resolves the same output.
+    final buildFlavor = target == Target.android ? ' --build-flavor sideload' : '';
     await Build.exec(
       name: name,
       Build.getExecutable(
-        "flutter_distributor package --skip-clean --platform ${target.name} --targets $targets --flutter-build-args=verbose$args --build-dart-define=APP_ENV=$env$configDefine",
+        "flutter_distributor package --skip-clean --platform ${target.name} --targets $targets$buildFlavor --flutter-build-args=verbose$args --build-dart-define=APP_ENV=$env$configDefine",
       ),
     );
   }
