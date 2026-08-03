@@ -181,9 +181,9 @@ jobs:
           set -euo pipefail
           version=$(echo "${{ github.ref_name }}" | sed 's/^v//')
           declare -A map=(
-            [avee-arm64-v8a.apk]=avee-$version-android-arm64-v8a.apk
-            [avee-armeabi-v7a.apk]=avee-$version-android-armeabi-v7a.apk
-            [avee-x86_64.apk]=avee-$version-android-x86_64.apk
+            [avee-arm64-v8a-production.apk]=avee-$version-android-arm64-v8a.apk
+            [avee-armeabi-v7a-production.apk]=avee-$version-android-armeabi-v7a.apk
+            [avee-x86_64-production.apk]=avee-$version-android-x86_64.apk
             [avee-universal.apk]=avee-$version-android-universal.apk
             [avee-android-play.aab]=avee-$version-android-play.aab
             [avee-arm64.dmg]=avee-$version-macos-arm64.dmg
