@@ -122,7 +122,8 @@ class AveeApi {
       _request('GET', '/config/client');
 
   Future<Map<String, dynamic>> compatibility({required String appVersion}) =>
-      _request('GET', '/config/compatibility', query: {'appVersion': appVersion});
+      _request('GET', '/config/compatibility',
+          query: {'appVersion': appVersion});
 
   Future<Map<String, dynamic>> billingMethods() =>
       _request('GET', '/config/billing/methods');
