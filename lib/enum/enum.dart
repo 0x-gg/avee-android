@@ -2,10 +2,9 @@
 
 import 'dart:io';
 
-import 'package:flclashx/views/dashboard/widgets/announce_widget.dart';
-import 'package:flclashx/views/dashboard/widgets/metainfo_widget.dart';
-import 'package:flclashx/views/dashboard/widgets/widgets.dart';
-import 'package:flclashx/widgets/widgets.dart';
+import 'package:avee/views/dashboard/widgets/metainfo_widget.dart';
+import 'package:avee/views/dashboard/widgets/widgets.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
@@ -41,16 +40,18 @@ enum GroupType {
   URLTest,
   Fallback,
   LoadBalance,
-  Relay;
+  Relay,
+  Smart;
 
   static GroupType parseProfileType(String type) => switch (type) {
-      "url-test" => URLTest,
-      "select" => Selector,
-      "fallback" => Fallback,
-      "load-balance" => LoadBalance,
-      "relay" => Relay,
-      String() => throw UnimplementedError(),
-    };
+        "url-test" => URLTest,
+        "select" => Selector,
+        "fallback" => Fallback,
+        "load-balance" => LoadBalance,
+        "relay" => Relay,
+        "smart" => Smart,
+        String() => throw UnimplementedError(),
+      };
 }
 
 enum GroupName { GLOBAL, Proxy, Auto, Fallback }
@@ -62,7 +63,8 @@ extension GroupTypeExtension on GroupType {
       )
       .toList();
 
-  bool get isComputedSelected => [GroupType.URLTest, GroupType.Fallback].contains(this);
+  bool get isComputedSelected =>
+      [GroupType.URLTest, GroupType.Fallback, GroupType.Smart].contains(this);
 
   static GroupType? getGroupType(String value) {
     final index = GroupTypeExtension.valueList.indexOf(value);
@@ -86,6 +88,8 @@ extension UsedProxyExtension on UsedProxy {
 }
 
 enum Mode { rule, global, direct }
+
+enum WorkMode { standard, smart, country }
 
 enum ViewMode { mobile, laptop, desktop }
 
@@ -128,6 +132,7 @@ enum AppMessageType {
   delay,
   request,
   loaded,
+  tun,
 }
 
 enum InvokeMessageType {
@@ -137,18 +142,9 @@ enum InvokeMessageType {
 
 enum FindProcessMode { always, off, strict }
 
-enum RecoveryOption {
-  all,
-  onlyProfiles,
-}
-
 enum ChipType { action, delete }
 
 enum CommonCardType { plain, filled }
-//
-// extension CommonCardTypeExt on CommonCardType {
-//   CommonCardType get variant => CommonCardType.plain;
-// }
 
 enum ProxiesType { tab, list }
 
@@ -207,13 +203,13 @@ enum KeyboardModifier {
 
 extension KeyboardModifierExt on KeyboardModifier {
   HotKeyModifier toHotKeyModifier() => switch (this) {
-      KeyboardModifier.alt => HotKeyModifier.alt,
-      KeyboardModifier.capsLock => HotKeyModifier.capsLock,
-      KeyboardModifier.control => HotKeyModifier.control,
-      KeyboardModifier.fn => HotKeyModifier.fn,
-      KeyboardModifier.meta => HotKeyModifier.meta,
-      KeyboardModifier.shift => HotKeyModifier.shift,
-    };
+        KeyboardModifier.alt => HotKeyModifier.alt,
+        KeyboardModifier.capsLock => HotKeyModifier.capsLock,
+        KeyboardModifier.control => HotKeyModifier.control,
+        KeyboardModifier.fn => HotKeyModifier.fn,
+        KeyboardModifier.meta => HotKeyModifier.meta,
+        KeyboardModifier.shift => HotKeyModifier.shift,
+      };
 }
 
 enum HotAction {
@@ -232,6 +228,7 @@ enum ProxiesIconStyle {
 enum FontFamily {
   twEmoji("Twemoji"),
   jetBrainsMono("JetBrainsMono"),
+  onest("Onest"),
   icon("Icons");
 
   final String value;
@@ -295,6 +292,20 @@ enum WindowsHelperServiceStatus {
   running,
 }
 
+/// Result of probing the Windows helper's /ping endpoint.
+/// [ok] — helper answered with OUR core SHA256 (healthy, usable).
+/// [mismatch] — helper answered but with a FOREIGN/stale core hash (e.g. an
+/// old helper binary left running after an app update, or another
+/// clash-lineage app's helper). Waiting will never fix this — callers must
+/// bail immediately and go through the reinstall path.
+/// [unreachable] — connection refused/timeout/non-200: the service may simply
+/// still be starting (SCM start + HTTP bind), so callers MAY retry briefly.
+enum HelperPingResult {
+  ok,
+  mismatch,
+  unreachable,
+}
+
 enum FunctionTag {
   updateClashConfig,
   setupClashConfig,
@@ -324,28 +335,10 @@ enum DashboardWidget {
       child: NetworkSpeed(),
     ),
   ),
-  outboundModeV2(
-    GridItem(
-      crossAxisCellCount: 8,
-      child: OutboundModeV2(),
-    ),
-  ),
-  outboundMode(
-    GridItem(
-      crossAxisCellCount: 4,
-      child: OutboundMode(),
-    ),
-  ),
   trafficUsage(
     GridItem(
       crossAxisCellCount: 4,
       child: TrafficUsage(),
-    ),
-  ),
-  announce(
-    GridItem(
-      crossAxisCellCount: 8,
-      child: AnnounceWidget(),
     ),
   ),
   metainfo(
@@ -441,8 +434,8 @@ extension DashboardWidgetParser on DashboardWidget {
           (e) => e.name.toLowerCase() == name,
         );
         result.add(widget);
-      } catch (e) {
-        print('no data widget "$name"');
+      } catch (_) {
+        // Unknown widget name in saved layout — silently skip.
       }
     }
     return result;
@@ -455,6 +448,7 @@ enum GeodataLoader {
 }
 
 enum PageLabel {
+  cabinet,
   dashboard,
   proxies,
   profiles,
@@ -525,11 +519,6 @@ enum OverrideRuleType {
 enum RuleTarget {
   DIRECT,
   REJECT,
-}
-
-enum RecoveryStrategy {
-  compatible,
-  override,
 }
 
 enum CacheTag {

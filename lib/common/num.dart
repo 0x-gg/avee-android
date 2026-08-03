@@ -1,4 +1,4 @@
-import 'package:flclashx/state.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -6,7 +6,9 @@ extension NumExt on num {
   String fixed({int decimals = 2}) {
     final formatted = toStringAsFixed(decimals);
     if (formatted.contains('.')) {
-      return formatted.replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+      return formatted
+          .replaceAll(RegExp(r'0*$'), '')
+          .replaceAll(RegExp(r'\.$'), '');
     }
     return formatted;
   }
@@ -15,13 +17,16 @@ extension NumExt on num {
 }
 
 extension DoubleExt on double {
-  bool moreOrEqual(double value) => this > value || (value - this).abs() < precisionErrorTolerance + 1;
+  bool moreOrEqual(double value) =>
+      this > value || (value - this).abs() < precisionErrorTolerance + 1;
 }
 
 extension OffsetExt on Offset {
-  double getCrossAxisOffset(Axis direction) => direction == Axis.vertical ? dx : dy;
+  double getCrossAxisOffset(Axis direction) =>
+      direction == Axis.vertical ? dx : dy;
 
-  double getMainAxisOffset(Axis direction) => direction == Axis.vertical ? dy : dx;
+  double getMainAxisOffset(Axis direction) =>
+      direction == Axis.vertical ? dy : dx;
 
   bool less(Offset offset) {
     if (dy < offset.dy) {

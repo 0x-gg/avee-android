@@ -1,213 +1,339 @@
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/providers/providers.dart';
-import 'package:flclashx/state.dart';
+import 'dart:async';
+import 'dart:io';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
+import 'package:avee/common/common.dart';
+import 'package:avee/common/connect_trace.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/plugins/app.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
+import 'package:avee/views/dashboard/widgets/vpn_disclosure_dialog.dart';
+import 'package:avee/views/profiles/add_profile.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
+
+import '../../../services/avee_account.dart';
+import '../../../views/avee_account_sheet.dart';
 
 class StartButton extends ConsumerStatefulWidget {
-  const StartButton({super.key});
+  const StartButton({super.key, this.iconSize = 48.0});
+
+  final double iconSize;
 
   @override
   ConsumerState<StartButton> createState() => _StartButtonState();
 }
 
 class _StartButtonState extends ConsumerState<StartButton>
-    with TickerProviderStateMixin {
-  late AnimationController _controller;
+    with SingleTickerProviderStateMixin {
+  /// Power-glyph drop shadow (lab `icon shadow` dials): a blurred dark copy
+  /// of the glyph painted underneath, since HugeIcon (SVG) has no shadows.
+  static const double _iconShadowBlur = 5.9;
+  static const double _iconShadowAlpha = 0.81;
+
+  /// Fresnel rim painted ONTO the power glyph (ported from
+  /// tool/glyph_rim_lab.html `rim внутри`): a conic SweepGradient
+  /// (white top / accent sides / dim bottom) masked to the glyph strokes,
+  /// so the icon catches the same glass edge-light as the lens rim.
+  /// Applied only while connected — the idle glyph stays the plain dimmed icon.
+  static const double _glyphRimConnected = 0.75;
+  static const double _glyphRimIdle = 0.0;
+
+  /// Vertical shift of the rim conic origin on the glyph (lab `rim внутри ↑`,
+  /// in ×r). Applied by translating the shader rect: dy = -1.25*iconSize*lift
+  /// (since r == iconSize / 0.8). Keeps the white-top fresnel orientation.
+  static const double _glyphRimLift = -0.5;
+
   late AnimationController _pressController;
-  late Animation<double> _animation;
   late Animation<double> _scaleAnimation;
-  bool isStart = false;
 
   @override
   void initState() {
     super.initState();
-    isStart = globalState.appState.runTime != null;
-    _controller = AnimationController(
-      vsync: this,
-      value: isStart ? 1 : 0,
-      duration: const Duration(milliseconds: 300),
-    );
-    _animation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutBack,
-    );
 
     _pressController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 150),
+      duration: const Duration(milliseconds: 100),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(
-        parent: _pressController,
-        curve: Curves.easeOut,
-      ),
-    );
-
-    ref.listenManual(
-      runTimeProvider.select((state) => state != null),
-      (prev, next) {
-        if (next != isStart) {
-          isStart = next;
-          updateController();
-        }
-      },
-      fireImmediately: true,
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.96).animate(
+      CurvedAnimation(parent: _pressController, curve: Curves.easeOut),
     );
   }
 
   @override
   void dispose() {
-    _controller.dispose();
     _pressController.dispose();
     super.dispose();
   }
 
-  void handleSwitchStart() {
-    isStart = !isStart;
-    updateController();
-    debouncer.call(
-      FunctionTag.updateStatus,
-      () {
-        globalState.appController.updateStatus(isStart);
-      },
-      duration: commonDuration,
-    );
+  Future<void> handleSwitchStart() async {
+    final currentlyRunning = ref.read(runTimeProvider) != null;
+    final next = !currentlyRunning;
+
+    // A cached managed profile must never outlive the backend entitlement on
+    // the Play artifact. The backend remains authoritative; this local guard
+    // prevents a revoked/expired session from starting a stale tunnel.
+    if (next &&
+        Platform.isAndroid &&
+        (aveeAccountState.session == null || !aveeAccountState.access)) {
+      globalState.showNotifier('Активируйте AVEE-доступ перед подключением');
+      return;
+    }
+
+    // Disconnect keeps the existing feedback timing — play the power-off
+    // cue immediately so the user gets a confirmation tick on tap. Feedback
+    // is fire-and-forget so we don't block the status update.
+    if (!next) {
+      unawaited(App().performHapticFeedback(AveeHapticCue.confirm));
+      unawaited(App().playUiSound(AveeSoundCue.powerOff));
+      unawaited(globalState.appController.updateStatus(false));
+      return;
+    }
+
+    // First-start path: the disclosure gate runs BEFORE any confirm haptic
+    // and BEFORE the power-on cue. If the user cancels the dialog, no
+    // feedback should suggest a connection was about to happen.
+    final allowed = await _ensureVpnConsent();
+    if (!allowed) return;
+
+    ConnectTrace.start();
+    unawaited(App().performHapticFeedback(AveeHapticCue.confirm));
+    unawaited(App().playUiSound(AveeSoundCue.powerOn));
+    unawaited(_maybeRequestNotificationPermission());
+    unawaited(globalState.appController.updateStatus(true));
   }
 
-  void updateController() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (isStart) {
-        _controller.forward();
-      } else {
-        _controller.reverse();
-      }
-    });
+  /// One-shot POST_NOTIFICATIONS ask on the FIRST successful connect (Android
+  /// 13+). Without it the foreground-service VPN notification (uptime/speed) is
+  /// invisible on fresh installs. Fire-and-forget so it never delays the tunnel;
+  /// the native side gates on SDK level + current grant.
+  Future<void> _maybeRequestNotificationPermission() async {
+    if (!Platform.isAndroid) return;
+    if (await notificationPermissionPrompt.isRequested()) return;
+    await notificationPermissionPrompt.markRequested();
+    await App().requestNotificationsPermission();
   }
 
-  void _onTapDown(TapDownDetails details) {
+  /// Returns true when the user has previously accepted the disclosure OR
+  /// just accepted it in the dialog AND the accepted flag was successfully
+  /// persisted. Returning true without a persisted flag would let the
+  /// dashboard play the power-on feedback while the central
+  /// `AppController.updateStatus` guard silently refuses the start, leaving
+  /// the user with a tick but no connection. If `markAccepted()` fails to
+  /// write, we treat the attempt as cancelled so the dialog can re-prompt
+  /// next time.
+  Future<bool> _ensureVpnConsent() async {
+    // Flavor gating (Play-only disclosure) lives INSIDE vpnConsent.isAccepted()
+    // — the single source of truth shared with the controller's
+    // defense-in-depth check in updateStatus(true). Do NOT duplicate a
+    // kIsPlayBuild branch here: a dialog-only bypass leaves the controller
+    // refusing the start (the "VPN won't start on non-Play builds" bug).
+    if (await vpnConsent.isAccepted()) return true;
+    if (!mounted) return false;
+    final accepted = await showVpnDisclosureDialog(context);
+    if (accepted != true) return false;
+    final persisted = await vpnConsent.markAccepted();
+    return persisted;
+  }
+
+  void _handleTapDown() {
+    // Press-down only fires the gestureStart haptic — the audible cue was
+    // removed (user feedback: the per-press tick felt redundant on top of
+    // the powerOn/powerOff cue). Animation still runs so the visual press
+    // affordance is preserved.
+    if (ref.read(startButtonSelectorStateProvider).hasProfile) {
+      App().performHapticFeedback(AveeHapticCue.gestureStart);
+    }
     _pressController.forward();
   }
 
-  void _onTapUp(TapUpDetails details) {
-    _pressController.reverse();
-  }
-
-  void _onTapCancel() {
-    _pressController.reverse();
+  void _handleAddProfile() {
+    if (Platform.isAndroid) {
+      HapticFeedback.lightImpact();
+      AveeAccountSheet.show(context);
+      return;
+    }
+    HapticFeedback.lightImpact();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => SafeArea(
+        child: AddProfileView(context: context),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(startButtonSelectorStateProvider);
-    if (!state.isInit || !state.hasProfile) {
-      return Container();
-    }
+    // Watch boolean running state only — was watching raw int timestamp,
+    // which forced a rebuild on every runTimeProvider tick (every second
+    // while connected) even though the icon depends only on null/not-null.
+    final isStart = ref.watch(runTimeProvider.select((state) => state != null));
 
+    // Connecting affordance: while handleStart is waiting on the native TUN
+    // readiness ack (or while core init is still pending), reuse the existing
+    // dimmed/disabled look and swallow taps. The glyph is NEVER hidden — the
+    // old `if (!state.isInit) return SizedBox.shrink()` bricked the UI when the
+    // boot auto-start stalled/threw before init() set isInit=true.
+    // No new colors/animations — just the opacity60 extension + null onTap.
+    return ValueListenableBuilder<bool>(
+      valueListenable: globalState.isConnecting,
+      builder: (context, isConnecting, _) =>
+          _buildButton(context, state, isStart, isConnecting),
+    );
+  }
+
+  /// Conic Fresnel (white top / accent sides / dim bottom) masked to the
+  /// power glyph — Flutter port of glyph_rim_lab.html `glyphFresnel`.
+  Widget _rimGlyph(
+    List<List<dynamic>> icon,
+    double strokeWidth,
+    Color accent,
+    double amount,
+  ) {
+    return Opacity(
+      opacity: amount.clamp(0.0, 1.0),
+      child: ShaderMask(
+        blendMode: BlendMode.srcIn,
+        shaderCallback: (rect) => SweepGradient(
+          transform: const GradientRotation(-math.pi / 2),
+          colors: [
+            Lumina.lensHighlight,
+            accent.withValues(alpha: 0.5),
+            Lumina.lensHighlight.withValues(alpha: 0.12),
+            accent.withValues(alpha: 0.5),
+            Lumina.lensHighlight,
+          ],
+          stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+        ).createShader(
+          // lift: shift the conic origin like the lab (center = cy - r*lift,
+          // r == iconSize / 0.8) — keeps the white-top fresnel orientation
+          rect.translate(0, -1.25 * widget.iconSize * _glyphRimLift),
+        ),
+        child: HugeIcon(
+          icon: icon,
+          size: widget.iconSize,
+          strokeWidth: strokeWidth,
+          color: Lumina.lensHighlight,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildButton(
+    BuildContext context,
+    StartButtonSelectorState state,
+    bool isStart,
+    bool isConnecting,
+  ) {
     final colorScheme = Theme.of(context).colorScheme;
-    final activeColor = Colors.green.shade600.withValues(alpha: 0.9);
-    final inactiveColor = colorScheme.secondaryContainer.withValues(alpha: 0.85);
+    final hasProfile = state.hasProfile;
+    final isInactive = hasProfile && !isStart;
+    // Core not yet initialised → keep the glyph visible but in the same
+    // dimmed/disabled "pending" affordance already used while connecting.
+    // Hiding it (the old SizedBox.shrink on !isInit) bricked the UI when the
+    // boot auto-start stalled/threw before init() set isInit=true.
+    final isPending = isConnecting || !state.isInit;
+    final baseIconColor = isInactive
+        ? Color.lerp(Lumina.lensBody, colorScheme.primary, 0.28)!
+        : colorScheme.primary;
+    // While pending (connecting or core init not done), dim the icon with the
+    // existing opacity extension so it reads as a pending/disabled affordance.
+    final iconColor = isPending ? baseIconColor.opacity60 : baseIconColor;
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: AnimatedBuilder(
-        animation: Listenable.merge([_controller, _pressController]),
-        builder: (_, child) => Transform.scale(
-            scale: _scaleAnimation.value,
-            child: SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: GestureDetector(
-                onTapDown: _onTapDown,
-                onTapUp: _onTapUp,
-                onTapCancel: _onTapCancel,
-                child: FilledButton(
-                  onPressed: handleSwitchStart,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: isStart ? activeColor : inactiveColor,
-                    foregroundColor: isStart
-                        ? Colors.white
-                        : colorScheme.onSecondaryContainer,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: isStart ? 4 : 0,
-                  ),
-                  child: Center(
-                    child: AnimatedSize(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOutCubic,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+    const motionDuration = Duration(milliseconds: 180);
+    const motionCurve = Curves.easeOutCubic;
+
+    return AnimatedBuilder(
+      animation: _pressController,
+      builder: (_, child) => Transform.scale(
+        scale: _scaleAnimation.value,
+        child: child,
+      ),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        // Ignore press feedback + taps while connecting (or while core init is
+        // pending) so a second tap can't race the in-flight start transition.
+        onTapDown: isPending ? null : (_) => _handleTapDown(),
+        onTapUp: isPending ? null : (_) => _pressController.reverse(),
+        onTapCancel: isPending ? null : () => _pressController.reverse(),
+        onTap: isPending
+            ? null
+            : (hasProfile ? handleSwitchStart : _handleAddProfile),
+        child: SizedBox.expand(
+          child: Center(
+            child: RepaintBoundary(
+              child: AnimatedScale(
+                scale: isInactive ? 0.94 : 1.0,
+                duration: motionDuration,
+                curve: motionCurve,
+                child: TweenAnimationBuilder<Color?>(
+                  tween: ColorTween(end: iconColor),
+                  duration: motionDuration,
+                  curve: motionCurve,
+                  builder: (_, color, __) => AnimatedBuilder(
+                    animation: _pressController,
+                    builder: (_, __) {
+                      final iconData = !hasProfile
+                          ? HugeIcons.strokeRoundedAddCircleHalfDot
+                          : HugeIcons.strokeRoundedPower;
+                      final strokeWidth =
+                          _pressController.value > 0 ? 3.0 : 1.7;
+                      final accent = Theme.of(context).colorScheme.primary;
+                      final connected = isStart;
+                      final rimAmount =
+                          connected ? _glyphRimConnected : _glyphRimIdle;
+                      return Stack(
+                        alignment: Alignment.center,
                         children: [
-                          AnimatedIcon(
-                            icon: AnimatedIcons.play_pause,
-                            progress: _animation,
-                            size: 36,
-                            color: isStart
-                                ? Colors.white
-                                : colorScheme.onSecondaryContainer,
-                          ),
-                          if (child != null) ...[
-                            const SizedBox(width: 12),
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 300),
-                              switchInCurve: Curves.easeOutCubic,
-                              switchOutCurve: Curves.easeInCubic,
-                              transitionBuilder: (childWidget, animation) {
-                                final offsetAnimation = Tween<Offset>(
-                                  begin: const Offset(0, 0.3),
-                                  end: Offset.zero,
-                                ).animate(CurvedAnimation(
-                                  parent: animation,
-                                  curve: Curves.easeOutCubic,
-                                ));
-
-                                return SlideTransition(
-                                  position: offsetAnimation,
-                                  child: FadeTransition(
-                                    opacity: animation,
-                                    child: childWidget,
-                                  ),
-                                );
-                              },
-                              layoutBuilder: (currentChild, previousChildren) => Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    ...previousChildren,
-                                    if (currentChild != null) currentChild,
-                                  ],
-                                ),
-                              child: child,
+                          // Outline/glow: the same glyph, dark + blurred,
+                          // painted UNDER the main icon. Mirrors the tuner's
+                          // drawGlyphPaths(..., rgba(#000,0.72), blur 5.5) pass
+                          // since HugeIcon (SVG) doesn't accept shadows.
+                          ImageFiltered(
+                            imageFilter: ui.ImageFilter.blur(
+                              sigmaX: _iconShadowBlur,
+                              sigmaY: _iconShadowBlur,
                             ),
-                          ],
+                            child: HugeIcon(
+                              icon: iconData,
+                              size: widget.iconSize,
+                              strokeWidth: strokeWidth,
+                              color: Lumina.lensShadow
+                                  .withValues(alpha: _iconShadowAlpha),
+                            ),
+                          ),
+                          // body
+                          HugeIcon(
+                            icon: iconData,
+                            size: widget.iconSize,
+                            strokeWidth: strokeWidth,
+                            color: color ?? iconColor,
+                          ),
+                          // rim внутри: conic Fresnel painted over the glyph.
+                          if (rimAmount > 0)
+                            _rimGlyph(
+                              iconData,
+                              strokeWidth,
+                              accent,
+                              rimAmount,
+                            ),
                         ],
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
               ),
             ),
           ),
-        child: Consumer(
-          builder: (_, ref, __) {
-            final runTime = ref.watch(runTimeProvider);
-            if (runTime != null) {
-              final text = utils.getTimeText(runTime);
-              return Text(
-                text,
-                key: ValueKey('time_$text'),
-                style: context.textTheme.titleMedium?.toSoftBold.copyWith(
-                  color: Colors.white,
-                ),
-              );
-            } else {
-              return const SizedBox.shrink(
-                key: ValueKey('empty'),
-              );
-            }
-          },
         ),
       ),
     );

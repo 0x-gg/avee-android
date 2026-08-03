@@ -21,19 +21,19 @@ _$AppSettingPropsImpl _$$AppSettingPropsImplFromJson(
       closeConnections: json['closeConnections'] as bool? ?? true,
       testUrl: json['testUrl'] as String? ?? defaultTestUrl,
       isAnimateToPage: json['isAnimateToPage'] as bool? ?? true,
-      autoCheckUpdate: json['autoCheckUpdate'] as bool? ?? false,
+      autoCheckUpdate: json['autoCheckUpdate'] as bool? ?? true,
+      lastUpdateCheckMs: (json['lastUpdateCheckMs'] as num?)?.toInt() ?? 0,
       showLabel: json['showLabel'] as bool? ?? false,
       disclaimerAccepted: json['disclaimerAccepted'] as bool? ?? false,
-      minimizeOnExit: json['minimizeOnExit'] as bool? ?? false,
+      minimizeOnExit: json['minimizeOnExit'] as bool? ?? true,
       hidden: json['hidden'] as bool? ?? false,
       developerMode: json['developerMode'] as bool? ?? false,
       overrideProviderSettings:
           json['overrideProviderSettings'] as bool? ?? false,
+      applySubscriptionTheme: json['applySubscriptionTheme'] as bool? ?? true,
+      applySubscriptionLogo: json['applySubscriptionLogo'] as bool? ?? true,
       overrideNetworkSettings:
           json['overrideNetworkSettings'] as bool? ?? false,
-      recoveryStrategy: $enumDecodeNullable(
-              _$RecoveryStrategyEnumMap, json['recoveryStrategy']) ??
-          RecoveryStrategy.compatible,
     );
 
 Map<String, dynamic> _$$AppSettingPropsImplToJson(
@@ -52,27 +52,21 @@ Map<String, dynamic> _$$AppSettingPropsImplToJson(
       'testUrl': instance.testUrl,
       'isAnimateToPage': instance.isAnimateToPage,
       'autoCheckUpdate': instance.autoCheckUpdate,
+      'lastUpdateCheckMs': instance.lastUpdateCheckMs,
       'showLabel': instance.showLabel,
       'disclaimerAccepted': instance.disclaimerAccepted,
       'minimizeOnExit': instance.minimizeOnExit,
       'hidden': instance.hidden,
       'developerMode': instance.developerMode,
       'overrideProviderSettings': instance.overrideProviderSettings,
+      'applySubscriptionTheme': instance.applySubscriptionTheme,
+      'applySubscriptionLogo': instance.applySubscriptionLogo,
       'overrideNetworkSettings': instance.overrideNetworkSettings,
-      'recoveryStrategy': _$RecoveryStrategyEnumMap[instance.recoveryStrategy]!,
     };
-
-const _$RecoveryStrategyEnumMap = {
-  RecoveryStrategy.compatible: 'compatible',
-  RecoveryStrategy.override: 'override',
-};
 
 const _$DashboardWidgetEnumMap = {
   DashboardWidget.networkSpeed: 'networkSpeed',
-  DashboardWidget.outboundModeV2: 'outboundModeV2',
-  DashboardWidget.outboundMode: 'outboundMode',
   DashboardWidget.trafficUsage: 'trafficUsage',
-  DashboardWidget.announce: 'announce',
   DashboardWidget.metainfo: 'metainfo',
   DashboardWidget.networkDetection: 'networkDetection',
   DashboardWidget.tunButton: 'tunButton',
@@ -128,7 +122,7 @@ const _$AccessSortTypeEnumMap = {
 _$WindowPropsImpl _$$WindowPropsImplFromJson(Map<String, dynamic> json) =>
     _$WindowPropsImpl(
       width: (json['width'] as num?)?.toDouble() ?? 450,
-      height: (json['height'] as num?)?.toDouble() ?? 900,
+      height: (json['height'] as num?)?.toDouble() ?? 650,
       top: (json['top'] as num?)?.toDouble(),
       left: (json['left'] as num?)?.toDouble(),
     );
@@ -144,9 +138,9 @@ Map<String, dynamic> _$$WindowPropsImplToJson(_$WindowPropsImpl instance) =>
 _$VpnPropsImpl _$$VpnPropsImplFromJson(Map<String, dynamic> json) =>
     _$VpnPropsImpl(
       enable: json['enable'] as bool? ?? true,
-      systemProxy: json['systemProxy'] as bool? ?? false,
+      systemProxy: json['systemProxy'] as bool? ?? true,
       ipv6: json['ipv6'] as bool? ?? true,
-      allowBypass: json['allowBypass'] as bool? ?? false,
+      allowBypass: json['allowBypass'] as bool? ?? true,
       accessControl: json['accessControl'] == null
           ? defaultAccessControl
           : AccessControl.fromJson(
@@ -262,6 +256,9 @@ Map<String, dynamic> _$$TextScaleImplToJson(_$TextScaleImpl instance) =>
 _$ThemePropsImpl _$$ThemePropsImplFromJson(Map<String, dynamic> json) =>
     _$ThemePropsImpl(
       primaryColor: (json['primaryColor'] as num?)?.toInt(),
+      orbColorPrimary: (json['orbColorPrimary'] as num?)?.toInt(),
+      orbColorSecondary: (json['orbColorSecondary'] as num?)?.toInt(),
+      orbBlur: (json['orbBlur'] as num?)?.toDouble() ?? 5.0,
       primaryColors: (json['primaryColors'] as List<dynamic>?)
               ?.map((e) => (e as num).toInt())
               .toList() ??
@@ -270,8 +267,8 @@ _$ThemePropsImpl _$$ThemePropsImplFromJson(Map<String, dynamic> json) =>
           ThemeMode.dark,
       schemeVariant: $enumDecodeNullable(
               _$DynamicSchemeVariantEnumMap, json['schemeVariant']) ??
-          DynamicSchemeVariant.content,
-      pureBlack: json['pureBlack'] as bool? ?? false,
+          DynamicSchemeVariant.fidelity,
+      pureBlack: json['pureBlack'] as bool? ?? true,
       textScale: json['textScale'] == null
           ? const TextScale()
           : TextScale.fromJson(json['textScale'] as Map<String, dynamic>),
@@ -280,6 +277,9 @@ _$ThemePropsImpl _$$ThemePropsImplFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$$ThemePropsImplToJson(_$ThemePropsImpl instance) =>
     <String, dynamic>{
       'primaryColor': instance.primaryColor,
+      'orbColorPrimary': instance.orbColorPrimary,
+      'orbColorSecondary': instance.orbColorSecondary,
+      'orbBlur': instance.orbBlur,
       'primaryColors': instance.primaryColors,
       'themeMode': _$ThemeModeEnumMap[instance.themeMode]!,
       'schemeVariant': _$DynamicSchemeVariantEnumMap[instance.schemeVariant]!,
@@ -335,9 +335,6 @@ _$ConfigImpl _$$ConfigImplFromJson(Map<String, dynamic> json) => _$ConfigImpl(
           const [],
       currentProfileId: json['currentProfileId'] as String?,
       overrideDns: json['overrideDns'] as bool? ?? false,
-      dav: json['dav'] == null
-          ? null
-          : DAV.fromJson(json['dav'] as Map<String, dynamic>),
       networkProps: json['networkProps'] == null
           ? defaultNetworkProps
           : NetworkProps.fromJson(
@@ -370,7 +367,6 @@ Map<String, dynamic> _$$ConfigImplToJson(_$ConfigImpl instance) =>
       'hotKeyActions': instance.hotKeyActions,
       'currentProfileId': instance.currentProfileId,
       'overrideDns': instance.overrideDns,
-      'dav': instance.dav,
       'networkProps': instance.networkProps,
       'vpnProps': instance.vpnProps,
       'themeProps': instance.themeProps,

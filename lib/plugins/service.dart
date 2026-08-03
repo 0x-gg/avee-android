@@ -1,13 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
-import 'package:flclashx/state.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/services.dart';
 
 import '../clash/lib.dart';
 
 class Service {
-
   factory Service() {
     _instance ??= Service._internal();
     return _instance!;
@@ -25,13 +25,14 @@ class Service {
   Future<bool?> destroy() async => methodChannel.invokeMethod<bool>("destroy");
 
   Future<bool?> startVpn() async {
-    final options = await clashLib?.getAndroidVpnOptions() ?? "";
+    final options = await clashLib?.getAndroidVpnOptions();
     return methodChannel.invokeMethod<bool>("startVpn", {
-      'data': options,
+      'data': json.encode(options),
     });
   }
 
   Future<bool?> stopVpn() async => methodChannel.invokeMethod<bool>("stopVpn");
 }
 
-Service? get service => Platform.isAndroid && !globalState.isService ? Service() : null;
+Service? get service =>
+    Platform.isAndroid && !globalState.isService ? Service() : null;

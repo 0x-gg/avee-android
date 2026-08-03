@@ -1,18 +1,18 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/providers/config.dart';
-import 'package:flclashx/providers/app.dart';
-import 'package:flclashx/state.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/providers/config.dart';
+import 'package:avee/providers/app.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:window_ext/window_ext.dart';
 import 'package:window_manager/window_manager.dart';
 
 class WindowManager extends ConsumerStatefulWidget {
-
   const WindowManager({
     super.key,
     required this.child,
@@ -52,9 +52,17 @@ class _WindowContainerState extends ConsumerState<WindowManager>
   }
 
   @override
-  void onWindowClose() async {
-    await globalState.appController.handleBackOrExit();
-    super.onWindowClose();
+  Future<void> onWindowClose() async {
+    final minimizeOnExit = ref.read(appSettingProvider).minimizeOnExit;
+    if (minimizeOnExit) {
+      // Hide to tray instead of closing
+      await globalState.appController.handleBackOrExit();
+      // Don't call super.onWindowClose() - we want to keep running
+    } else {
+      // Actually close the app
+      await globalState.appController.handleExit();
+      super.onWindowClose();
+    }
   }
 
   @override
@@ -95,7 +103,7 @@ class _WindowContainerState extends ConsumerState<WindowManager>
   }
 
   @override
-  void onWindowMinimize() async {
+  Future<void> onWindowMinimize() async {
     globalState.appController.savePreferencesDebounce();
     commonPrint.log("minimize");
     render?.pause();
@@ -120,7 +128,6 @@ class _WindowContainerState extends ConsumerState<WindowManager>
 }
 
 class WindowHeaderContainer extends StatelessWidget {
-
   const WindowHeaderContainer({
     super.key,
     required this.child,
@@ -135,21 +142,21 @@ class WindowHeaderContainer extends StatelessWidget {
 
     return Consumer(
       builder: (_, ref, child) => Stack(
-          children: [
-            Column(
-              children: [
-                SizedBox(
-                  height: kHeaderHeight,
-                ),
-                Expanded(
-                  flex: 1,
-                  child: child!,
-                ),
-              ],
-            ),
-            const WindowHeader(),
-          ],
-        ),
+        children: [
+          Column(
+            children: [
+              SizedBox(
+                height: kHeaderHeight,
+              ),
+              Expanded(
+                flex: 1,
+                child: child!,
+              ),
+            ],
+          ),
+          const WindowHeader(),
+        ],
+      ),
       child: child,
     );
   }
@@ -211,12 +218,14 @@ class _WindowHeaderState extends State<WindowHeader> {
     required VoidCallback onPressed,
     Color? hoverColor,
     Color? hoverIconColor,
+    bool isActive = false,
   }) {
     return _WindowControlButton(
       icon: icon,
       onPressed: onPressed,
       hoverColor: hoverColor,
       hoverIconColor: hoverIconColor,
+      isActive: isActive,
     );
   }
 
@@ -225,22 +234,28 @@ class _WindowHeaderState extends State<WindowHeader> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Pin button
-        _buildWindowButton(
-          icon: ValueListenableBuilder(
-            valueListenable: isPinNotifier,
-            builder: (_, value, ___) => Icon(
-              value ? Icons.push_pin : Icons.push_pin_outlined,
+        // Pin (always-on-top) button — active state shows a persistent
+        // primary-tinted background + primary icon color so the user can
+        // tell at a glance whether the window is pinned. Inactive falls
+        // back to the standard muted control look.
+        ValueListenableBuilder<bool>(
+          valueListenable: isPinNotifier,
+          builder: (_, pinned, __) => _buildWindowButton(
+            isActive: pinned,
+            icon: HugeIcon(
+              icon: HugeIcons.strokeRoundedPin02,
               size: 16,
-              color: colorScheme.onSurface.withValues(alpha: 0.8),
+              color: pinned
+                  ? colorScheme.primary
+                  : colorScheme.onSurface.withValues(alpha: 0.8),
             ),
+            onPressed: _updatePin,
           ),
-          onPressed: _updatePin,
         ),
         // Minimize button
         _buildWindowButton(
-          icon: Icon(
-            Icons.remove,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedRemove01,
             size: 18,
             color: colorScheme.onSurface.withValues(alpha: 0.8),
           ),
@@ -250,8 +265,10 @@ class _WindowHeaderState extends State<WindowHeader> {
         _buildWindowButton(
           icon: ValueListenableBuilder(
             valueListenable: isMaximizedNotifier,
-            builder: (_, value, ___) => Icon(
-              value ? Icons.filter_none : Icons.crop_square,
+            builder: (_, value, ___) => HugeIcon(
+              icon: value
+                  ? HugeIcons.strokeRoundedMaximize04
+                  : HugeIcons.strokeRoundedMaximize01,
               size: value ? 14 : 16,
               color: colorScheme.onSurface.withValues(alpha: 0.8),
             ),
@@ -260,8 +277,8 @@ class _WindowHeaderState extends State<WindowHeader> {
         ),
         // Close button - red hover
         _buildWindowButton(
-          icon: Icon(
-            Icons.close,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedCancel01,
             size: 18,
             color: colorScheme.onSurface.withValues(alpha: 0.8),
           ),
@@ -276,7 +293,7 @@ class _WindowHeaderState extends State<WindowHeader> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    
+
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -307,8 +324,15 @@ class _WindowHeaderState extends State<WindowHeader> {
               Row(
                 children: [
                   const SizedBox(width: 12),
-                  // Connection status indicator
-                  const _ConnectionStatusIndicator(),
+                  // Connection status indicator — wrapped in IgnorePointer
+                  // so the status dot/label does not absorb pointer events
+                  // and pan-drag on this area reaches the underlying
+                  // GestureDetector that calls `windowManager.startDragging`.
+                  // Without this, dragging the titlebar starting on the
+                  // "Запущено / Остановлено" text or dot does nothing.
+                  const IgnorePointer(
+                    child: _ConnectionStatusIndicator(),
+                  ),
                   const Spacer(),
                   // Window controls
                   _buildActions(context),
@@ -327,12 +351,14 @@ class _WindowControlButton extends StatefulWidget {
   final VoidCallback onPressed;
   final Color? hoverColor;
   final Color? hoverIconColor;
+  final bool isActive;
 
   const _WindowControlButton({
     required this.icon,
     required this.onPressed,
     this.hoverColor,
     this.hoverIconColor,
+    this.isActive = false,
   });
 
   @override
@@ -346,7 +372,15 @@ class _WindowControlButtonState extends State<_WindowControlButton> {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     final defaultHoverColor = colorScheme.onSurface.withValues(alpha: 0.08);
-    
+    // Persistent tint shown when the control is in an "on" state (e.g.
+    // the pin button while always-on-top is enabled). Hover still wins
+    // visually if both are true.
+    final activeColor = colorScheme.primary.withValues(alpha: 0.16);
+
+    final Color backgroundColor = _isHovered
+        ? (widget.hoverColor ?? defaultHoverColor)
+        : (widget.isActive ? activeColor : Colors.transparent);
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -357,9 +391,7 @@ class _WindowControlButtonState extends State<_WindowControlButton> {
           width: 46,
           height: kHeaderHeight,
           decoration: BoxDecoration(
-            color: _isHovered 
-                ? (widget.hoverColor ?? defaultHoverColor)
-                : Colors.transparent,
+            color: backgroundColor,
           ),
           child: Center(
             child: _isHovered && widget.hoverIconColor != null
@@ -382,18 +414,18 @@ class _ConnectionStatusIndicator extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = context.colorScheme;
-    
+
     // Watch VPN/TUN status via runTimeProvider
     final isStart = ref.watch(runTimeProvider.select((state) => state != null));
-    
-    final statusColor = isStart 
-        ? const Color(0xFF4CAF50) // Green when connected
-        : colorScheme.onSurface.withValues(alpha: 0.3); // Gray when disconnected
-    
-    final statusText = isStart 
-        ? appLocalizations.running 
-        : appLocalizations.stopped;
-    
+
+    final statusColor = isStart
+        ? Lumina.statusConnected // Green when connected
+        : colorScheme.onSurface
+            .withValues(alpha: 0.3); // Gray when disconnected
+
+    final statusText =
+        isStart ? appLocalizations.running : appLocalizations.stopped;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -432,24 +464,24 @@ class AppIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-      margin: const EdgeInsets.only(left: 8),
-      child: const Row(
-        children: [
-          SizedBox(
-            width: 24,
-            height: 24,
-            child: CircleAvatar(
-              foregroundImage: AssetImage("assets/images/icon.png"),
-              backgroundColor: Colors.transparent,
+        margin: const EdgeInsets.only(left: 8),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircleAvatar(
+                foregroundImage: AssetImage("assets/images/icon.png"),
+                backgroundColor: Colors.transparent,
+              ),
             ),
-          ),
-          SizedBox(
-            width: 8,
-          ),
-          Text(
-            appName,
-          ),
-        ],
-      ),
-    );
+            SizedBox(
+              width: 8,
+            ),
+            Text(
+              appName,
+            ),
+          ],
+        ),
+      );
 }

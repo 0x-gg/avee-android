@@ -1,9 +1,10 @@
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/providers/providers.dart';
-import 'package:flclashx/state.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../models/models.dart';
 import '../widgets/widgets.dart';
@@ -69,9 +70,7 @@ class _LogsViewState extends ConsumerState<LogsView> with PageMixin {
   List<Widget> get actions => [
         IconButton(
           onPressed: _handleExport,
-          icon: const Icon(
-            Icons.file_download_outlined,
-          ),
+          icon: HugeIcon(icon: HugeIcons.strokeRoundedDownload01, size: 24),
         ),
       ];
 

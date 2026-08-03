@@ -901,6 +901,8 @@ mixin _$AndroidVpnOptions {
   String get ipv6Address => throw _privateConstructorUsedError;
   List<String> get routeAddress => throw _privateConstructorUsedError;
   String get dnsServerAddress => throw _privateConstructorUsedError;
+  List<String>? get includePackage => throw _privateConstructorUsedError;
+  List<String>? get excludePackage => throw _privateConstructorUsedError;
 
   /// Serializes this AndroidVpnOptions to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -928,7 +930,9 @@ abstract class $AndroidVpnOptionsCopyWith<$Res> {
       String ipv4Address,
       String ipv6Address,
       List<String> routeAddress,
-      String dnsServerAddress});
+      String dnsServerAddress,
+      List<String>? includePackage,
+      List<String>? excludePackage});
 
   $AccessControlCopyWith<$Res>? get accessControl;
 }
@@ -958,6 +962,8 @@ class _$AndroidVpnOptionsCopyWithImpl<$Res, $Val extends AndroidVpnOptions>
     Object? ipv6Address = null,
     Object? routeAddress = null,
     Object? dnsServerAddress = null,
+    Object? includePackage = freezed,
+    Object? excludePackage = freezed,
   }) {
     return _then(_value.copyWith(
       enable: null == enable
@@ -1000,6 +1006,14 @@ class _$AndroidVpnOptionsCopyWithImpl<$Res, $Val extends AndroidVpnOptions>
           ? _value.dnsServerAddress
           : dnsServerAddress // ignore: cast_nullable_to_non_nullable
               as String,
+      includePackage: freezed == includePackage
+          ? _value.includePackage
+          : includePackage // ignore: cast_nullable_to_non_nullable
+              as List<String>?,
+      excludePackage: freezed == excludePackage
+          ? _value.excludePackage
+          : excludePackage // ignore: cast_nullable_to_non_nullable
+              as List<String>?,
     ) as $Val);
   }
 
@@ -1036,7 +1050,9 @@ abstract class _$$AndroidVpnOptionsImplCopyWith<$Res>
       String ipv4Address,
       String ipv6Address,
       List<String> routeAddress,
-      String dnsServerAddress});
+      String dnsServerAddress,
+      List<String>? includePackage,
+      List<String>? excludePackage});
 
   @override
   $AccessControlCopyWith<$Res>? get accessControl;
@@ -1065,6 +1081,8 @@ class __$$AndroidVpnOptionsImplCopyWithImpl<$Res>
     Object? ipv6Address = null,
     Object? routeAddress = null,
     Object? dnsServerAddress = null,
+    Object? includePackage = freezed,
+    Object? excludePackage = freezed,
   }) {
     return _then(_$AndroidVpnOptionsImpl(
       enable: null == enable
@@ -1107,6 +1125,14 @@ class __$$AndroidVpnOptionsImplCopyWithImpl<$Res>
           ? _value.dnsServerAddress
           : dnsServerAddress // ignore: cast_nullable_to_non_nullable
               as String,
+      includePackage: freezed == includePackage
+          ? _value._includePackage
+          : includePackage // ignore: cast_nullable_to_non_nullable
+              as List<String>?,
+      excludePackage: freezed == excludePackage
+          ? _value._excludePackage
+          : excludePackage // ignore: cast_nullable_to_non_nullable
+              as List<String>?,
     ));
   }
 }
@@ -1124,9 +1150,13 @@ class _$AndroidVpnOptionsImpl implements _AndroidVpnOptions {
       required this.ipv4Address,
       required this.ipv6Address,
       final List<String> routeAddress = const [],
-      required this.dnsServerAddress})
+      required this.dnsServerAddress,
+      final List<String>? includePackage,
+      final List<String>? excludePackage})
       : _bypassDomain = bypassDomain,
-        _routeAddress = routeAddress;
+        _routeAddress = routeAddress,
+        _includePackage = includePackage,
+        _excludePackage = excludePackage;
 
   factory _$AndroidVpnOptionsImpl.fromJson(Map<String, dynamic> json) =>
       _$$AndroidVpnOptionsImplFromJson(json);
@@ -1164,10 +1194,29 @@ class _$AndroidVpnOptionsImpl implements _AndroidVpnOptions {
 
   @override
   final String dnsServerAddress;
+  final List<String>? _includePackage;
+  @override
+  List<String>? get includePackage {
+    final value = _includePackage;
+    if (value == null) return null;
+    if (_includePackage is EqualUnmodifiableListView) return _includePackage;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
+
+  final List<String>? _excludePackage;
+  @override
+  List<String>? get excludePackage {
+    final value = _excludePackage;
+    if (value == null) return null;
+    if (_excludePackage is EqualUnmodifiableListView) return _excludePackage;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
 
   @override
   String toString() {
-    return 'AndroidVpnOptions(enable: $enable, port: $port, accessControl: $accessControl, allowBypass: $allowBypass, systemProxy: $systemProxy, bypassDomain: $bypassDomain, ipv4Address: $ipv4Address, ipv6Address: $ipv6Address, routeAddress: $routeAddress, dnsServerAddress: $dnsServerAddress)';
+    return 'AndroidVpnOptions(enable: $enable, port: $port, accessControl: $accessControl, allowBypass: $allowBypass, systemProxy: $systemProxy, bypassDomain: $bypassDomain, ipv4Address: $ipv4Address, ipv6Address: $ipv6Address, routeAddress: $routeAddress, dnsServerAddress: $dnsServerAddress, includePackage: $includePackage, excludePackage: $excludePackage)';
   }
 
   @override
@@ -1192,7 +1241,11 @@ class _$AndroidVpnOptionsImpl implements _AndroidVpnOptions {
             const DeepCollectionEquality()
                 .equals(other._routeAddress, _routeAddress) &&
             (identical(other.dnsServerAddress, dnsServerAddress) ||
-                other.dnsServerAddress == dnsServerAddress));
+                other.dnsServerAddress == dnsServerAddress) &&
+            const DeepCollectionEquality()
+                .equals(other._includePackage, _includePackage) &&
+            const DeepCollectionEquality()
+                .equals(other._excludePackage, _excludePackage));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1208,7 +1261,9 @@ class _$AndroidVpnOptionsImpl implements _AndroidVpnOptions {
       ipv4Address,
       ipv6Address,
       const DeepCollectionEquality().hash(_routeAddress),
-      dnsServerAddress);
+      dnsServerAddress,
+      const DeepCollectionEquality().hash(_includePackage),
+      const DeepCollectionEquality().hash(_excludePackage));
 
   /// Create a copy of AndroidVpnOptions
   /// with the given fields replaced by the non-null parameter values.
@@ -1238,7 +1293,9 @@ abstract class _AndroidVpnOptions implements AndroidVpnOptions {
       required final String ipv4Address,
       required final String ipv6Address,
       final List<String> routeAddress,
-      required final String dnsServerAddress}) = _$AndroidVpnOptionsImpl;
+      required final String dnsServerAddress,
+      final List<String>? includePackage,
+      final List<String>? excludePackage}) = _$AndroidVpnOptionsImpl;
 
   factory _AndroidVpnOptions.fromJson(Map<String, dynamic> json) =
       _$AndroidVpnOptionsImpl.fromJson;
@@ -1263,12 +1320,204 @@ abstract class _AndroidVpnOptions implements AndroidVpnOptions {
   List<String> get routeAddress;
   @override
   String get dnsServerAddress;
+  @override
+  List<String>? get includePackage;
+  @override
+  List<String>? get excludePackage;
 
   /// Create a copy of AndroidVpnOptions
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$AndroidVpnOptionsImplCopyWith<_$AndroidVpnOptionsImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+ProxyCredentials _$ProxyCredentialsFromJson(Map<String, dynamic> json) {
+  return _ProxyCredentials.fromJson(json);
+}
+
+/// @nodoc
+mixin _$ProxyCredentials {
+  int get port => throw _privateConstructorUsedError;
+  String get username => throw _privateConstructorUsedError;
+  String get password => throw _privateConstructorUsedError;
+
+  /// Serializes this ProxyCredentials to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of ProxyCredentials
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $ProxyCredentialsCopyWith<ProxyCredentials> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $ProxyCredentialsCopyWith<$Res> {
+  factory $ProxyCredentialsCopyWith(
+          ProxyCredentials value, $Res Function(ProxyCredentials) then) =
+      _$ProxyCredentialsCopyWithImpl<$Res, ProxyCredentials>;
+  @useResult
+  $Res call({int port, String username, String password});
+}
+
+/// @nodoc
+class _$ProxyCredentialsCopyWithImpl<$Res, $Val extends ProxyCredentials>
+    implements $ProxyCredentialsCopyWith<$Res> {
+  _$ProxyCredentialsCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of ProxyCredentials
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? port = null,
+    Object? username = null,
+    Object? password = null,
+  }) {
+    return _then(_value.copyWith(
+      port: null == port
+          ? _value.port
+          : port // ignore: cast_nullable_to_non_nullable
+              as int,
+      username: null == username
+          ? _value.username
+          : username // ignore: cast_nullable_to_non_nullable
+              as String,
+      password: null == password
+          ? _value.password
+          : password // ignore: cast_nullable_to_non_nullable
+              as String,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$ProxyCredentialsImplCopyWith<$Res>
+    implements $ProxyCredentialsCopyWith<$Res> {
+  factory _$$ProxyCredentialsImplCopyWith(_$ProxyCredentialsImpl value,
+          $Res Function(_$ProxyCredentialsImpl) then) =
+      __$$ProxyCredentialsImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({int port, String username, String password});
+}
+
+/// @nodoc
+class __$$ProxyCredentialsImplCopyWithImpl<$Res>
+    extends _$ProxyCredentialsCopyWithImpl<$Res, _$ProxyCredentialsImpl>
+    implements _$$ProxyCredentialsImplCopyWith<$Res> {
+  __$$ProxyCredentialsImplCopyWithImpl(_$ProxyCredentialsImpl _value,
+      $Res Function(_$ProxyCredentialsImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of ProxyCredentials
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? port = null,
+    Object? username = null,
+    Object? password = null,
+  }) {
+    return _then(_$ProxyCredentialsImpl(
+      port: null == port
+          ? _value.port
+          : port // ignore: cast_nullable_to_non_nullable
+              as int,
+      username: null == username
+          ? _value.username
+          : username // ignore: cast_nullable_to_non_nullable
+              as String,
+      password: null == password
+          ? _value.password
+          : password // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$ProxyCredentialsImpl implements _ProxyCredentials {
+  const _$ProxyCredentialsImpl(
+      {required this.port, required this.username, required this.password});
+
+  factory _$ProxyCredentialsImpl.fromJson(Map<String, dynamic> json) =>
+      _$$ProxyCredentialsImplFromJson(json);
+
+  @override
+  final int port;
+  @override
+  final String username;
+  @override
+  final String password;
+
+  @override
+  String toString() {
+    return 'ProxyCredentials(port: $port, username: $username, password: $password)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ProxyCredentialsImpl &&
+            (identical(other.port, port) || other.port == port) &&
+            (identical(other.username, username) ||
+                other.username == username) &&
+            (identical(other.password, password) ||
+                other.password == password));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, port, username, password);
+
+  /// Create a copy of ProxyCredentials
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ProxyCredentialsImplCopyWith<_$ProxyCredentialsImpl> get copyWith =>
+      __$$ProxyCredentialsImplCopyWithImpl<_$ProxyCredentialsImpl>(
+          this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$ProxyCredentialsImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _ProxyCredentials implements ProxyCredentials {
+  const factory _ProxyCredentials(
+      {required final int port,
+      required final String username,
+      required final String password}) = _$ProxyCredentialsImpl;
+
+  factory _ProxyCredentials.fromJson(Map<String, dynamic> json) =
+      _$ProxyCredentialsImpl.fromJson;
+
+  @override
+  int get port;
+  @override
+  String get username;
+  @override
+  String get password;
+
+  /// Create a copy of ProxyCredentials
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$ProxyCredentialsImplCopyWith<_$ProxyCredentialsImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 

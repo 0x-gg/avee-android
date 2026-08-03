@@ -1,13 +1,12 @@
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/providers/app.dart';
-import 'package:flclashx/providers/state.dart';
-import 'package:flclashx/state.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/providers/app.dart';
+import 'package:avee/providers/state.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class VpnManager extends ConsumerStatefulWidget {
-
   const VpnManager({
     super.key,
     required this.child,
@@ -23,6 +22,10 @@ class _VpnContainerState extends ConsumerState<VpnManager> {
   void initState() {
     super.initState();
     ref.listenManual(vpnStateProvider, (prev, next) {
+      // Skip the tip when the vpnState change came from a config setup applying
+      // (e.g. a profile switch syncing the provider's tun.stack). Those apply
+      // live; only genuine manual VPN/network-setting changes should warn.
+      if (globalState.suppressVpnTip) return;
       showTip();
     });
   }

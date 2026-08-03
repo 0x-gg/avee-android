@@ -105,7 +105,6 @@ const (
 	crashMethod                    Method = "crash"
 	setupConfigMethod              Method = "setupConfig"
 	getConfigMethod                Method = "getConfig"
-	getCoreVersionMethod           Method = "getCoreVersion"
 )
 
 type Method string
@@ -128,6 +127,7 @@ const (
 	DelayMessage   MessageType = "delay"
 	RequestMessage MessageType = "request"
 	LoadedMessage  MessageType = "loaded"
+	TunMessage     MessageType = "tun"
 )
 
 func (message *Message) Json() (string, error) {

@@ -36,18 +36,30 @@ type TunHandler struct {
 }
 
 func (t *TunHandler) close() {
-	_ = t.limit.Acquire(context.TODO(), 4)
-	defer t.limit.Release(4)
+	// Bound the drain. handleProtect/handleResolveProcess hold this semaphore while
+	// calling into the JVM (Binder), which can wedge under system pressure; close()
+	// runs under tunLock, so an unbounded Acquire here would block stop AND the next
+	// start/getRunTime forever. On timeout, skip releaseObject and leak the callback
+	// global ref rather than risk a use-after-free on an in-flight Protect call.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	drained := t.limit.Acquire(ctx, 4) == nil
+	if drained {
+		defer t.limit.Release(4)
+	} else {
+		log.Warnln("TunHandler.close: drain timed out, leaking callback global ref to avoid use-after-free")
+	}
 	removeTunHook()
 	if t.listener != nil {
 		_ = t.listener.Close()
 	}
-
-	if t.callback != nil {
-		releaseObject(t.callback)
+	if drained {
+		if t.callback != nil {
+			releaseObject(t.callback)
+		}
+		t.callback = nil
+		t.listener = nil
 	}
-	t.callback = nil
-	t.listener = nil
 }
 
 func (t *TunHandler) handleProtect(fd int) {
@@ -89,6 +101,37 @@ var (
 	tunHandler *TunHandler
 )
 
+type tunOp struct {
+	start    bool
+	fd       int
+	callback unsafe.Pointer
+}
+
+// tunOps serializes start/stop so a fast disconnect->connect can't let a stop
+// goroutine finish AFTER an in-flight start and tear down the fresh tunnel.
+// One worker drains in FIFO order; the buffer keeps the JNI-facing exports
+// non-blocking.
+var tunOps = make(chan tunOp, 16)
+
+// init starts the single tun worker. It only ranges over a buffered channel and
+// depends on nothing from other init() functions, so package-init ordering is
+// irrelevant; the buffer absorbs any op enqueued before the goroutine is
+// scheduled.
+func init() {
+	go func() {
+		for op := range tunOps {
+			func() {
+				defer recoverGo("tunWorker")
+				if op.start {
+					handleStartTun(op.fd, op.callback)
+				} else {
+					handleStopTun()
+				}
+			}()
+		}
+	}()
+}
+
 func handleStopTun() {
 	tunLock.Lock()
 	defer tunLock.Unlock()
@@ -102,22 +145,53 @@ func handleStartTun(fd int, callback unsafe.Pointer) {
 	handleStopTun()
 	tunLock.Lock()
 	defer tunLock.Unlock()
+	start := time.Now()
 	now := time.Now()
 	runTime = &now
-	if fd != 0 {
-		tunHandler = &TunHandler{
-			callback: callback,
-			limit:    semaphore.NewWeighted(4),
+
+	// fd <= 0 is the documented proxy-only marker: Kotlin always calls startTun,
+	// runTime doubles as the session-start marker there. Real tun failures below
+	// MUST clear runTime or the UI adopts a dead "running" state on next sync.
+	if fd <= 0 {
+		if fd < 0 {
+			log.Errorln("startTUN error: invalid fd %d", fd)
 		}
-		initTunHook()
-		tunListener, _ := t.Start(fd, currentConfig.General.Tun.Device, currentConfig.General.Tun.Stack)
-		if tunListener != nil {
-			log.Infoln("TUN address: %v", tunListener.Address())
-			tunHandler.listener = tunListener
-		} else {
-			removeTunHook()
-		}
+		sendMessage(Message{Type: TunMessage, Data: map[string]any{"status": "error", "message": fmt.Sprintf("invalid fd %d", fd)}})
+		return
 	}
+
+	tunHandler = &TunHandler{
+		callback: callback,
+		limit:    semaphore.NewWeighted(4),
+	}
+	initTunHook()
+	tunListener, err := t.Start(fd, currentConfig.General.Tun.Device, currentConfig.General.Tun.Stack)
+	if err != nil || tunListener == nil {
+		// fd belongs to sing-tun once t.Start is entered; it closes the fd exactly
+		// once via Listener.Close on a post-wrap failure. Do NOT add an unconditional
+		// syscall.Close(fd) here -- that would double-close a number sing-tun may
+		// have already closed/reused. (A rare pre-wrap sing-tun failure would leak
+		// this one fd; accepted over a double-close.)
+		if err != nil {
+			log.Errorln("startTUN error: %v", err)
+		}
+		runTime = nil
+		removeTunHook()
+		if tunHandler != nil {
+			releaseObject(tunHandler.callback)
+			tunHandler = nil
+		}
+		errMsg := "tun listener is nil"
+		if err != nil {
+			errMsg = err.Error()
+		}
+		sendMessage(Message{Type: TunMessage, Data: map[string]any{"status": "error", "message": errMsg}})
+		return
+	}
+	log.Infoln("TUN address: %v", tunListener.Address())
+	tunHandler.listener = tunListener
+	log.Infoln("[trace] tun ready in %s", time.Since(start))
+	sendMessage(Message{Type: TunMessage, Data: map[string]any{"status": "ready"}})
 }
 
 func handleGetRunTime() string {
@@ -153,24 +227,18 @@ func removeTunHook() {
 func handleGetAndroidVpnOptions() string {
 	tunLock.Lock()
 	defer tunLock.Unlock()
-	mixedPort := currentConfig.General.MixedPort
-	// With the HTTP/SOCKS inbound disabled there is no proxy endpoint to
-	// advertise via VpnService.setHttpProxy — force it off so Android doesn't
-	// end up with a ProxyInfo pointing at 127.0.0.1:0.
-	systemProxy := state.CurrentState.VpnProps.SystemProxy && mixedPort != 0
+	s := state.GetCurrentState()
 	options := state.AndroidVpnOptions{
-		Enable:           state.CurrentState.VpnProps.Enable,
-		Port:             mixedPort,
+		Enable:           s.VpnProps.Enable,
+		Port:             currentConfig.General.MixedPort,
 		Ipv4Address:      state.DefaultIpv4Address,
 		Ipv6Address:      state.GetIpv6Address(),
-		AccessControl:    state.CurrentState.VpnProps.AccessControl,
-		SystemProxy:      systemProxy,
-		AllowBypass:      state.CurrentState.VpnProps.AllowBypass,
+		AccessControl:    s.VpnProps.AccessControl,
+		SystemProxy:      s.VpnProps.SystemProxy,
+		AllowBypass:      s.VpnProps.AllowBypass,
 		RouteAddress:     currentConfig.General.Tun.RouteAddress,
-		BypassDomain:     state.CurrentState.BypassDomain,
+		BypassDomain:     s.BypassDomain,
 		DnsServerAddress: state.GetDnsServerAddress(),
-		IncludePackage:   currentConfig.General.Tun.IncludePackage,
-		ExcludePackage:   currentConfig.General.Tun.ExcludePackage,
 	}
 	data, err := json.Marshal(options)
 	if err != nil {
@@ -182,6 +250,7 @@ func handleGetAndroidVpnOptions() string {
 
 func handleUpdateDns(value string) {
 	go func() {
+		defer recoverGo("updateDns")
 		log.Infoln("[DNS] updateDns %s", value)
 		dns.UpdateSystemDNS(strings.Split(value, ","))
 		dns.FlushCacheWithDefaultResolver()
@@ -189,10 +258,11 @@ func handleUpdateDns(value string) {
 }
 
 func handleGetCurrentProfileName() string {
-	if state.CurrentState == nil {
+	s := state.GetCurrentState()
+	if s == nil {
 		return ""
 	}
-	return state.CurrentState.CurrentProfileName
+	return s.CurrentProfileName
 }
 
 func nextHandle(action *Action, result ActionResult) bool {
@@ -222,20 +292,20 @@ func quickStart(initParamsChar *C.char, paramsChar *C.char, stateParamsChar *C.c
 	bytes := []byte(C.GoString(paramsChar))
 	stateParams := C.GoString(stateParamsChar)
 	go func() {
+		defer recoverGo("quickStart")
 		res := handleInitClash(paramsString)
 		if res == false {
 			bridge.SendToPort(i, "init error")
+			return
 		}
-		handleSetState(stateParams)
+		_ = handleSetState(stateParams)
 		bridge.SendToPort(i, handleSetupConfig(bytes))
 	}()
 }
 
 //export startTUN
 func startTUN(fd C.int, callback unsafe.Pointer) bool {
-	go func() {
-		handleStartTun(int(fd), callback)
-	}()
+	tunOps <- tunOp{start: true, fd: int(fd), callback: callback}
 	return true
 }
 
@@ -246,9 +316,7 @@ func getRunTime() *C.char {
 
 //export stopTun
 func stopTun() {
-	go func() {
-		handleStopTun()
-	}()
+	tunOps <- tunOp{start: false}
 }
 
 //export getCurrentProfileName
@@ -264,7 +332,7 @@ func getAndroidVpnOptions() *C.char {
 //export setState
 func setState(s *C.char) {
 	paramsString := C.GoString(s)
-	handleSetState(paramsString)
+	_ = handleSetState(paramsString)
 }
 
 //export updateDns

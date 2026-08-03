@@ -3,17 +3,16 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:flclashx/clash/clash.dart';
-import 'package:flclashx/clash/interface.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/state.dart';
+import 'package:avee/clash/clash.dart';
+import 'package:avee/clash/interface.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart';
 
 class ClashCore {
-
   factory ClashCore() {
     _instance ??= ClashCore._internal();
     return _instance!;
@@ -38,11 +37,14 @@ class ClashCore {
     if (!isExists) {
       await homeDir.create(recursive: true);
     }
+    // Only GeoIP.dat + GeoSite.dat are bundled as a BOOTSTRAP SEED. geoip.metadb
+    // and ASN.mmdb were dropped from the APK: the seed copy only ever runs for
+    // profiles with `geodata-mode == true`, and in that mode mihomo loads
+    // GeoIP.dat (not metadb); ASN.mmdb is unused by the default rule set. If a
+    // profile ever needs metadb/ASN, mihomo downloads them on demand (init.go).
     const geoFileNameList = [
-      mmdbFileName,
       geoIpFileName,
       geoSiteFileName,
-      asnFileName,
     ];
     try {
       for (final geoFileName in geoFileNameList) {
@@ -53,17 +55,43 @@ class ClashCore {
         if (isExists) {
           continue;
         }
+        // Bundled geodata is a BOOTSTRAP SEED, kept in the APK so the app
+        // starts on a device with no internet — which is the whole point
+        // in RU, where the user installs us precisely because they can't
+        // reach the internet without a working VPN. mihomo refreshes these
+        // files from the URLs in the profile config once the tunnel is up.
+        // Trimmed to GeoIP.dat + GeoSite.dat (~23 MB): geoip.metadb and
+        // ASN.mmdb were redundant (see geoFileNameList note above).
         final data = await rootBundle.load('assets/data/$geoFileName');
         final List<int> bytes = data.buffer.asUint8List();
         await geoFile.writeAsBytes(bytes, flush: true);
       }
     } catch (e) {
-      exit(0);
+      // Fail loudly instead of exit(0): since lazy geodata, initGeo can run
+      // from _setupClashConfig's safety net at connect time, where a transient
+      // FS error must surface as a connect error rather than silently killing
+      // the app mid-session.
+      commonPrint.log("ClashCore.initGeo: geodata copy failed: $e");
+      throw Exception("ClashCore.initGeo: geodata copy failed: $e");
     }
   }
 
   Future<bool> init() async {
-    await initGeo();
+    // Lazy geo bootstrap: copy the bundled geo assets only when the active
+    // profile actually consumes geodata (same condition as the tile path). A
+    // profile that enables geodata later is covered by the safety net in
+    // AppController._setupClashConfig before core setup.
+    if (await Geodata.currentProfileNeedsGeodata()) {
+      // Boot must not die because of a failed geo copy: log and continue.
+      // Geodata profiles are still covered by the safety net in
+      // _setupClashConfig at connect time, where a failure now surfaces as a
+      // connect error through ensureGeoFilesIfNeeded's propagation.
+      try {
+        await initGeo();
+      } catch (e) {
+        commonPrint.log("ClashCore.init: initGeo failed, continuing boot: $e");
+      }
+    }
     if (globalState.config.appSetting.openLogs) {
       clashCore.startLog();
     } else {
@@ -86,15 +114,24 @@ class ClashCore {
 
   FutureOr<bool> get isInit => clashInterface.isInit;
 
-  FutureOr<String> validateConfig(String data) => clashInterface.validateConfig(data);
+  FutureOr<String> validateConfig(String data) =>
+      clashInterface.validateConfig(data);
 
-  Future<String> updateConfig(UpdateParams updateParams) => clashInterface.updateConfig(updateParams);
+  Future<String> updateConfig(UpdateParams updateParams) =>
+      clashInterface.updateConfig(updateParams);
 
-  Future<String> setupConfig(SetupParams setupParams) => clashInterface.setupConfig(setupParams);
+  Future<String> setupConfig(SetupParams setupParams) =>
+      clashInterface.setupConfig(setupParams);
 
   Future<List<Group>> getProxiesGroups() async {
     final proxies = await clashInterface.getProxies();
     if (proxies.isEmpty) return [];
+    // A partially-initialised or malformed core can return a proxies map with
+    // no GLOBAL entry (or a GLOBAL without an `all` list). The unchecked casts
+    // below would then throw and blank the whole proxies UI; guard instead so
+    // the caller gets an empty list and can retry once the core is ready.
+    final global = proxies[UsedProxy.GLOBAL.name];
+    if (global is! Map || global['all'] is! List) return [];
     final groupNames = [
       UsedProxy.GLOBAL.name,
       ...(proxies[UsedProxy.GLOBAL.name]["all"] as List).where((e) {
@@ -119,7 +156,8 @@ class ClashCore {
         .toList();
   }
 
-  FutureOr<String> changeProxy(ChangeProxyParams changeProxyParams) async => await clashInterface.changeProxy(changeProxyParams);
+  FutureOr<String> changeProxy(ChangeProxyParams changeProxyParams) async =>
+      await clashInterface.changeProxy(changeProxyParams);
 
   Future<List<Connection>> getConnections() async {
     final res = await clashInterface.getConnections();
@@ -172,20 +210,23 @@ class ClashCore {
     return ExternalProvider.fromJson(json.decode(externalProvidersRawString));
   }
 
-  Future<String> updateGeoData(UpdateGeoDataParams params) => clashInterface.updateGeoData(params);
+  Future<String> updateGeoData(UpdateGeoDataParams params) =>
+      clashInterface.updateGeoData(params);
 
   Future<String> sideLoadExternalProvider({
     required String providerName,
     required String data,
-  }) => clashInterface.sideLoadExternalProvider(
-        providerName: providerName, data: data);
+  }) =>
+      clashInterface.sideLoadExternalProvider(
+          providerName: providerName, data: data);
 
   Future<String> updateExternalProvider({
     required String providerName,
-  }) async => clashInterface.updateExternalProvider(providerName);
+  }) async =>
+      clashInterface.updateExternalProvider(providerName);
 
-  Future<void> startListener() async {
-    await clashInterface.startListener();
+  Future<bool> startListener() async {
+    return await clashInterface.startListener();
   }
 
   Future<void> stopListener() async {

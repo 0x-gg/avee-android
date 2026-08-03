@@ -3,10 +3,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flclashx/clash/core.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/utils/device_info_service.dart';
+import 'package:dio/dio.dart';
+import 'package:avee/clash/core.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/common/share_link_profile.dart';
+import 'package:avee/common/smart_pool_patch.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/utils/device_info_service.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'clash_config.dart';
@@ -45,6 +48,34 @@ class SubscriptionInfo with _$SubscriptionInfo {
   }
 }
 
+/// Process-lifetime negative cache for disconeko (SOS pool) endpoints.
+///
+/// The SOS fetch sits on the CRITICAL PATH of every subscription
+/// import/update. A blackholing endpoint (observed in the wild: the panel
+/// advertises a `avee-disconeko` host that drops packets) would otherwise
+/// tax every update with a full connect timeout. One failure → the endpoint
+/// is skipped for [retryCooldown]; a success clears the record. In-memory
+/// only: a fresh launch retries naturally.
+abstract final class _SosFetchGate {
+  static const fetchTimeout = Duration(seconds: 2);
+  static const retryCooldown = Duration(minutes: 15);
+  static final Map<String, DateTime> _failedAt = {};
+
+  static bool inCooldown(String url) {
+    final at = _failedAt[url];
+    if (at == null) return false;
+    if (DateTime.now().difference(at) >= retryCooldown) return false;
+    commonPrint.log(
+      'avee-disconeko skipped: endpoint in failure cooldown',
+    );
+    return true;
+  }
+
+  static void recordFailure(String url) => _failedAt[url] = DateTime.now();
+
+  static void recordSuccess(String url) => _failedAt.remove(url);
+}
+
 @freezed
 class Profile with _$Profile {
   const factory Profile({
@@ -63,6 +94,11 @@ class Profile with _$Profile {
     @Default(false)
     bool isUpdating,
     @Default({}) Map<String, String> providerHeaders,
+    String? fallbackUrl,
+    @JsonKey(unknownEnumValue: WorkMode.standard)
+    @Default(WorkMode.standard)
+    WorkMode workMode,
+    String? staticCountry,
   }) = _Profile;
 
   factory Profile.fromJson(Map<String, Object?> json) =>
@@ -71,12 +107,13 @@ class Profile with _$Profile {
   factory Profile.normal({
     String? label,
     String url = '',
-  }) => Profile(
-      label: label,
-      url: url,
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      autoUpdateDuration: defaultUpdateDuration,
-    );
+  }) =>
+      Profile(
+        label: label,
+        url: url,
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        autoUpdateDuration: defaultUpdateDuration,
+      );
 }
 
 @freezed
@@ -138,10 +175,36 @@ extension ProfileExtension on Profile {
 
   bool get realAutoUpdate => url.isEmpty == true ? false : autoUpdate;
 
+  /// Human-facing subscription/service name, mirroring the dashboard card
+  /// resolution (MetainfoWidget.pickTitle): the Remnawave `profile-title`
+  /// header wins, then the `avee-servicename` header, then the stored
+  /// `label`, then the raw `id`. Both branding headers may arrive base64
+  /// (optionally `base64:`-prefixed), so they are decoded here. Never empty.
+  String get serviceName {
+    String? decode(String? value) {
+      if (value == null || value.isEmpty) return null;
+      return decodeMaybeBase64(value);
+    }
+
+    for (final candidate in [
+      decode(providerHeaders['profile-title']),
+      decode(providerHeaders['avee-servicename']),
+    ]) {
+      final trimmed = candidate?.trim();
+      if (trimmed != null && trimmed.isNotEmpty) {
+        return trimmed;
+      }
+    }
+    final trimmedLabel = label?.trim();
+    return (trimmedLabel != null && trimmedLabel.isNotEmpty)
+        ? trimmedLabel
+        : id;
+  }
+
   Future<void> checkAndUpdate() async {
     final isExists = await check();
     if (!isExists) {
-      if (url.isNotEmpty && realAutoUpdate) {
+      if (url.isNotEmpty) {
         await update();
       }
     }
@@ -180,41 +243,74 @@ extension ProfileExtension on Profile {
       if (details.model != null) headers['x-device-model'] = details.model;
     }
 
-    final response = await request.getFileResponseForUrl(
-      url,
-      headers: headers.isNotEmpty ? headers : null,
-    );
+    // Resolve URL on demand — `this.url` is empty post-migration.
+    final primaryUrl = await preferences.getProfileUrl(this);
+    if (primaryUrl == null || primaryUrl.isEmpty) {
+      throw Exception(
+        'Profile ${id} has no subscription URL in secure storage',
+      );
+    }
+    final fallback = await preferences.getProfileFallbackUrl(this);
+
+    Response<Uint8List> response;
+    try {
+      response = await request.getFileResponseForUrl(
+        primaryUrl,
+        headers: headers.isNotEmpty ? headers : null,
+      );
+    } catch (e) {
+      if (fallback != null && fallback.isNotEmpty) {
+        response = await request.getFileResponseForUrl(
+          fallback,
+          headers: headers.isNotEmpty ? headers : null,
+        );
+      } else {
+        rethrow;
+      }
+    }
 
     final disposition = response.headers.value("content-disposition");
     final userinfo = response.headers.value('subscription-userinfo');
-    
+
     final responseData = response.data;
     if (responseData == null) {
       throw Exception("Failed to get profile data from response.");
     }
 
     final providerHeaders = <String, String>{};
-    
+
     final headersToCollect = [
       'announce',
-      'support-url', 
+      'support-url',
       'profile-update-interval',
       'x-hwid-limit',
+      'fallback-url',
+      // Standard Remnawave subscription headers — profile title and the
+      // subscription page URL, collected as harmless metadata.
+      'profile-title',
+      'profile-web-page-url',
     ];
-    
+
     for (final headerName in headersToCollect) {
       final value = response.headers.value(headerName);
       if (value != null && value.isNotEmpty) {
         providerHeaders[headerName] = value;
       }
     }
-    
+
+    // Subscription providers (Remnawave panel templates) return avee-*
+    // HTTP headers to customize the dashboard layout, theme, service name,
+    // logo, and behavior. Legacy flclashx-* headers from FlClashX-targeted
+    // panels are intentionally NOT accepted — AVEE is a distinct product
+    // and must not share a customization protocol surface with FlClashX
+    // (see .sisyphus/plans/2026-04-20-flclashx-hard-decouple.md for the
+    // decision record).
     response.headers.forEach((name, values) {
-      if (name.toLowerCase().startsWith('flclashx-') && values.isNotEmpty) {
+      if (name.toLowerCase().startsWith('avee-') && values.isNotEmpty) {
         providerHeaders[name.toLowerCase()] = values.first;
       }
     });
-    
+
     Duration? durationFromHeader;
     final updateIntervalHeader = providerHeaders['profile-update-interval'];
     if (updateIntervalHeader != null) {
@@ -223,13 +319,85 @@ extension ProfileExtension on Profile {
         durationFromHeader = Duration(hours: hours);
       }
     }
-    
+
+    final newFallbackUrl = providerHeaders['fallback-url'];
+
+    // Some providers return a raw, newline-separated list of share links
+    // (e.g. `vless://...`, `trojan://...`) instead of a Mihomo/Clash YAML
+    // document. Detect that case here and rewrite the bytes to a minimal,
+    // self-contained Mihomo YAML before they hit `saveFile`. Returns `null`
+    // for normal YAML, in which case `responseData` flows through unchanged.
+    var bytesToSave = responseData;
+    final decoded = utf8.decode(responseData, allowMalformed: true);
+    final converted = convertShareLinkSubscriptionToMihomo(decoded);
+    if (converted != null) {
+      bytesToSave = Uint8List.fromList(utf8.encode(converted));
+    }
+
+    // SOS / disconeko emergency fallback. When the provider advertises a
+    // `avee-disconeko` URL it points to a SEPARATE pool of emergency
+    // servers (raw share links or a Mihomo YAML). Merge that pool into the
+    // delivered config and surface it through the `📶 First Available`
+    // (`type: fallback`) proxy-group — a manual, opt-in selection the user must
+    // pick deliberately; it never becomes the default route. The fallback group
+    // is created if the delivered config lacks one. This is strictly best-
+    // effort: the emergency pool is optional and must NEVER break the primary
+    // update.
+    final disconekoUrl = providerHeaders['avee-disconeko'];
+    if (disconekoUrl != null &&
+        disconekoUrl.isNotEmpty &&
+        !_SosFetchGate.inCooldown(disconekoUrl)) {
+      try {
+        // Hard cap on the OPTIONAL emergency-pool fetch. Without it an
+        // unreachable disconeko endpoint stalls EVERY import/update for the
+        // full Dio connect timeout (observed: +15s on first import and on
+        // every startup refresh). A healthy endpoint answers well under 2s;
+        // on expiry the TimeoutException lands in the catch below, the
+        // failure is remembered ([_SosFetchGate]) so follow-up updates skip
+        // the dead endpoint instantly, and the primary update proceeds
+        // unpatched.
+        final sosResponse = await request
+            .getFileResponseForUrl(disconekoUrl)
+            .timeout(_SosFetchGate.fetchTimeout);
+        _SosFetchGate.recordSuccess(disconekoUrl);
+        final sosData = sosResponse.data;
+        if (sosData != null) {
+          final sosContent = utf8.decode(sosData, allowMalformed: true);
+          final sosProxies = parseSubscriptionToProxies(sosContent);
+          if (sosProxies.isNotEmpty) {
+            final patched = patchSmartPool(
+              utf8.decode(bytesToSave),
+              sosProxies,
+            );
+            // Best-effort: if the embedded core rejects the patched config
+            // (e.g. an unsupported field on this older fork), keep the
+            // un-patched profile rather than breaking the whole subscription.
+            final patchError = await clashCore.validateConfig(patched);
+            if (patchError.isEmpty) {
+              bytesToSave = Uint8List.fromList(utf8.encode(patched));
+            } else {
+              commonPrint.log(
+                'avee-disconeko patch rejected by core: $patchError',
+              );
+            }
+          }
+        }
+      } catch (e) {
+        // Best-effort: the SOS pool is optional. Skip it on any failure (fetch,
+        // decode, parse) and keep the primary profile update intact. Remember
+        // the failure so the next updates don't pay the timeout again.
+        _SosFetchGate.recordFailure(disconekoUrl);
+        commonPrint.log('avee-disconeko SOS merge skipped: $e');
+      }
+    }
+
     return copyWith(
       label: label ?? utils.getFileNameForDisposition(disposition) ?? id,
       subscriptionInfo: SubscriptionInfo.formHString(userinfo),
       autoUpdateDuration: durationFromHeader ?? autoUpdateDuration,
       providerHeaders: providerHeaders,
-    ).saveFile(responseData);
+      fallbackUrl: newFallbackUrl ?? fallbackUrl,
+    ).saveFile(bytesToSave);
   }
 
   Future<Profile> saveFile(Uint8List bytes) async {
@@ -238,7 +406,21 @@ extension ProfileExtension on Profile {
       throw message;
     }
     final file = await getFile();
-    await file.writeAsBytes(bytes);
+    // Atomic write: stage into a sibling temp file then rename over the target.
+    // A kill mid-write would otherwise leave the stored profile truncated/corrupt.
+    // File.rename is atomic on the same filesystem (macOS/Linux/Android); on
+    // Windows a rename onto an existing target can throw, so fall back to
+    // delete-then-rename.
+    final tmp = File('${file.path}.tmp');
+    await tmp.writeAsBytes(bytes, flush: true);
+    try {
+      await tmp.rename(file.path);
+    } catch (_) {
+      if (await file.exists()) {
+        await file.delete();
+      }
+      await tmp.rename(file.path);
+    }
     return copyWith(lastUpdateDate: DateTime.now());
   }
 
@@ -248,7 +430,21 @@ extension ProfileExtension on Profile {
       throw message;
     }
     final file = await getFile();
-    await file.writeAsString(value);
+    // Atomic write: stage into a sibling temp file then rename over the target.
+    // A kill mid-write would otherwise leave the stored profile truncated/corrupt.
+    // File.rename is atomic on the same filesystem (macOS/Linux/Android); on
+    // Windows a rename onto an existing target can throw, so fall back to
+    // delete-then-rename.
+    final tmp = File('${file.path}.tmp');
+    await tmp.writeAsString(value, flush: true);
+    try {
+      await tmp.rename(file.path);
+    } catch (_) {
+      if (await file.exists()) {
+        await file.delete();
+      }
+      await tmp.rename(file.path);
+    }
     return copyWith(lastUpdateDate: DateTime.now());
   }
 }

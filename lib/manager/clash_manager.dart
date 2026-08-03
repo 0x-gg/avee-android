@@ -1,17 +1,16 @@
-import 'package:flclashx/clash/clash.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/common/file_logger.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/providers/app.dart';
-import 'package:flclashx/providers/config.dart';
-import 'package:flclashx/providers/state.dart';
-import 'package:flclashx/state.dart';
+import 'package:avee/clash/clash.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/common/error_mapper.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/providers/app.dart';
+import 'package:avee/providers/config.dart';
+import 'package:avee/providers/state.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ClashManager extends ConsumerStatefulWidget {
-
   const ClashManager({
     super.key,
     required this.child,
@@ -81,19 +80,33 @@ class _ClashContainerState extends ConsumerState<ClashManager>
 
   @override
   void onLog(Log log) {
-    ref.read(logsProvider.notifier).addLog(log);
-    
+    // SECURITY: mihomo core log payloads can include outbound URLs from
+    // proxy/provider activity. Redact at the boundary so the in-app log
+    // viewer (`logsProvider`), the on-disk log file (`fileLogger`), and
+    // the user-facing error notifier never receive raw tokens.
+    final redactedPayload = redactUrls(log.payload);
+    final redactedLog = log.copyWith(payload: redactedPayload);
+
+    ref.read(logsProvider.notifier).addLog(redactedLog);
+
     // Write core logs to file
-    fileLogger.log("[${log.logLevel.name.toUpperCase()}] ${log.payload}");
-    
+    fileLogger.log(
+      "[${log.logLevel.name.toUpperCase()}] $redactedPayload",
+    );
+
     if (log.logLevel == LogLevel.error) {
-      globalState.showNotifier(log.payload);
+      // Run pattern matching against the original payload so existing
+      // regexes (e.g. `DioException.*connection error`) still match;
+      // fall back to the REDACTED payload, never the raw one, so a
+      // surfaced notifier cannot leak credentials or tokens.
+      final message = ErrorMapper.mapError(log.payload) ?? redactedPayload;
+      globalState.showNotifier(message);
     }
     super.onLog(log);
   }
 
   @override
-  void onRequest(Connection connection) async {
+  Future<void> onRequest(Connection connection) async {
     ref.read(requestsProvider.notifier).addRequest(connection);
     super.onRequest(connection);
   }
@@ -107,5 +120,22 @@ class _ClashContainerState extends ConsumerState<ClashManager>
         );
     globalState.appController.updateGroupsDebounce();
     super.onLoaded(providerName);
+  }
+
+  @override
+  void onTun(Map<String, dynamic> data) {
+    super.onTun(data);
+    final status = data['status']?.toString();
+    if (status == 'ready') {
+      // null error == TUN listener is up; honest connected state can proceed.
+      globalState.completeTunAck(null);
+    } else if (status == 'error') {
+      final message = data['message']?.toString() ?? 'tun error';
+      globalState.completeTunAck(message);
+    } else {
+      commonPrint.log('onTun: unexpected status payload: $data');
+    }
+    // If no start transition is in flight, completeTunAck() is a no-op — a late
+    // TUN status (e.g. tunnel death, not currently emitted) just gets logged.
   }
 }

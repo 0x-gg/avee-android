@@ -13,28 +13,98 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Required for the persistent VPN status notification on Android 13+
+         (runtime request in AppPlugin.requestNotificationPermission). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Read-only network state observation for VPN reconnect handling
+         (VpnPlugin.registerNetworkCallback + NET_CAPABILITY_* in NetworkRequest
+         + ConnectivityManager.resolveDns). No CHANGE_NETWORK_STATE needed:
+         we never mutate global network configuration; only the tunnel's own
+         setUnderlyingNetworks(...) is used. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission
-        android:name="android.permission.QUERY_ALL_PACKAGES"
-        tools:ignore="QueryAllPackagesPermission" />
+    <!-- VPN services use systemExempted FGS type to avoid the Android 14+
+
+         dataSync 6h cumulative timeout that can crash long-running VPN
+         foreground services with ForegroundServiceDidNotStopInTimeException.
+         VPN apps qualify for this exemption. The matching foregroundServiceType
+         is selected at runtime in BaseServiceInterface.startForeground. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
+    <!-- Lets us prompt the user to exempt the app from battery optimizations so
+         the always-on VPN tunnel is not killed by Doze. The prompt is shown
+         CONTEXTUALLY (only after the user's first successful VPN start) and only
+         once ever — never an app-launch nag — to stay Google Play compliant. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!--
+        Package visibility for per-app VPN access control and config-file
+        sharing is scoped narrowly via the <queries> block below; the broad
+        QUERY_ALL_PACKAGES permission was removed for Google Play readiness
+        (high-risk policy). Consequences are handled in code:
+          * lib/views/access.dart shows a "no data" empty state when the
+            installed-package list is restricted.
+          * AppPlugin.getPackageIcon (PackageManager.getApplicationIcon
+            lookup) and AppPlugin.isChinaPackage (PackageManager.getPackageInfo
+            lookup) both wrap their package-manager calls in try/catch and
+            return safe defaults when a package is not visible.
+    -->
+
+    <queries>
+        <!-- Per-app VPN access control: declares a MAIN + LAUNCHER intent so
+             AppPlugin.getPackages can see packages that publish a launcher
+             entry under Android 11+ package-visibility rules. The actual
+             visible set is whatever PackageManager returns for this query on
+             the device; we make no stronger guarantee. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- Deep-link / browser handoff. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+        <!-- AppPlugin.openFile lets the user open exported config files in a
+             text viewer. The intent carries FLAG_GRANT_READ/WRITE_URI_PERMISSION
+             (see intent.addFlags in AppPlugin.openFile) so the picked viewer
+             receives the FileProvider URI grant automatically; in addition,
+             this <intent> entry lets queryIntentActivities resolve matching
+             viewers up-front so we can issue explicit grantUriPermission
+             calls to each candidate before launching the intent. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="text/plain" />
+        </intent>
+        <!-- AppPlugin.installApk launches the system package installer for a
+             downloaded APK via ACTION_VIEW + the package-archive MIME; this lets
+             queryIntentActivities resolve the installer under Android 11+ package
+             visibility so we can grant it the FileProvider URI up-front (mirrors
+             the text/plain entry above). -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="application/vnd.android.package-archive" />
+        </intent>
+    </queries>
 
     <application
-        android:name=".FlClashXApplication"
+        android:name=".AveeApplication"
+        android:allowBackup="false"
         android:banner="@mipmap/ic_banner"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="FlClashX"
-        android:memtagMode="off">
+        android:label="AVEE"
+        android:memtagMode="off"
+        android:networkSecurityConfig="@xml/network_security_config"
+        tools:targetApi="s">
         <activity
-            android:name="com.follow.clashx.MainActivity"
+            android:name="com.avee.vpn.MainActivity"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:exported="true"
             android:hardwareAccelerated="true"
             android:launchMode="singleTop"
+            android:resizeableActivity="true"
             android:theme="@style/LaunchTheme"
             android:windowSoftInputMode="adjustResize">
             <meta-data
@@ -49,17 +119,15 @@
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
             </intent-filter>
+            <!-- clash:// for ecosystem bots, avee:// for our own deep links. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data android:scheme="clash" />
-                <data android:scheme="flclash" />
-                <data android:scheme="flclashx" />
-
-                <data android:host="install-config" />
+                <data android:scheme="clash" android:host="install-config" />
+                <data android:scheme="avee" android:host="install-config" />
             </intent-filter>
         </activity>
 
@@ -67,9 +135,10 @@
             android:name="io.flutter.embedding.android.EnableImpeller"
             android:value="true" />
 
+        <!-- SECURITY: exported=false — only same-UID widgets/tile launch via explicit ComponentName. -->
         <activity
             android:name=".TempActivity"
-            android:exported="true"
+            android:exported="false"
             android:theme="@style/TransparentTheme">
             <intent-filter>
                 <category android:name="android.intent.category.DEFAULT" />
@@ -85,40 +154,11 @@
             </intent-filter>
         </activity>
 
-        <receiver
-            android:name=".widgets.ModeWidgetProvider"
-            android:exported="false"
-            android:label="@string/fl_clashx">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.follow.clashx.widget.ACTION_TOGGLE" />
-                <action android:name="com.follow.clashx.widget.ACTION_MODE_RULE" />
-                <action android:name="com.follow.clashx.widget.ACTION_MODE_GLOBAL" />
-                <action android:name="com.follow.clashx.widget.ACTION_MODE_DIRECT" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_mode_info" />
-        </receiver>
-
-        <receiver
-            android:name=".widgets.OnOffWidgetProvider"
-            android:exported="false"
-            android:label="@string/fl_clashx">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.follow.clashx.widget.ACTION_ONOFF_TOGGLE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_on_off_info" />
-        </receiver>
-
         <service
-            android:name=".services.FlClashXTileService"
+            android:name=".services.AveeTileService"
             android:exported="true"
-            android:icon="@drawable/ic"
-            android:label="FlClashX"
+            android:icon="@mipmap/ic_launcher"
+            android:label="AVEE"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
             tools:targetApi="n">
             <intent-filter>
@@ -126,8 +166,22 @@
             </intent-filter>
             <meta-data
                 android:name="android.service.quicksettings.TOGGLEABLE_TILE"
-                android:value="true" />
+            android:value="false" />
         </service>
+
+        <!-- SECURITY: BIND_APPWIDGET — only system AppWidget service can deliver updates. -->
+        <receiver
+            android:name=".widgets.AveeWidgetProvider"
+            android:exported="true"
+            android:label="AVEE VPN"
+            android:permission="android.permission.BIND_APPWIDGET">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/vpn_widget_info" />
+        </receiver>
 
         <provider
             android:name=".FilesProvider"
@@ -152,26 +206,24 @@
         </provider>
         
         <service
-            android:name=".services.FlClashXVpnService"
+            android:name=".services.AveeVpnService"
             android:exported="false"
-            android:foregroundServiceType="dataSync"
+            android:foregroundServiceType="systemExempted"
             android:permission="android.permission.BIND_VPN_SERVICE">
             <intent-filter>
                 <action android:name="android.net.VpnService" />
             </intent-filter>
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="vpn" />
         </service>
 
+        <!-- Non-VPN proxy mode (mihomo HTTP/SOCKS without TUN). The FGS type is
+             dataSync because this service relays user traffic between local
+             apps and remote servers over the network. PROPERTY_SPECIAL_USE_FGS_SUBTYPE
+             is intentionally NOT declared here — it is only meaningful for
+             foregroundServiceType="specialUse". -->
         <service
-            android:name=".services.FlClashXService"
+            android:name=".services.AveeService"
             android:exported="false"
-            android:foregroundServiceType="dataSync">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="service" />
-        </service>
+            android:foregroundServiceType="dataSync" />
 
         <meta-data
             android:name="flutterEmbedding"

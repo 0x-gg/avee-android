@@ -5,10 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
-	"runtime"
+	"runtime/debug"
 	"sync"
-	"time"
 
 	"github.com/metacubex/mihomo/adapter"
 	"github.com/metacubex/mihomo/adapter/inbound"
@@ -19,11 +19,11 @@ import (
 	"github.com/metacubex/mihomo/component/resolver"
 	"github.com/metacubex/mihomo/config"
 	"github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/constant/features"
 	cp "github.com/metacubex/mihomo/constant/provider"
-	"github.com/metacubex/mihomo/hub/executor"
+	"github.com/metacubex/mihomo/hub"
 	"github.com/metacubex/mihomo/hub/route"
 	"github.com/metacubex/mihomo/listener"
-	LC "github.com/metacubex/mihomo/listener/config"
 	"github.com/metacubex/mihomo/log"
 	rp "github.com/metacubex/mihomo/rules/provider"
 	"github.com/metacubex/mihomo/tunnel"
@@ -35,83 +35,31 @@ var (
 	isRunning     = false
 	runLock       sync.Mutex
 	mBatch, _     = batch.New[bool](context.Background(), batch.WithConcurrencyNum[bool](50))
-	proxyDescriptions = map[string]string{}
-	pendingTunEnable  = false
 )
+
+// recoverGo logs a recovered panic from a bridge goroutine instead of
+// letting it kill the whole app process.
+func recoverGo(name string) {
+	if r := recover(); r != nil {
+		log.Errorln("[panic] %s recovered: %v\n%s", name, r, debug.Stack())
+	}
+}
+
+// recoverGoFn is recoverGo for goroutines that owe the Dart bridge a reply:
+// on panic it still delivers an error payload so the Dart completer resolves
+// immediately instead of hanging until its invoke timeout.
+func recoverGoFn(name string, fn func(string)) {
+	if r := recover(); r != nil {
+		log.Errorln("[panic] %s recovered: %v\n%s", name, r, debug.Stack())
+		fn(fmt.Sprintf("panic: %s: %v", name, r))
+	}
+}
 
 type ExternalProviders []ExternalProvider
 
 func (a ExternalProviders) Len() int           { return len(a) }
 func (a ExternalProviders) Less(i, j int) bool { return a[i].Name < a[j].Name }
 func (a ExternalProviders) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-
-// proxiesWithProviders merges proxies from tunnel and all proxy providers
-func proxiesWithProviders() map[string]constant.Proxy {
-	allProxies := make(map[string]constant.Proxy)
-	for name, proxy := range tunnel.Proxies() {
-		allProxies[name] = proxy
-	}
-	for _, p := range tunnel.Providers() {
-		for _, proxy := range p.Proxies() {
-			name := proxy.Name()
-			allProxies[name] = proxy
-		}
-	}
-	return allProxies
-}
-
-// extractProxyDescriptionsFromRaw caches custom server descriptions by proxy name.
-func extractProxyDescriptionsFromRaw(rawConfig *config.RawConfig) {
-	descriptions := make(map[string]string, len(rawConfig.Proxy))
-	for _, proxy := range rawConfig.Proxy {
-		nameValue, ok := proxy["name"]
-		if !ok {
-			continue
-		}
-		name, ok := nameValue.(string)
-		if !ok || name == "" {
-			continue
-		}
-		description := ""
-		if value, ok := proxy["serverDescription"]; ok {
-			if text, ok := value.(string); ok {
-				description = text
-			}
-		}
-		if description == "" {
-			if value, ok := proxy["server-description"]; ok {
-				if text, ok := value.(string); ok {
-					description = text
-				}
-			}
-		}
-		if description == "" {
-			continue
-		}
-		descriptions[name] = description
-	}
-	proxyDescriptions = descriptions
-}
-
-// proxiesWithDescriptions injects serverDescription for each proxy in API response.
-func proxiesWithDescriptions() map[string]interface{} {
-	result := make(map[string]interface{})
-	for name, proxy := range proxiesWithProviders() {
-		data, err := json.Marshal(proxy)
-		if err != nil {
-			continue
-		}
-		item := make(map[string]interface{})
-		if err := json.Unmarshal(data, &item); err != nil {
-			continue
-		}
-		if desc, ok := proxyDescriptions[name]; ok && desc != "" {
-			item["serverDescription"] = desc
-		}
-		result[name] = item
-	}
-	return result
-}
 
 func getExternalProvidersRaw() map[string]cp.Provider {
 	eps := make(map[string]cp.Provider)
@@ -129,35 +77,27 @@ func getExternalProvidersRaw() map[string]cp.Provider {
 }
 
 func toExternalProvider(p cp.Provider) (*ExternalProvider, error) {
-	switch pp := p.(type) {
+	switch p.(type) {
 	case *provider.ProxySetProvider:
-		// Get SubscriptionInfo via JSON marshal (field is unexported in original mihomo)
-		var subInfo *provider.SubscriptionInfo
-		data, err := json.Marshal(pp)
-		if err == nil {
-			var apiData struct {
-				SubscriptionInfo *provider.SubscriptionInfo `json:"subscriptionInfo"`
-			}
-			_ = json.Unmarshal(data, &apiData)
-			subInfo = apiData.SubscriptionInfo
-		}
+		psp := p.(*provider.ProxySetProvider)
 		return &ExternalProvider{
-			Name:             pp.Name(),
-			Type:             pp.Type().String(),
-			VehicleType:      pp.VehicleType().String(),
-			Count:            pp.Count(),
-			UpdateAt:         pp.UpdatedAt(),
-			Path:             pp.Vehicle().Path(),
-			SubscriptionInfo: subInfo,
+			Name:             psp.Name(),
+			Type:             psp.Type().String(),
+			VehicleType:      psp.VehicleType().String(),
+			Count:            psp.Count(),
+			UpdateAt:         psp.UpdatedAt(),
+			Path:             psp.Vehicle().Path(),
+			SubscriptionInfo: psp.GetSubscriptionInfo(),
 		}, nil
 	case *rp.RuleSetProvider:
+		rsp := p.(*rp.RuleSetProvider)
 		return &ExternalProvider{
-			Name:        pp.Name(),
-			Type:        pp.Type().String(),
-			VehicleType: pp.VehicleType().String(),
-			Count:       pp.Count(),
-			UpdateAt:    pp.UpdatedAt(),
-			Path:        pp.Vehicle().Path(),
+			Name:        rsp.Name(),
+			Type:        rsp.Type().String(),
+			VehicleType: rsp.VehicleType().String(),
+			Count:       rsp.Count(),
+			UpdateAt:    rsp.UpdatedAt(),
+			Path:        rsp.Vehicle().Path(),
 		}, nil
 	default:
 		return nil, errors.New("not external provider")
@@ -165,25 +105,20 @@ func toExternalProvider(p cp.Provider) (*ExternalProvider, error) {
 }
 
 func sideUpdateExternalProvider(p cp.Provider, bytes []byte) error {
-	switch pp := p.(type) {
+	switch p.(type) {
 	case *provider.ProxySetProvider:
-		_, _, err := pp.SideUpdate(bytes)
-		if err != nil {
-			return err
-		}
-		return nil
-	case *rp.RuleSetProvider:
-		_, _, err := pp.SideUpdate(bytes)
-		if err != nil {
-			return err
-		}
-		return nil
+		psp := p.(*provider.ProxySetProvider)
+		_, _, err := psp.SideUpdate(bytes)
+		return err
+	case rp.RuleSetProvider:
+		rsp := p.(*rp.RuleSetProvider)
+		_, _, err := rsp.SideUpdate(bytes)
+		return err
 	default:
 		return errors.New("not external provider")
 	}
 }
 
-// updateListeners recreates all listeners from current config
 func updateListeners() {
 	if !isRunning {
 		return
@@ -207,26 +142,28 @@ func updateListeners() {
 	listener.ReCreateShadowSocks(general.ShadowSocksConfig, tunnel.Tunnel)
 	listener.ReCreateVmess(general.VmessConfig, tunnel.Tunnel)
 	listener.ReCreateTuic(general.TuicServer, tunnel.Tunnel)
-	// Desktop builds may include the `cmfa` tag, so gate TUN only on Android.
-	if runtime.GOOS != "android" {
+	if !features.Android {
 		listener.ReCreateTun(general.Tun, tunnel.Tunnel)
 	}
 }
 
-// stopListeners stops all active listeners
 func stopListeners() {
-	listener.ReCreateHTTP(0, tunnel.Tunnel)
-	listener.ReCreateSocks(0, tunnel.Tunnel)
-	listener.ReCreateRedir(0, tunnel.Tunnel)
-	listener.ReCreateTProxy(0, tunnel.Tunnel)
-	listener.ReCreateMixed(0, tunnel.Tunnel)
-	listener.ReCreateShadowSocks("", tunnel.Tunnel)
-	listener.ReCreateVmess("", tunnel.Tunnel)
-	listener.ReCreateTuic(LC.TuicServer{}, tunnel.Tunnel)
-	if runtime.GOOS != "android" {
-		listener.ReCreateTun(LC.Tun{}, tunnel.Tunnel)
+	listener.StopListener()
+}
+
+// proxiesWithProviders merges tunnel proxies with provider proxies.
+// Replaces tunnel.ProxiesWithProviders() removed from the mihomo core.
+func proxiesWithProviders() map[string]constant.Proxy {
+	allProxies := make(map[string]constant.Proxy)
+	for name, proxy := range tunnel.Proxies() {
+		allProxies[name] = proxy
 	}
-	listener.Cleanup()
+	for _, p := range tunnel.Providers() {
+		for _, proxy := range p.Proxies() {
+			allProxies[proxy.Name()] = proxy
+		}
+	}
+	return allProxies
 }
 
 func patchSelectGroup(mapping map[string]string) {
@@ -311,9 +248,6 @@ func updateConfig(params *UpdateParams) {
 	}
 	if params.ExternalController != nil {
 		currentConfig.Controller.ExternalController = *params.ExternalController
-		if currentConfig.Controller.ExternalUI != "" {
-			route.SetUIPath(currentConfig.Controller.ExternalUI)
-		}
 		route.ReCreateServer(&route.Config{
 			Addr: currentConfig.Controller.ExternalController,
 		})
@@ -321,7 +255,6 @@ func updateConfig(params *UpdateParams) {
 
 	if params.Tun != nil {
 		general.Tun.Enable = params.Tun.Enable
-		pendingTunEnable = params.Tun.Enable
 		general.Tun.AutoRoute = *params.Tun.AutoRoute
 		general.Tun.Device = *params.Tun.Device
 		general.Tun.RouteAddress = *params.Tun.RouteAddress
@@ -330,56 +263,47 @@ func updateConfig(params *UpdateParams) {
 	}
 
 	updateListeners()
+
+	// Same swallowed-tun-failure as setupConfig, but updateConfig is void with no
+	// Dart error return. The only tun status channel (TunMessage/onTun) resolves
+	// the start-transition ack and could complete an unrelated in-flight start, so
+	// a mid-session tun toggle failure is surfaced in the core log only; the hard
+	// error on the connect path is covered by setupConfig.
+	if params.Tun != nil && !features.Android && general.Tun.Enable && !listener.GetTunConf().Enable {
+		log.Errorln("[tun] listener failed to start after updateConfig (see above)")
+	}
 }
 
 func setupConfig(params *SetupParams) error {
 	runLock.Lock()
 	defer runLock.Unlock()
-	var err error
+	constant.DefaultTestURL = params.TestURL
 
-	extractProxyDescriptionsFromRaw(params.Config)
-	resetHealthCheckForwarderState()
-
-	parseStart := time.Now()
-	currentConfig, err = config.ParseRawConfig(params.Config)
+	currentRaw, err := config.ParseRawConfig(params.Config)
 	if err != nil {
-		log.Errorln("[Config] ParseRawConfig failed, falling back to default: %v", err)
-		currentConfig, _ = config.ParseRawConfig(config.DefaultRawConfig())
+		if currentConfig == nil {
+			// First setup of this process: fall back to an inert default so the
+			// bridge stays serviceable (nil currentConfig panics option getters).
+			currentConfig, _ = config.ParseRawConfig(config.DefaultRawConfig())
+			hub.ApplyConfig(currentConfig)
+		}
+		// Mid-session: keep the WORKING config/tunnel; report the parse error
+		// instead of tearing a live tunnel down with a bad YAML.
+		return err
 	}
-	log.Infoln("[Setup] ParseRawConfig took %s", time.Since(parseStart))
-	pendingTunEnable = currentConfig.General.Tun.Enable
-	currentConfig.General.Tun.Enable = false
-	// Parse and cache config only. Full runtime apply happens on Start.
-	applyStart := time.Now()
-	executor.ApplyConfig(currentConfig, false)
-	log.Infoln("[Setup] executor.ApplyConfig took %s", time.Since(applyStart))
-	currentConfig.General.Tun.Enable = pendingTunEnable
-	// External-controller lifecycle is independent from TUN start/stop.
-	// Recreate API server during setup so it survives app restarts without
-	// requiring a manual UI toggle.
-	if currentConfig.Controller.ExternalUI != "" {
-		route.SetUIPath(currentConfig.Controller.ExternalUI)
-	}
-	route.ReCreateServer(&route.Config{
-		Addr: currentConfig.Controller.ExternalController,
-	})
+	currentConfig = currentRaw
+	extractProxyDescriptionsFromRaw(params.Config)
+	hub.ApplyConfig(currentConfig)
 	patchSelectGroup(params.SelectedMap)
 	updateListeners()
 
-	// Kick off pings immediately so the UI shows latencies as soon as the
-	// profile loads, without waiting for the user to start TUN or for each
-	// provider's own healthcheck-interval to elapse. The forwarder is started
-	// here (not only on Start) and keeps running until shutdown.
-	runInitialProviderHealthChecks()
-	startHealthCheckForwarder()
-
-	// Notify Flutter that all providers are loaded
-	sendMessage(Message{
-		Type: LoadedMessage,
-		Data: "all",
-	})
-
-	return err
+	// ReCreateTun swallows a tun start failure (logs it, then flips Enable=false)
+	// so setupConfig would otherwise report success with no tunnel. When tun was
+	// requested on desktop, confirm the listener actually came up.
+	if !features.Android && currentConfig.General.Tun.Enable && !listener.GetTunConf().Enable {
+		return errors.New("tun listener failed to start (see core log)")
+	}
+	return nil
 }
 
 func UnmarshalJson(data []byte, v any) error {

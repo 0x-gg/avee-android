@@ -1,13 +1,12 @@
 import 'dart:math' as math;
 
-import 'package:flclashx/common/common.dart';
+import 'package:avee/common/common.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 typedef WrapBuilder = Widget Function(Widget child);
 
 class Grid extends MultiChildRenderObjectWidget {
-
   const Grid({
     super.key,
     this.mainAxisSpacing = 0,
@@ -55,13 +54,13 @@ class Grid extends MultiChildRenderObjectWidget {
 
   @override
   RenderObject createRenderObject(BuildContext context) => RenderGrid(
-      textDirection: textDirection,
-      crossAxisCount: crossAxisCount,
-      mainAxisSpacing: mainAxisSpacing,
-      crossAxisSpacing: crossAxisSpacing,
-      axisDirection: axisDirection,
-      mainAxisExtent: mainAxisExtent,
-    );
+        textDirection: textDirection,
+        crossAxisCount: crossAxisCount,
+        mainAxisSpacing: mainAxisSpacing,
+        crossAxisSpacing: crossAxisSpacing,
+        axisDirection: axisDirection,
+        mainAxisExtent: mainAxisExtent,
+      );
 
   @override
   void updateRenderObject(
@@ -179,7 +178,8 @@ class RenderGrid extends RenderBox
   }
 
   @override
-  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) => defaultHitTestChildren(result, position: position);
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
 
   @override
   void paint(PaintingContext context, Offset offset) {
@@ -195,7 +195,8 @@ class RenderGrid extends RenderBox
     }
   }
 
-  GridParentData _getParentData(RenderBox child) => child.parentData! as GridParentData;
+  GridParentData _getParentData(RenderBox child) =>
+      child.parentData! as GridParentData;
 
   void _layoutChild(
     RenderBox child,
@@ -208,10 +209,11 @@ class RenderGrid extends RenderBox
   int _computeCrossAxisCellCount(
     GridParentData childParentData,
     int crossAxisCount,
-  ) => math.min(
-      childParentData.crossAxisCellCount ?? 1,
-      crossAxisCount,
-    );
+  ) =>
+      math.min(
+        childParentData.crossAxisCellCount ?? 1,
+        crossAxisCount,
+      );
 
   Size _computeSize({
     required BoxConstraints constraints,
@@ -321,7 +323,6 @@ class GridParentData extends ContainerBoxParentData<RenderBox> {
 }
 
 class GridItem extends ParentDataWidget<GridParentData> {
-
   const GridItem({
     super.key,
     required super.child,
@@ -360,17 +361,17 @@ class GridItem extends ParentDataWidget<GridParentData> {
 
   GridItem wrap({
     required WrapBuilder builder,
-  }) => GridItem(
-      mainAxisCellCount: mainAxisCellCount,
-      crossAxisCellCount: crossAxisCellCount,
-      child: builder(
-        child,
-      ),
-    );
+  }) =>
+      GridItem(
+        mainAxisCellCount: mainAxisCellCount,
+        crossAxisCellCount: crossAxisCellCount,
+        child: builder(
+          child,
+        ),
+      );
 }
 
 class _Origin {
-
   const _Origin(this.crossAxisIndex, this.mainAxisOffset);
   final int crossAxisIndex;
   final double mainAxisOffset;

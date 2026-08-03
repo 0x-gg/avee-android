@@ -15,8 +15,13 @@ class PopoverContainerViewController: NSViewController {
     }
     
     override func loadView() {
-        self.view = NSView(frame: NSRect(x: 0, y: 0, width: 375, height: 600))
-                
+        let fixedSize = NSSize(width: 375, height: 600)
+        self.view = NSView(frame: NSRect(origin: .zero, size: fixedSize))
+        // Pin preferred size so NSPopover never rounds it up to fit content.
+        // Without this the Flutter view can push the popover to grow
+        // vertically (observed on tray popover: 375×1180).
+        self.preferredContentSize = fixedSize
+
         addChild(flutterViewController)
         flutterViewController.view.frame = self.view.bounds
         flutterViewController.view.autoresizingMask = [.width, .height]
@@ -38,7 +43,7 @@ class StatusBarController {
         
         if let statusBarButton = statusItem.button {
             
-            if let icon = NSImage(systemSymbolName: "xmark.rectangle", accessibilityDescription: "FlClashX") {
+            if let icon = NSImage(systemSymbolName: "xmark.rectangle", accessibilityDescription: "dropweb") {
                 let config = NSImage.SymbolConfiguration(scale: .large)
                 let configuredIcon = icon.withSymbolConfiguration(config)
                 statusBarButton.image = configuredIcon
@@ -60,7 +65,7 @@ class StatusBarController {
         let menu = NSMenu()
         
         let quitItem = NSMenuItem(
-            title: "Quit FlClashX",
+            title: "Quit dropweb",
             action: #selector(quitApp),
             keyEquivalent: "q"
         )
@@ -116,7 +121,7 @@ class StatusBarController {
     func updateIcon(isVpnConnected: Bool) {
         if let button = statusItem.button {
             let imageName = isVpnConnected ? "checkmark.rectangle.fill" : "xmark.rectangle"
-            if let icon = NSImage(systemSymbolName: imageName, accessibilityDescription: "FlClashX") {
+            if let icon = NSImage(systemSymbolName: imageName, accessibilityDescription: "dropweb") {
                 let config = NSImage.SymbolConfiguration(scale: .large)
                 let configuredIcon = icon.withSymbolConfiguration(config)
                 button.image = configuredIcon

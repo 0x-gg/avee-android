@@ -54,6 +54,31 @@ class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
+  /// `Invalid subscription URL. Use http:// or https://`
+  String get invalidProfileUrl {
+    return Intl.message(
+      'Invalid subscription URL. Use http:// or https://',
+      name: 'invalidProfileUrl',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Connect TV`
+  String get connectTv {
+    return Intl.message('Connect TV', name: 'connectTv', desc: '', args: []);
+  }
+
+  /// `Send profile to Android TV via QR code`
+  String get connectTvDesc {
+    return Intl.message(
+      'Send profile to Android TV via QR code',
+      name: 'connectTvDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `By rule`
   String get rule {
     return Intl.message('By rule', name: 'rule', desc: '', args: []);
@@ -67,6 +92,16 @@ class AppLocalizations {
   /// `Direct`
   String get direct {
     return Intl.message('Direct', name: 'direct', desc: '', args: []);
+  }
+
+  /// `Smart`
+  String get smart {
+    return Intl.message('Smart', name: 'smart', desc: '', args: []);
+  }
+
+  /// `Rules`
+  String get rules {
+    return Intl.message('Rules', name: 'rules', desc: '', args: []);
   }
 
   /// `Dashboard`
@@ -87,6 +122,16 @@ class AppLocalizations {
   /// `Profiles`
   String get profiles {
     return Intl.message('Profiles', name: 'profiles', desc: '', args: []);
+  }
+
+  /// `Subscription`
+  String get subscription {
+    return Intl.message(
+      'Subscription',
+      name: 'subscription',
+      desc: '',
+      args: [],
+    );
   }
 
   /// `Settings`
@@ -544,6 +589,11 @@ class AppLocalizations {
     return Intl.message('Confirm', name: 'confirm', desc: '', args: []);
   }
 
+  /// `OK`
+  String get ok {
+    return Intl.message('OK', name: 'ok', desc: '', args: []);
+  }
+
   /// `Update`
   String get update {
     return Intl.message('Update', name: 'update', desc: '', args: []);
@@ -552,6 +602,61 @@ class AppLocalizations {
   /// `Add`
   String get add {
     return Intl.message('Add', name: 'add', desc: '', args: []);
+  }
+
+  /// `Add subscription`
+  String get addSubscription {
+    return Intl.message(
+      'Add subscription',
+      name: 'addSubscription',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Do you have a connection key?`
+  String get doYouHaveConnectionKey {
+    return Intl.message(
+      'Do you have a connection key?',
+      name: 'doYouHaveConnectionKey',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Yes, I have a key`
+  String get iHaveKey {
+    return Intl.message(
+      'Yes, I have a key',
+      name: 'iHaveKey',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No, log in to cabinet`
+  String get iNeedSubscription {
+    return Intl.message(
+      'No, log in to cabinet',
+      name: 'iNeedSubscription',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Scan QR code`
+  String get scanQrCode {
+    return Intl.message('Scan QR code', name: 'scanQrCode', desc: '', args: []);
+  }
+
+  /// `Paste subscription URL`
+  String get pasteSubscriptionUrl {
+    return Intl.message(
+      'Paste subscription URL',
+      name: 'pasteSubscriptionUrl',
+      desc: '',
+      args: [],
+    );
   }
 
   /// `Save`
@@ -752,6 +857,86 @@ class AppLocalizations {
   /// `Theme color`
   String get themeColor {
     return Intl.message('Theme color', name: 'themeColor', desc: '', args: []);
+  }
+
+  /// `Theme presets`
+  String get themePresets {
+    return Intl.message(
+      'Theme presets',
+      name: 'themePresets',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Drop`
+  String get presetEmerald {
+    return Intl.message('Drop', name: 'presetEmerald', desc: '', args: []);
+  }
+
+  /// `Frost`
+  String get presetFrost {
+    return Intl.message('Frost', name: 'presetFrost', desc: '', args: []);
+  }
+
+  /// `Amethyst`
+  String get presetAmethyst {
+    return Intl.message('Amethyst', name: 'presetAmethyst', desc: '', args: []);
+  }
+
+  /// `Crimson`
+  String get presetCrimson {
+    return Intl.message('Crimson', name: 'presetCrimson', desc: '', args: []);
+  }
+
+  /// `Magma`
+  String get presetMagma {
+    return Intl.message('Magma', name: 'presetMagma', desc: '', args: []);
+  }
+
+  /// `Amber`
+  String get presetAmber {
+    return Intl.message('Amber', name: 'presetAmber', desc: '', args: []);
+  }
+
+  /// `Stealth`
+  String get presetStealth {
+    return Intl.message('Stealth', name: 'presetStealth', desc: '', args: []);
+  }
+
+  /// `Background orbs`
+  String get backgroundOrbs {
+    return Intl.message(
+      'Background orbs',
+      name: 'backgroundOrbs',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Top orbs`
+  String get orbOne {
+    return Intl.message('Top orbs', name: 'orbOne', desc: '', args: []);
+  }
+
+  /// `Bottom orb`
+  String get orbTwo {
+    return Intl.message('Bottom orb', name: 'orbTwo', desc: '', args: []);
+  }
+
+  /// `Blur`
+  String get orbBlur {
+    return Intl.message('Blur', name: 'orbBlur', desc: '', args: []);
+  }
+
+  /// `Auto (follows accent)`
+  String get autoFollowAccent {
+    return Intl.message(
+      'Auto (follows accent)',
+      name: 'autoFollowAccent',
+      desc: '',
+      args: [],
+    );
   }
 
   /// `Preview`
@@ -969,10 +1154,10 @@ class AppLocalizations {
     return Intl.message('ProxyPort', name: 'proxyPort', desc: '', args: []);
   }
 
-  /// `Set the Clash listening port`
+  /// `Set the local proxy listening port`
   String get proxyPortDesc {
     return Intl.message(
-      'Set the Clash listening port',
+      'Set the local proxy listening port',
       name: 'proxyPortDesc',
       desc: '',
       args: [],
@@ -1019,6 +1204,16 @@ class AppLocalizations {
     return Intl.message('Project', name: 'project', desc: '', args: []);
   }
 
+  /// `Support the project`
+  String get supportProject {
+    return Intl.message(
+      'Support the project',
+      name: 'supportProject',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Core`
   String get core {
     return Intl.message('Core', name: 'core', desc: '', args: []);
@@ -1034,10 +1229,10 @@ class AppLocalizations {
     );
   }
 
-  /// `A multi-platform proxy client based on ClashMeta, simple and easy to use, open-source and ad-free.`
+  /// `AVEE — fast, simple VPN client. Open-source and ad-free.`
   String get desc {
     return Intl.message(
-      'A multi-platform proxy client based on ClashMeta, simple and easy to use, open-source and ad-free.',
+      'AVEE — fast, simple VPN client. Open-source and ad-free.',
       name: 'desc',
       desc: '',
       args: [],
@@ -1079,10 +1274,10 @@ class AppLocalizations {
     );
   }
 
-  /// `Opening it will lose part of its application ability and gain the support of full amount of Clash.`
+  /// `Opening it will lose part of custom app functionality in exchange for full routing compatibility.`
   String get compatibleDesc {
     return Intl.message(
-      'Opening it will lose part of its application ability and gain the support of full amount of Clash.',
+      'Opening it will lose part of custom app functionality in exchange for full routing compatibility.',
       name: 'compatibleDesc',
       desc: '',
       args: [],
@@ -1104,94 +1299,14 @@ class AppLocalizations {
     return Intl.message('tip', name: 'tip', desc: '', args: []);
   }
 
-  /// `Backup and Recovery`
-  String get backupAndRecovery {
-    return Intl.message(
-      'Backup and Recovery',
-      name: 'backupAndRecovery',
-      desc: '',
-      args: [],
-    );
-  }
-
-  /// `Sync data via WebDAV or file`
-  String get backupAndRecoveryDesc {
-    return Intl.message(
-      'Sync data via WebDAV or file',
-      name: 'backupAndRecoveryDesc',
-      desc: '',
-      args: [],
-    );
-  }
-
   /// `Account`
   String get account {
     return Intl.message('Account', name: 'account', desc: '', args: []);
   }
 
-  /// `Backup`
-  String get backup {
-    return Intl.message('Backup', name: 'backup', desc: '', args: []);
-  }
-
-  /// `Recovery`
-  String get recovery {
-    return Intl.message('Recovery', name: 'recovery', desc: '', args: []);
-  }
-
-  /// `Only recovery profiles`
-  String get recoveryProfiles {
-    return Intl.message(
-      'Only recovery profiles',
-      name: 'recoveryProfiles',
-      desc: '',
-      args: [],
-    );
-  }
-
-  /// `Recovery all data`
-  String get recoveryAll {
-    return Intl.message(
-      'Recovery all data',
-      name: 'recoveryAll',
-      desc: '',
-      args: [],
-    );
-  }
-
-  /// `Recovery success`
-  String get recoverySuccess {
-    return Intl.message(
-      'Recovery success',
-      name: 'recoverySuccess',
-      desc: '',
-      args: [],
-    );
-  }
-
-  /// `Backup success`
-  String get backupSuccess {
-    return Intl.message(
-      'Backup success',
-      name: 'backupSuccess',
-      desc: '',
-      args: [],
-    );
-  }
-
   /// `No info`
   String get noInfo {
     return Intl.message('No info', name: 'noInfo', desc: '', args: []);
-  }
-
-  /// `Please bind WebDAV`
-  String get pleaseBindWebDAV {
-    return Intl.message(
-      'Please bind WebDAV',
-      name: 'pleaseBindWebDAV',
-      desc: '',
-      args: [],
-    );
   }
 
   /// `Bind`
@@ -1204,16 +1319,6 @@ class AppLocalizations {
     return Intl.message(
       'Connectivity：',
       name: 'connectivity',
-      desc: '',
-      args: [],
-    );
-  }
-
-  /// `WebDAV configuration`
-  String get webDAVConfiguration {
-    return Intl.message(
-      'WebDAV configuration',
-      name: 'webDAVConfiguration',
       desc: '',
       args: [],
     );
@@ -1259,10 +1364,10 @@ class AppLocalizations {
     );
   }
 
-  /// `Discover the new version`
+  /// `New version`
   String get discoverNewVersion {
     return Intl.message(
-      'Discover the new version',
+      'New version',
       name: 'discoverNewVersion',
       desc: '',
       args: [],
@@ -1284,6 +1389,66 @@ class AppLocalizations {
     return Intl.message(
       'Go to download',
       name: 'goDownload',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Downloading…`
+  String get updateDownloading {
+    return Intl.message(
+      'Downloading…',
+      name: 'updateDownloading',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Verifying…`
+  String get updateVerifying {
+    return Intl.message(
+      'Verifying…',
+      name: 'updateVerifying',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Install`
+  String get updateInstall {
+    return Intl.message('Install', name: 'updateInstall', desc: '', args: []);
+  }
+
+  /// `Later`
+  String get updateLater {
+    return Intl.message('Later', name: 'updateLater', desc: '', args: []);
+  }
+
+  /// `Cancel`
+  String get updateCancel {
+    return Intl.message('Cancel', name: 'updateCancel', desc: '', args: []);
+  }
+
+  /// `Update failed`
+  String get updateFailed {
+    return Intl.message(
+      'Update failed',
+      name: 'updateFailed',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Retry`
+  String get updateRetry {
+    return Intl.message('Retry', name: 'updateRetry', desc: '', args: []);
+  }
+
+  /// `This update is recommended`
+  String get updateMandatoryNote {
+    return Intl.message(
+      'This update is recommended',
+      name: 'updateMandatoryNote',
       desc: '',
       args: [],
     );
@@ -1359,10 +1524,10 @@ class AppLocalizations {
     );
   }
 
-  /// `Once enabled, the Clash kernel can be controlled via API`
+  /// `Once enabled, the VPN core can be controlled on port 9090`
   String get externalControllerDesc {
     return Intl.message(
-      'Once enabled, the Clash kernel can be controlled via API',
+      'Once enabled, the VPN core can be controlled on port 9090',
       name: 'externalControllerDesc',
       desc: '',
       args: [],
@@ -1754,6 +1919,26 @@ class AppLocalizations {
     );
   }
 
+  /// `Theme from subscription`
+  String get subscriptionTheme {
+    return Intl.message(
+      'Theme from subscription',
+      name: 'subscriptionTheme',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Logo from subscription`
+  String get subscriptionLogo {
+    return Intl.message(
+      'Logo from subscription',
+      name: 'subscriptionLogo',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Pure black mode`
   String get pureBlackMode {
     return Intl.message(
@@ -1787,46 +1972,6 @@ class AppLocalizations {
   /// `Remote`
   String get remote {
     return Intl.message('Remote', name: 'remote', desc: '', args: []);
-  }
-
-  /// `Backup local data to WebDAV`
-  String get remoteBackupDesc {
-    return Intl.message(
-      'Backup local data to WebDAV',
-      name: 'remoteBackupDesc',
-      desc: '',
-      args: [],
-    );
-  }
-
-  /// `Recovery data from WebDAV`
-  String get remoteRecoveryDesc {
-    return Intl.message(
-      'Recovery data from WebDAV',
-      name: 'remoteRecoveryDesc',
-      desc: '',
-      args: [],
-    );
-  }
-
-  /// `Backup local data to local`
-  String get localBackupDesc {
-    return Intl.message(
-      'Backup local data to local',
-      name: 'localBackupDesc',
-      desc: '',
-      args: [],
-    );
-  }
-
-  /// `Recovery data from file`
-  String get localRecoveryDesc {
-    return Intl.message(
-      'Recovery data from file',
-      name: 'localRecoveryDesc',
-      desc: '',
-      args: [],
-    );
   }
 
   /// `Mode`
@@ -2319,10 +2464,10 @@ class AppLocalizations {
     return Intl.message('Disclaimer', name: 'disclaimer', desc: '', args: []);
   }
 
-  /// `This software is only used for non-commercial purposes such as learning exchanges and scientific research. It is strictly prohibited to use this software for commercial purposes. Any commercial activity, if any, has nothing to do with this software.`
+  /// `AVEE uses Android's VPN permission to create a local VPN tunnel. You control when it connects and disconnects; traffic is handled according to the managed profile and service terms.`
   String get disclaimerDesc {
     return Intl.message(
-      'This software is only used for non-commercial purposes such as learning exchanges and scientific research. It is strictly prohibited to use this software for commercial purposes. Any commercial activity, if any, has nothing to do with this software.',
+      'AVEE uses Android\'s VPN permission to create a local VPN tunnel. You control when it connects and disconnects; traffic is handled according to the managed profile and service terms.',
       name: 'disclaimerDesc',
       desc: '',
       args: [],
@@ -2894,6 +3039,51 @@ class AppLocalizations {
     );
   }
 
+  /// `Calm`
+  String get schemeCalm {
+    return Intl.message('Calm', name: 'schemeCalm', desc: '', args: []);
+  }
+
+  /// `Bright`
+  String get schemeBright {
+    return Intl.message('Bright', name: 'schemeBright', desc: '', args: []);
+  }
+
+  /// `Rich`
+  String get schemeRich {
+    return Intl.message('Rich', name: 'schemeRich', desc: '', args: []);
+  }
+
+  /// `Mono`
+  String get schemeMono {
+    return Intl.message('Mono', name: 'schemeMono', desc: '', args: []);
+  }
+
+  /// `Neutral`
+  String get schemeNeutral {
+    return Intl.message('Neutral', name: 'schemeNeutral', desc: '', args: []);
+  }
+
+  /// `Expressive`
+  String get schemeExpressive {
+    return Intl.message(
+      'Expressive',
+      name: 'schemeExpressive',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Enter a HEX color`
+  String get hexColorInvalid {
+    return Intl.message(
+      'Enter a HEX color',
+      name: 'hexColorInvalid',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Palette`
   String get palette {
     return Intl.message('Palette', name: 'palette', desc: '', args: []);
@@ -3052,36 +3242,6 @@ class AppLocalizations {
   /// `Contact me`
   String get contactMe {
     return Intl.message('Contact me', name: 'contactMe', desc: '', args: []);
-  }
-
-  /// `Recovery strategy`
-  String get recoveryStrategy {
-    return Intl.message(
-      'Recovery strategy',
-      name: 'recoveryStrategy',
-      desc: '',
-      args: [],
-    );
-  }
-
-  /// `Override`
-  String get recoveryStrategy_override {
-    return Intl.message(
-      'Override',
-      name: 'recoveryStrategy_override',
-      desc: '',
-      args: [],
-    );
-  }
-
-  /// `Compatible`
-  String get recoveryStrategy_compatible {
-    return Intl.message(
-      'Compatible',
-      name: 'recoveryStrategy_compatible',
-      desc: '',
-      args: [],
-    );
   }
 
   /// `Logs test`
@@ -3369,6 +3529,16 @@ class AppLocalizations {
     );
   }
 
+  /// `Camera permission denied`
+  String get cameraPermissionDenied {
+    return Intl.message(
+      'Camera permission denied',
+      name: 'cameraPermissionDenied',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Success`
   String get successTitle {
     return Intl.message('Success', name: 'successTitle', desc: '', args: []);
@@ -3474,6 +3644,46 @@ class AppLocalizations {
     return Intl.message('Support', name: 'support', desc: '', args: []);
   }
 
+  /// `Free up a device slot`
+  String get hwidFreeSlot {
+    return Intl.message(
+      'Free up a device slot',
+      name: 'hwidFreeSlot',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Device registered\nSubscription updated`
+  String get hwidRecovered {
+    return Intl.message(
+      'Device registered\nSubscription updated',
+      name: 'hwidRecovered',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Personal cabinet`
+  String get personalCabinet {
+    return Intl.message(
+      'Personal cabinet',
+      name: 'personalCabinet',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `MENU`
+  String get menu {
+    return Intl.message('MENU', name: 'menu', desc: '', args: []);
+  }
+
+  /// `Close`
+  String get close {
+    return Intl.message('Close', name: 'close', desc: '', args: []);
+  }
+
   /// `Thanks for contribution`
   String get thanks {
     return Intl.message(
@@ -3550,7 +3760,7 @@ class AppLocalizations {
   }
 
   /// `Your subscription expires in {days} day(s)`
-  String subscriptionExpiresInDays(String days) {
+  String subscriptionExpiresInDays(Object days) {
     return Intl.message(
       'Your subscription expires in $days day(s)',
       name: 'subscriptionExpiresInDays',
@@ -3581,18 +3791,344 @@ class AppLocalizations {
 
   /// `Renew`
   String get renew {
+    return Intl.message('Renew', name: 'renew', desc: '', args: []);
+  }
+
+  /// `Top up traffic`
+  String get topUpTraffic {
     return Intl.message(
-      'Renew',
-      name: 'renew',
+      'Top up traffic',
+      name: 'topUpTraffic',
       desc: '',
       args: [],
     );
   }
 
+  /// `Announcement`
   String get announcement {
     return Intl.message(
       'Announcement',
       name: 'announcement',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Privacy Policy`
+  String get privacyPolicy {
+    return Intl.message(
+      'Privacy Policy',
+      name: 'privacyPolicy',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Before you connect`
+  String get vpnDisclosureTitle {
+    return Intl.message(
+      'Before you connect',
+      name: 'vpnDisclosureTitle',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `avee uses Android's VPN permission to create a local VPN tunnel that you control. Network traffic is routed according to the connection or subscription you select. You can disconnect at any time from this screen or your device's VPN settings. Any optional diagnostics, account, or cabinet features are separate and are disclosed where they apply.`
+  String get vpnDisclosureBody {
+    return Intl.message(
+      'avee uses Android\'s VPN permission to create a local VPN tunnel that you control. Network traffic is routed according to the connection or subscription you select. You can disconnect at any time from this screen or your device\'s VPN settings. Any optional diagnostics, account, or cabinet features are separate and are disclosed where they apply.',
+      name: 'vpnDisclosureBody',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Continue`
+  String get vpnDisclosureContinue {
+    return Intl.message(
+      'Continue',
+      name: 'vpnDisclosureContinue',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Update`
+  String get updateSubscription {
+    return Intl.message(
+      'Update',
+      name: 'updateSubscription',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Modes`
+  String get workModes {
+    return Intl.message('Modes', name: 'workModes', desc: '', args: []);
+  }
+
+  /// `Standard`
+  String get workModeStandard {
+    return Intl.message(
+      'Standard',
+      name: 'workModeStandard',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Everything is set up for you.`
+  String get workModeStandardDesc {
+    return Intl.message(
+      'Everything is set up for you.',
+      name: 'workModeStandardDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Smart`
+  String get workModeSmart {
+    return Intl.message('Smart', name: 'workModeSmart', desc: '', args: []);
+  }
+
+  /// `Picks the best automatically.`
+  String get workModeSmartDesc {
+    return Intl.message(
+      'Picks the best automatically.',
+      name: 'workModeSmartDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Country`
+  String get workModeCountry {
+    return Intl.message('Country', name: 'workModeCountry', desc: '', args: []);
+  }
+
+  /// `Choose a country.`
+  String get workModeCountryDesc {
+    return Intl.message(
+      'Choose a country.',
+      name: 'workModeCountryDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `soon`
+  String get comingSoon {
+    return Intl.message('soon', name: 'comingSoon', desc: '', args: []);
+  }
+
+  /// `Auto`
+  String get smartAuto {
+    return Intl.message('Auto', name: 'smartAuto', desc: '', args: []);
+  }
+
+  /// `Strict node`
+  String get strictNode {
+    return Intl.message('Strict node', name: 'strictNode', desc: '', args: []);
+  }
+
+  /// `IP won't change even if the server fails.`
+  String get strictNodeDesc {
+    return Intl.message(
+      'IP won\'t change even if the server fails.',
+      name: 'strictNodeDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Servers & groups`
+  String get serversAndGroups {
+    return Intl.message(
+      'Servers & groups',
+      name: 'serversAndGroups',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Countries not detected. Update your subscription.`
+  String get countriesNotDetected {
+    return Intl.message(
+      'Countries not detected. Update your subscription.',
+      name: 'countriesNotDetected',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Couldn't check server availability. Pull down to retry.`
+  String get countriesAvailabilityUnknown {
+    return Intl.message(
+      'Couldn\'t check server availability. Pull down to retry.',
+      name: 'countriesAvailabilityUnknown',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Servers are not responding. Check your internet connection.`
+  String get countriesAllUnreachable {
+    return Intl.message(
+      'Servers are not responding. Check your internet connection.',
+      name: 'countriesAllUnreachable',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Couldn't load the country list. Pull down to retry.`
+  String get countriesLoadFailed {
+    return Intl.message(
+      'Couldn\'t load the country list. Pull down to retry.',
+      name: 'countriesLoadFailed',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Mode reset to Standard: settings unavailable after subscription update.`
+  String get workModeResetNotice {
+    return Intl.message(
+      'Mode reset to Standard: settings unavailable after subscription update.',
+      name: 'workModeResetNotice',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Strict node unavailable after update — switched to in-country failover.`
+  String get strictNodeResetNotice {
+    return Intl.message(
+      'Strict node unavailable after update — switched to in-country failover.',
+      name: 'strictNodeResetNotice',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Other`
+  String get otherCountries {
+    return Intl.message('Other', name: 'otherCountries', desc: '', args: []);
+  }
+
+  /// `Something went wrong. Please try again.`
+  String get genericErrorMessage {
+    return Intl.message(
+      'Something went wrong. Please try again.',
+      name: 'genericErrorMessage',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Scanning a QR code from an image isn't supported on this platform. Use the subscription URL instead.`
+  String get qrScanFromImageUnsupported {
+    return Intl.message(
+      'Scanning a QR code from an image isn\'t supported on this platform. Use the subscription URL instead.',
+      name: 'qrScanFromImageUnsupported',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Always-on`
+  String get alwaysOnVpn {
+    return Intl.message('Always-on', name: 'alwaysOnVpn', desc: '', args: []);
+  }
+
+  /// `Couldn't open VPN settings`
+  String get alwaysOnVpnOpenFailed {
+    return Intl.message(
+      'Couldn\'t open VPN settings',
+      name: 'alwaysOnVpnOpenFailed',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Tap to add your subscription`
+  String get onboardingAddHint {
+    return Intl.message(
+      'Tap to add your subscription',
+      name: 'onboardingAddHint',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Paste subscription from clipboard`
+  String get onboardingClipboardImport {
+    return Intl.message(
+      'Paste subscription from clipboard',
+      name: 'onboardingClipboardImport',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Add {host}`
+  String addNamedSubscription(Object host) {
+    return Intl.message(
+      'Add $host',
+      name: 'addNamedSubscription',
+      desc: '',
+      args: [host],
+    );
+  }
+
+  /// `Subscription link detected:`
+  String get onboardingClipboardImportDesc {
+    return Intl.message(
+      'Subscription link detected:',
+      name: 'onboardingClipboardImportDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Subscription added. Tap to connect`
+  String get onboardingImported {
+    return Intl.message(
+      'Subscription added. Tap to connect',
+      name: 'onboardingImported',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Add a subscription`
+  String get dashboardEmptyTitle {
+    return Intl.message(
+      'Add a subscription',
+      name: 'dashboardEmptyTitle',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Paste a link or scan a QR code`
+  String get dashboardEmptyHint {
+    return Intl.message(
+      'Paste a link or scan a QR code',
+      name: 'dashboardEmptyHint',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `https://… — your provider's subscription link`
+  String get importFromUrlHint {
+    return Intl.message(
+      'https://… — your provider\'s subscription link',
+      name: 'importFromUrlHint',
       desc: '',
       args: [],
     );

@@ -54,8 +54,7 @@ class _OpenContainerState<T> extends State<OpenContainer<T?>> {
   final GlobalKey _closedBuilderKey = GlobalKey();
 
   Future<void> openContainer() async {
-    final middleColor =
-        widget.middleColor ?? Theme.of(context).canvasColor;
+    final middleColor = widget.middleColor ?? Theme.of(context).canvasColor;
     final data = await Navigator.of(
       context,
       rootNavigator: widget.useRootNavigator,
@@ -77,19 +76,20 @@ class _OpenContainerState<T> extends State<OpenContainer<T?>> {
 
   @override
   Widget build(BuildContext context) => _Hideable(
-      key: _hideableKey,
-      child: GestureDetector(
-        onTap: widget.tappable ? openContainer : null,
-        child: Material(
-          color: Colors.transparent,
-          clipBehavior: widget.clipBehavior,
-          child: Builder(
-            key: _closedBuilderKey,
-            builder: (context) => widget.closedBuilder(context, openContainer),
+        key: _hideableKey,
+        child: GestureDetector(
+          onTap: widget.tappable ? openContainer : null,
+          child: Material(
+            color: Colors.transparent,
+            clipBehavior: widget.clipBehavior,
+            child: Builder(
+              key: _closedBuilderKey,
+              builder: (context) =>
+                  widget.closedBuilder(context, openContainer),
+            ),
           ),
         ),
-      ),
-    );
+      );
 }
 
 class _Hideable extends StatefulWidget {
@@ -370,8 +370,7 @@ class _OpenContainerRoute<T> extends ModalRoute<T> {
   Rect _getRect(GlobalKey key, RenderBox ancestor) {
     assert(key.currentContext != null);
     assert(ancestor.hasSize);
-    final render =
-        key.currentContext!.findRenderObject()! as RenderBox;
+    final render = key.currentContext!.findRenderObject()! as RenderBox;
     assert(render.hasSize);
     return MatrixUtils.transformRect(
       render.getTransformTo(ancestor),
@@ -526,7 +525,8 @@ class _OpenContainerRoute<T> extends ModalRoute<T> {
                               opacity: openOpacityTween!.animate(animation),
                               child: Builder(
                                 key: _openBuilderKey,
-                                builder: (context) => openBuilder(context, closeContainer),
+                                builder: (context) =>
+                                    openBuilder(context, closeContainer),
                               ),
                             ),
                           ),

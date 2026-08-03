@@ -2,20 +2,23 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flclashx/clash/clash.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/l10n/l10n.dart';
-import 'package:flclashx/manager/hotkey_manager.dart';
-import 'package:flclashx/manager/manager.dart';
-import 'package:flclashx/plugins/app.dart';
-import 'package:flclashx/providers/providers.dart';
-import 'package:flclashx/state.dart';
+import 'package:avee/clash/clash.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/l10n/l10n.dart';
+import 'package:avee/manager/manager.dart';
+import 'package:avee/plugins/app.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'controller.dart';
 import 'pages/pages.dart';
+import 'services/avee_account.dart';
+import 'services/avee_billing.dart';
+import 'services/avee_remote_config.dart';
+import 'ui/avee_design.dart';
 
 class Application extends ConsumerStatefulWidget {
   const Application({
@@ -29,6 +32,7 @@ class Application extends ConsumerStatefulWidget {
 class ApplicationState extends ConsumerState<Application> {
   Timer? _autoUpdateGroupTaskTimer;
   Timer? _autoUpdateProfilesTaskTimer;
+  bool _groupPollPaused = false;
 
   final _pageTransitionsTheme = const PageTransitionsTheme(
     builders: <TargetPlatform, PageTransitionsBuilder>{
@@ -49,12 +53,27 @@ class ApplicationState extends ConsumerState<Application> {
   void initState() {
     super.initState();
 
+    // Restore the control-plane session in the background. A backend outage
+    // must never prevent the local VPN UI from starting.
+    aveeAccountState.restore();
+    unawaited(aveeRemoteConfig.refresh());
+    if (Platform.isAndroid) {
+      unawaited(aveeBillingService.initialize());
+    }
+
+    // Cap the global decoded-image cache to bound PSS from network logos/bg.
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 50 << 20;
+
     if (Platform.isWindows) {
       windows?.enableDarkModeForApp();
     }
 
     _autoUpdateGroupTask();
     _autoUpdateProfilesTask();
+    // Let the app-lifecycle observer (AppStateManager) gate the group poll so
+    // it doesn't keep hitting the Go core every 20s while backgrounded.
+    globalState.pauseGroupsPolling = _pauseGroupTask;
+    globalState.resumeGroupsPolling = _resumeGroupTask;
     globalState.appController = AppController(context, ref);
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) async {
       final currentContext = globalState.navigatorKey.currentContext;
@@ -68,29 +87,71 @@ class ApplicationState extends ConsumerState<Application> {
   }
 
   void _autoUpdateGroupTask() {
+    _autoUpdateGroupTaskTimer?.cancel();
+    // Re-arm guard: a timer that fired just before pause schedules a
+    // post-frame re-arm; bail out here so it doesn't restart the poll while
+    // the app is backgrounded.
+    if (_groupPollPaused) {
+      return;
+    }
     _autoUpdateGroupTaskTimer = Timer(const Duration(milliseconds: 20000), () {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_groupPollPaused) {
+          return;
+        }
         globalState.appController.updateGroupsDebounce();
         _autoUpdateGroupTask();
       });
     });
   }
 
+  // Stop the 20s proxy-group poll while the app is backgrounded. Cancels any
+  // pending timer so a fire scheduled just before pause can't re-arm.
+  void _pauseGroupTask() {
+    _groupPollPaused = true;
+    _autoUpdateGroupTaskTimer?.cancel();
+    _autoUpdateGroupTaskTimer = null;
+  }
+
+  // Resume on foreground with one immediate refresh so the UI reflects current
+  // groups right away, then re-arm the periodic poll.
+  void _resumeGroupTask() {
+    if (!_groupPollPaused) {
+      return;
+    }
+    _groupPollPaused = false;
+    globalState.appController.updateGroupsDebounce();
+    _autoUpdateGroupTask();
+  }
+
   void _autoUpdateProfilesTask() {
     _autoUpdateProfilesTaskTimer = Timer(const Duration(minutes: 20), () async {
-      await globalState.appController.autoUpdateProfiles();
+      // Re-arm the chain even when a run throws: previously an exception out of
+      // autoUpdateProfiles() skipped the re-arm and silently killed the whole
+      // periodic auto-update. dispose() cancels the pending timer, so re-arming
+      // after a successful or failed run is safe.
+      try {
+        await globalState.appController.autoUpdateProfiles();
+      } catch (e) {
+        commonPrint.log("Auto update profiles task failed: $e");
+      }
       _autoUpdateProfilesTask();
     });
   }
 
   Widget _buildPlatformState(Widget child) {
     if (system.isDesktop) {
+      // `HotKeyManager` (global numpad/modifier registration + Ctrl+W
+      // Shortcut wrapper) was removed for the Play readiness wave —
+      // the settings UI no longer exposes the hotkey configuration
+      // screen so persisted (often broken) numpad mappings should not
+      // be registered at startup. The wrapper itself was unwound
+      // here rather than gutted in `hotkey_manager.dart` so the file
+      // can come back later if we re-introduce a curated set.
       return WindowManager(
         child: TrayManager(
-          child: HotKeyManager(
-            child: ProxyManager(
-              child: child,
-            ),
+          child: ProxyManager(
+            child: child,
           ),
         ),
       );
@@ -179,26 +240,21 @@ class ApplicationState extends ConsumerState<Application> {
                 title: appName,
                 locale: utils.getLocaleForString(locale),
                 supportedLocales: AppLocalizations.delegate.supportedLocales,
-                themeMode: themeProps.themeMode,
-                theme: ThemeData(
-                  useMaterial3: true,
-                  pageTransitionsTheme: _pageTransitionsTheme,
-                  colorScheme: _getAppColorScheme(
-                    brightness: Brightness.light,
-                    primaryColor: themeProps.primaryColor,
-                  ),
-                  // Reduce animation duration for snappier feel
-                  visualDensity: VisualDensity.adaptivePlatformDensity,
+                // AVEE is shipped as a dark-only product. The light /
+                // system options used to live behind `_ThemeModeItem` in
+                // Settings → Theme but have been removed; any persisted
+                // `ThemeMode.light` / `ThemeMode.system` value from older
+                // installs is intentionally ignored here.
+                themeMode: ThemeMode.dark,
+                theme: _buildThemeData(
+                  brightness: Brightness.dark,
+                  primaryColor: themeProps.primaryColor,
+                  pureBlack: themeProps.pureBlack,
                 ),
-                darkTheme: ThemeData(
-                  useMaterial3: true,
-                  pageTransitionsTheme: _pageTransitionsTheme,
-                  colorScheme: _getAppColorScheme(
-                    brightness: Brightness.dark,
-                    primaryColor: themeProps.primaryColor,
-                  ).toPureBlack(themeProps.pureBlack),
-                  // Reduce animation duration for snappier feel
-                  visualDensity: VisualDensity.adaptivePlatformDensity,
+                darkTheme: _buildThemeData(
+                  brightness: Brightness.dark,
+                  primaryColor: themeProps.primaryColor,
+                  pureBlack: themeProps.pureBlack,
                 ),
                 home: child,
               );
@@ -208,14 +264,111 @@ class ApplicationState extends ConsumerState<Application> {
         ),
       );
 
+  ThemeData _buildThemeData({
+    required Brightness brightness,
+    required int? primaryColor,
+    required bool pureBlack,
+  }) {
+    final colorScheme = _getAppColorScheme(
+      brightness: brightness,
+      primaryColor: primaryColor,
+    );
+    const onest = TextTheme(
+      displayLarge: TextStyle(fontFamily: 'Onest'),
+      displayMedium: TextStyle(fontFamily: 'Onest'),
+      displaySmall: TextStyle(fontFamily: 'Onest'),
+      headlineLarge: TextStyle(fontFamily: 'Onest'),
+      headlineMedium: TextStyle(fontFamily: 'Onest'),
+      headlineSmall: TextStyle(fontFamily: 'Onest'),
+      titleLarge: TextStyle(fontFamily: 'Onest'),
+      titleMedium: TextStyle(fontFamily: 'Onest'),
+      titleSmall: TextStyle(fontFamily: 'Onest'),
+      bodyLarge: TextStyle(fontFamily: 'Onest'),
+      bodyMedium: TextStyle(fontFamily: 'Onest'),
+      bodySmall: TextStyle(fontFamily: 'Onest'),
+      labelLarge: TextStyle(fontFamily: 'Onest'),
+      labelMedium: TextStyle(fontFamily: 'Onest'),
+      labelSmall: TextStyle(fontFamily: 'Onest'),
+    );
+    var scheme = pureBlack ? colorScheme.toPureBlack(true) : colorScheme;
+    // Android AVEE shell: force charcoal + coral so Material chrome cannot
+    // silently keep the old Lumina green look after a redesign.
+    if (Platform.isAndroid) {
+      scheme = scheme.copyWith(
+        primary: AveeColors.primary,
+        onPrimary: AveeColors.background,
+        secondary: AveeColors.highlight,
+        surface: AveeColors.background,
+        onSurface: AveeColors.text,
+        surfaceContainerLowest: AveeColors.background,
+        surfaceContainerLow: AveeColors.surface,
+        surfaceContainer: AveeColors.surface,
+        surfaceContainerHigh: AveeColors.surfaceRaised,
+        surfaceContainerHighest: AveeColors.surfaceRaised,
+        outline: AveeColors.outline,
+        error: AveeColors.error,
+      );
+    } else if (brightness == Brightness.dark) {
+      // Desktop keeps Lumina surfaces.
+      scheme = scheme.copyWith(
+        surface: Lumina.void_,
+        surfaceContainerLowest: Lumina.surface1,
+        surfaceContainerLow: Lumina.surface2,
+        surfaceContainer: Lumina.surface3,
+        surfaceContainerHigh: Lumina.surface4,
+        surfaceContainerHighest: Lumina.surface5,
+      );
+    }
+    return ThemeData(
+      useMaterial3: true,
+      pageTransitionsTheme: _pageTransitionsTheme,
+      colorScheme: scheme,
+      scaffoldBackgroundColor:
+          Platform.isAndroid ? AveeColors.background : scheme.surface,
+      textTheme: onest,
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+      cardTheme: CardThemeData(
+        color: Platform.isAndroid
+            ? AveeColors.surface
+            : brightness == Brightness.dark
+                ? Colors.white.withValues(alpha: Lumina.glassOpacity)
+                : null,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(
+            Platform.isAndroid ? AveeRadius.card : Lumina.radiusLg,
+          ),
+          side: brightness == Brightness.dark
+              ? BorderSide(
+                  color: Platform.isAndroid
+                      ? AveeColors.outline
+                      : Colors.white
+                          .withValues(alpha: Lumina.glassBorderOpacity))
+              : BorderSide.none,
+        ),
+      ),
+    );
+  }
+
   @override
-  Future<void> dispose() async {
+  void dispose() {
+    // Flutter calls dispose() synchronously and asserts super.dispose() runs
+    // before the next frame, so we must NOT await here — anything after the
+    // first await would run against a torn-down element tree and fire
+    // super.dispose() late. Do all synchronous teardown inline, then kick the
+    // async exit work off without awaiting it.
     linkManager.destroy();
+    unawaited(aveeBillingService.dispose());
+    globalState.pauseGroupsPolling = null;
+    globalState.resumeGroupsPolling = null;
     _autoUpdateGroupTaskTimer?.cancel();
     _autoUpdateProfilesTaskTimer?.cancel();
-    await clashCore.destroy();
-    await globalState.appController.savePreferences();
-    await globalState.appController.handleExit();
+    // handleExit() already runs guarded(savePreferences) + guarded(clashCore.shutdown)
+    // (see controller.dart), so we don't await those explicitly here.
+    unawaited(globalState.appController.handleExit());
+    // clashCore.destroy() maps to clashInterface.destroy() (isolate/bridge
+    // teardown), which is NOT covered by shutdown() (clashInterface.shutdown()).
+    // Kick it off after handleExit so the isolate is still torn down.
+    unawaited(clashCore.destroy());
     super.dispose();
   }
 }

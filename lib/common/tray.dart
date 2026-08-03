@@ -1,12 +1,9 @@
 import 'dart:io';
 
-import 'package:flclashx/common/utils.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/state.dart';
+import 'package:avee/common/utils.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import 'package:tray_manager/tray_manager.dart';
 
 import 'app_localizations.dart';
@@ -56,58 +53,27 @@ class Tray {
         force: focus,
       );
     }
-    final menuItems = <MenuItem>[];
+    // Intentionally minimal tray menu: Показать / Старт|Стоп / Автозапуск /
+    // Выход. The TUN, системный прокси, копирование переменных окружения and
+    // перезапуск entries stay removed — proxy toggles live in the window UI;
+    // the mode axis (rule/global/direct) is DERIVED from the profile's work
+    // mode in AppController._setupClashConfig and must not be switched from
+    // the tray.
     final showMenuItem = MenuItem(
       label: appLocalizations.show,
       onClick: (_) {
         window?.show();
       },
     );
-    menuItems.add(showMenuItem);
-    final startMenuItem = MenuItem.checkbox(
+    // Connect/disconnect from the tray — same toggle as the hotkey path.
+    // Label tracks the running state via trayState.isStart; Tray.update is
+    // re-invoked on state changes so the menu stays in sync.
+    final startStopMenuItem = MenuItem(
       label: trayState.isStart ? appLocalizations.stop : appLocalizations.start,
-      onClick: (_) async {
+      onClick: (_) {
         globalState.appController.updateStart();
       },
-      checked: false,
     );
-    menuItems.add(startMenuItem);
-    if (trayState.globalModeEnabled) {
-      menuItems.add(MenuItem.separator());
-      for (final mode in Mode.values) {
-        menuItems.add(
-          MenuItem.checkbox(
-            label: Intl.message(mode.name),
-            onClick: (_) {
-              globalState.appController.changeMode(mode);
-            },
-            checked: mode == trayState.mode,
-          ),
-        );
-      }
-    }
-    menuItems.add(MenuItem.separator());
-    if (trayState.isStart) {
-      menuItems.add(
-        MenuItem.checkbox(
-          label: appLocalizations.tun,
-          onClick: (_) {
-            globalState.appController.updateTun();
-          },
-          checked: trayState.tunEnable,
-        ),
-      );
-      menuItems.add(
-        MenuItem.checkbox(
-          label: appLocalizations.systemProxy,
-          onClick: (_) {
-            globalState.appController.updateSystemProxy();
-          },
-          checked: trayState.systemProxy,
-        ),
-      );
-      menuItems.add(MenuItem.separator());
-    }
     final autoStartMenuItem = MenuItem.checkbox(
       label: appLocalizations.autoLaunch,
       onClick: (_) async {
@@ -115,29 +81,20 @@ class Tray {
       },
       checked: trayState.autoLaunch,
     );
-    final copyEnvVarMenuItem = MenuItem(
-      label: appLocalizations.copyEnvVar,
-      onClick: (_) async {
-        await _copyEnv(trayState.port);
-      },
-    );
-    menuItems.add(autoStartMenuItem);
-    menuItems.add(copyEnvVarMenuItem);
-    menuItems.add(MenuItem.separator());
-    final restartMenuItem = MenuItem(
-      label: appLocalizations.restart,
-      onClick: (_) async {
-        await globalState.appController.handleRestart();
-      },
-    );
-    menuItems.add(restartMenuItem);
     final exitMenuItem = MenuItem(
       label: appLocalizations.exit,
       onClick: (_) async {
         await globalState.appController.handleExit();
       },
     );
-    menuItems.add(exitMenuItem);
+    final menuItems = <MenuItem>[
+      showMenuItem,
+      startStopMenuItem,
+      MenuItem.separator(),
+      autoStartMenuItem,
+      MenuItem.separator(),
+      exitMenuItem,
+    ];
     final menu = Menu(items: menuItems);
     await trayManager.setContextMenu(menu);
     if (Platform.isLinux) {
@@ -149,32 +106,7 @@ class Tray {
     }
   }
 
-  Future<void> updateTrayTitle([Traffic? traffic]) async {
-    // if (!Platform.isMacOS) {
-    //   return;
-    // }
-    // if (traffic == null) {
-    //   await trayManager.setTitle("");
-    // } else {
-    //   await trayManager.setTitle(
-    //     "${traffic.up.shortShow} ↑ \n${traffic.down.shortShow} ↓",
-    //   );
-    // }
-  }
-
-  Future<void> _copyEnv(int port) async {
-    final url = "http://127.0.0.1:$port";
-
-    final cmdline = Platform.isWindows
-        ? "set \$env:all_proxy=$url"
-        : "export all_proxy=$url";
-
-    await Clipboard.setData(
-      ClipboardData(
-        text: cmdline,
-      ),
-    );
-  }
+  Future<void> updateTrayTitle([Traffic? traffic]) async {}
 }
 
 final tray = Tray();

@@ -2,32 +2,43 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' show Pointer;
 import 'dart:io' show Platform;
+import 'dart:math';
 
 import 'package:animations/animations.dart';
 import 'package:dio/dio.dart';
 import 'package:dynamic_color/dynamic_color.dart';
-import 'package:flclashx/clash/clash.dart';
-import 'package:flclashx/common/theme.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/l10n/l10n.dart';
-import 'package:flclashx/plugins/service.dart';
-import 'package:flclashx/widgets/dialog.dart';
-import 'package:flclashx/widgets/scaffold.dart';
+import 'package:avee/clash/clash.dart';
+import 'package:avee/common/connect_trace.dart';
+import 'package:avee/common/error_mapper.dart';
+import 'package:avee/common/theme.dart';
+import 'package:avee/common/work_mode_patch.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/l10n/l10n.dart';
+import 'package:avee/plugins/service.dart';
+import 'package:avee/widgets/dialog.dart';
+import 'package:avee/widgets/scaffold.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_js/extensions/fetch.dart';
 import 'package:flutter_js/flutter_js.dart';
 import 'package:material_color_utilities/palettes/core_palette.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'common/common.dart';
+import 'common/proxy_credentials.dart';
 import 'controller.dart';
-import 'core_version.dart';
 import 'models/models.dart';
 
 typedef UpdateTasks = List<FutureOr Function()>;
 
-class GlobalState {
+/// Per-session random secret for mihomo external-controller API auth.
+/// Regenerated on each app start — prevents localhost API exploitation.
+final String _apiSecret = List.generate(
+  32,
+  (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0'),
+).join();
 
+class GlobalState {
   factory GlobalState() {
     _instance ??= GlobalState._internal();
     return _instance!;
@@ -40,38 +51,122 @@ class GlobalState {
   bool isService = false;
   Timer? timer;
   Timer? groupsUpdateTimer;
-  late Config config;
+
+  /// Owns the mutable `Config` mirror. `config` below delegates to it so the
+  /// ~58 `globalState.config` read/write sites stay untouched while the mirror
+  /// has a single documented owner. See lib/common/config_repository.dart and
+  /// the drift-lock test/common/config_roundtrip_test.dart.
+  final ConfigRepository configRepository = ConfigRepository();
+
+  /// Flat, ref-less view of the persisted `Config`. Read everywhere (UI domain
+  /// layer here, and the service isolate in lib/main.dart which has no
+  /// `ProviderScope`). The 12 Riverpod slices (lib/providers/config.dart) seed
+  /// FORWARD from this in their `build()` and mirror BACK via
+  /// `ConfigRepository.syncSlice` from their `onUpdate`; `configState`
+  /// (lib/providers/state.dart) re-aggregates the slices into a `Config`.
+  Config get config => configRepository.config;
+
+  set config(Config value) => configRepository.config = value;
+
   late AppState appState;
   bool isPre = true;
   String? coreSHA256;
   String? coreVersion;
   late PackageInfo packageInfo;
   Function? updateCurrentDelayDebounce;
+
+  /// Pause/resume hooks for the 20s proxy-group poll timer owned by
+  /// `ApplicationState`. Wired in its initState and cleared in dispose so the
+  /// lifecycle observer (`AppStateManager`) can stop the poll while the app is
+  /// backgrounded — the Android VPN foreground service keeps the UI isolate
+  /// (and otherwise this timer) alive indefinitely with the screen off, which
+  /// would poll the Go core over FFI for the full groups JSON every 20s.
+  VoidCallback? pauseGroupsPolling;
+  VoidCallback? resumeGroupsPolling;
+
   late Measure measure;
   late CommonTheme theme;
   late Color accentColor;
   CorePalette? corePalette;
   DateTime? startTime;
   UpdateTasks tasks = [];
-  // Effective external-controller endpoint after merging subscription value
-  // over UI defaults. Empty string means disabled. Subscription value wins if
-  // present, otherwise falls back to the UI toggle default.
-  final effectiveExternalController = ValueNotifier<String>("");
-  // Effective values for fields that follow the overrideNetworkSettings gate
-  // but don't round-trip through patchClashConfigProvider. UI reads these when
-  // override is OFF so it shows what's actually applied (profile or fallback).
-  final effectiveTcpConcurrent = ValueNotifier<bool>(false);
-  final effectiveUnifiedDelay = ValueNotifier<bool>(false);
-  final effectiveLogLevel = ValueNotifier<String>("info");
-  final effectiveKeepAliveInterval = ValueNotifier<int>(30);
-  // Custom per-group descriptions parsed from the profile YAML
-  // (proxy-groups[*].description). Shown as the subtitle of a nested group
-  // card instead of its type (Fallback/URLTest/Selector).
-  final groupDescriptions = ValueNotifier<Map<String, String>>({});
+
+  /// Pending TUN-listener readiness ack for the in-flight Android VPN start.
+  /// Completed with `null` on ready, a non-null error string on failure.
+  /// Only created when [handleStart] needs to wait for the native TUN ack.
+  Completer<String?>? _tunAck;
+
+  /// True while [handleStart] is waiting on the native TUN readiness ack.
+  /// Drives the start button's connecting affordance. Plain [ValueNotifier]
+  /// so [handleStart] (which has no Riverpod ref) can flip it directly and the
+  /// dashboard listens via [ValueListenableBuilder].
+  final ValueNotifier<bool> isConnecting = ValueNotifier<bool>(false);
+
+  /// Completes the pending TUN ack (no-op if none is in flight, e.g. a late
+  /// TUN status arriving outside a start transition).
+  ///
+  /// Residual race (accepted): this completes whatever [_tunAck] is CURRENT and
+  /// carries no attempt token, because the native `onTun` payload
+  /// ({status, message}) originates in the Go core and can't cheaply carry one.
+  /// During a rapid stop->start, a late ack from the previous attempt can thus
+  /// complete the current attempt's completer. [handleStart] mitigates the
+  /// field-lifecycle half via an `identical()` guard; closing this fully would
+  /// require threading a token through Go/Kotlin (out of scope for this fix).
+  void completeTunAck(String? error) {
+    final ack = _tunAck;
+    if (ack == null || ack.isCompleted) return;
+    ack.complete(error);
+  }
+
   final navigatorKey = GlobalKey<NavigatorState>();
+
+  /// When true, `vpnTip` notifications are suppressed. Set while a config setup
+  /// is applying (see [AppController.setupClashConfig]) so the provider-driven
+  /// tun.stack sync on a profile switch does not fire a spurious "restart VPN"
+  /// tip — the egress switch itself applies live.
+  bool suppressVpnTip = false;
+
   AppController? _appController;
   GlobalKey<CommonScaffoldState> homeScaffoldKey = GlobalKey();
   bool isInit = false;
+
+  /// Persisted SOCKS port (loaded from SharedPreferences on init)
+  /// Survives app restarts to avoid VPN detection via port scanning
+  int? _persistedSocksPort;
+
+  /// Current session's proxy credentials (auth regenerated per connect, port persisted)
+  ProxyCredentials? _currentProxyCredentials;
+
+  /// Get or generate proxy credentials for current session.
+  /// Port is persisted across app restarts; username/password regenerate per session.
+  ProxyCredentials get currentProxyCredentials {
+    if (_currentProxyCredentials == null) {
+      _currentProxyCredentials = ProxyCredentialsGenerator.generate(
+        persistedPort: _persistedSocksPort,
+      );
+      // If we generated a new port, persist it
+      if (_persistedSocksPort == null) {
+        _persistedSocksPort = _currentProxyCredentials!.port;
+        preferences.saveSocksPort(_persistedSocksPort!);
+        commonPrint.log(
+            '[SOCKS Port] Generated and saved new port: $_persistedSocksPort');
+      }
+    }
+    return _currentProxyCredentials!;
+  }
+
+  /// Clear credentials (call on disconnect). Port remains persisted.
+  void clearProxyCredentials() {
+    _currentProxyCredentials = null;
+  }
+
+  /// Force regenerate credentials (call on connect).
+  /// Reuses persisted port; only regenerates username/password.
+  void regenerateProxyCredentials() {
+    _currentProxyCredentials = ProxyCredentialsGenerator.generate(
+      persistedPort: _persistedSocksPort,
+    );
+  }
 
   bool get isStart => startTime != null && startTime!.isBeforeNow;
 
@@ -84,9 +179,7 @@ class GlobalState {
 
   Future<void> initApp(int version) async {
     coreSHA256 = const String.fromEnvironment("CORE_SHA256");
-    final coreVersionEnv = const String.fromEnvironment("CORE_VERSION");
-    coreVersion =
-        coreVersionEnv.isEmpty ? kCoreVersionFromSource : coreVersionEnv;
+    coreVersion = const String.fromEnvironment("CORE_VERSION");
     isPre = const String.fromEnvironment("APP_ENV") != 'stable';
     appState = AppState(
       version: version,
@@ -119,6 +212,12 @@ class GlobalState {
       utils.getLocaleForString(config.appSetting.locale) ??
           WidgetsBinding.instance.platformDispatcher.locale,
     );
+    // Load persisted SOCKS port for VPN detection protection
+    _persistedSocksPort = await preferences.getSocksPort();
+    if (_persistedSocksPort != null) {
+      commonPrint
+          .log('[SOCKS Port] Loaded persisted port: $_persistedSocksPort');
+    }
   }
 
   String get ua => config.patchClashConfig.globalUa ?? packageInfo.ua;
@@ -129,7 +228,10 @@ class GlobalState {
       this.tasks = tasks;
     }
     await executorUpdateTask();
-    timer = Timer(const Duration(seconds: 1), () async {
+    // Throttled from 1s → 2s to halve the background rebuild cascade
+    // (traffic + runtime + proxy state all tick through this loop).
+    // Speedometer/graph feel slightly less live but whole-UI work halves.
+    timer = Timer(const Duration(seconds: 2), () async {
       startUpdateTasks();
     });
   }
@@ -147,22 +249,148 @@ class GlobalState {
     timer = null;
   }
 
-  Future<void> handleStart([UpdateTasks? tasks]) async {
-    startTime ??= DateTime.now();
-    await clashCore.startListener();
-    await service?.startVpn();
-    startUpdateTasks(tasks);
+  /// Serialises VPN start/stop so a double-tap can't spawn duplicate listeners.
+  /// Return-value contract lets the caller tell apart three outcomes:
+  ///   - handleStart: `true` performed/connected, `false` performed but failed
+  ///     (caller should surface an error + roll back the icon), `null` ignored
+  ///     because a transition was already in flight (caller must NOT toast).
+  ///   - handleStop: `true` performed teardown, `false` ignored because a
+  ///     transition was already in flight (caller must NOT clear UI state).
+  bool _vpnTransitionInFlight = false;
+
+  Future<bool?> handleStart([UpdateTasks? tasks]) async {
+    if (_vpnTransitionInFlight) {
+      commonPrint.log('handleStart ignored: transition already in flight');
+      // Ignored (not failed): a start/stop is already running. Returning null
+      // — instead of a bool — stops the caller from rendering a false
+      // "VPN Start Failed" toast on a double-tap.
+      return null;
+    }
+    _vpnTransitionInFlight = true;
+    // Wait for the native TUN listener readiness ack only on Android when the
+    // VPN(TUN) *service mode* is selected — `config.vpnProps.enable`, which is
+    // what VpnPlugin.kt uses to choose handleStartVpn() (real TUN fd) over the
+    // proxy-only service. This is NOT the clash-config `tun.enable` flag: in
+    // proxy-only mode Kotlin still calls startTun(fd=0) and Go emits
+    // {"status":"error","message":"invalid fd 0"}, so gating on the config flag
+    // would wrongly roll back a valid proxy-only start. Desktop and Android
+    // proxy-only starts never block on the ack and behave exactly as before.
+    final needsTunAck = Platform.isAndroid && config.vpnProps.enable;
+    // Capture THIS attempt's ack completer. completeTunAck() always completes
+    // whatever _tunAck is CURRENT, so during a rapid stop->start a late TUN
+    // status could land on the wrong attempt. Awaiting our own captured `myAck`
+    // (not `_tunAck!`) and clearing the shared field only when it still points
+    // at us (identical) stops a finishing attempt from nulling a newer one's
+    // completer. The residual cross-attempt completion is documented at
+    // completeTunAck — fully closing it needs a token through the native
+    // round-trip, which the Go/Kotlin payload can't carry cheaply.
+    Completer<String?>? myAck;
+    if (needsTunAck) {
+      myAck = Completer<String?>();
+      _tunAck = myAck;
+      isConnecting.value = true;
+    }
+    try {
+      // For the non-ack path keep the original semantics: startTime is set
+      // before startVpn so runTime/UI flips to connected immediately. For the
+      // ack path startTime is deliberately deferred until the ack succeeds so
+      // the UI never shows "connected" before the TUN listener is up.
+      if (!needsTunAck) {
+        startTime ??= DateTime.now();
+      }
+      final listenerStarted = await clashCore.startListener();
+      ConnectTrace.mark('startListener.done');
+      // Desktop only: the core is a separate process behind the socket
+      // bridge, and startListener carries a 10s invoke timeout that returns
+      // false when the core is wedged/dead (first-launch AV scans, a failed
+      // spawn). Ignoring it reported a successful connect with no core
+      // listening. Android keeps its existing semantics — the FFI call and
+      // the TUN-ack path below already own failure handling there.
+      if (system.isDesktop && !listenerStarted) {
+        startTime = null;
+        // Best-effort rollback for a listener the core may still bring up
+        // late (after our 10s timeout). Fire-and-forget on purpose:
+        // stopListener has no invoke timeout and sendMessage blocks on the
+        // bridge socket — awaiting it here would hang handleStart on exactly
+        // the wedged core this branch exists to escape.
+        unawaited(clashCore.stopListener());
+        return false;
+      }
+      final started = await service?.startVpn();
+      ConnectTrace.mark('startVpn.done');
+      if (started == false) {
+        startTime = null;
+        await clashCore.stopListener();
+        return false;
+      }
+      if (needsTunAck) {
+        final ackError = await myAck!.future.timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => 'tun start timeout',
+        );
+        if (ackError != null) {
+          // TUN failed to come up — roll back exactly like the started==false
+          // branch, plus tear down the native VPN service (5s cap, mirroring
+          // handleStop) so we don't leave a half-up tunnel behind.
+          startTime = null;
+          await clashCore.stopListener();
+          try {
+            await service?.stopVpn().timeout(const Duration(seconds: 5));
+          } on TimeoutException {
+            commonPrint
+                .log('service.stopVpn() timed out during TUN-ack rollback');
+          } catch (e) {
+            commonPrint
+                .log('service.stopVpn() failed during TUN-ack rollback: $e');
+          }
+          showNotifier(ackError);
+          return false;
+        }
+        // Ack succeeded: now it's honest to mark the connection as started.
+        startTime ??= DateTime.now();
+        ConnectTrace.end('tunReady');
+      }
+      startUpdateTasks(tasks);
+      return true;
+    } finally {
+      // Only clear the shared field if it still refers to THIS attempt's ack —
+      // a newer attempt may already have installed its own completer.
+      if (identical(_tunAck, myAck)) {
+        _tunAck = null;
+      }
+      isConnecting.value = false;
+      _vpnTransitionInFlight = false;
+    }
   }
 
   Future updateStartTime() async {
     startTime = await clashLib?.getRunTime();
   }
 
-  Future handleStop() async {
-    startTime = null;
-    await clashCore.stopListener();
-    await service?.stopVpn();
-    stopUpdateTasks();
+  Future<bool> handleStop() async {
+    if (_vpnTransitionInFlight) {
+      commonPrint.log('handleStop ignored: transition already in flight');
+      // Ignored: a start/stop is in flight. Returning false tells the caller
+      // not to tear down UI/providers for a stop that never happened.
+      return false;
+    }
+    _vpnTransitionInFlight = true;
+    try {
+      startTime = null;
+      await clashCore.stopListener();
+      try {
+        // 5s cap — a hung native service mustn't freeze the UI.
+        await service?.stopVpn().timeout(const Duration(seconds: 5));
+      } on TimeoutException {
+        commonPrint.log('service.stopVpn() timed out — forcing local stop');
+      } catch (e) {
+        commonPrint.log('service.stopVpn() failed: $e');
+      }
+      stopUpdateTasks();
+      return true;
+    } finally {
+      _vpnTransitionInFlight = false;
+    }
   }
 
   Future<bool?> showMessage({
@@ -170,9 +398,10 @@ class GlobalState {
     required InlineSpan message,
     String? confirmText,
     bool cancelable = true,
-  }) async => showCommonDialog<bool>(
-      child: Builder(
-        builder: (context) => CommonDialog(
+  }) async =>
+      showCommonDialog<bool>(
+        child: Builder(
+          builder: (context) => CommonDialog(
             title: title ?? appLocalizations.tip,
             actions: [
               if (cancelable)
@@ -205,42 +434,22 @@ class GlobalState {
               ),
             ),
           ),
-      ),
-    );
-
-  // Future<Map<String, dynamic>> getProfileMap(String id) async {
-  //   final profilePath = await appPath.getProfilePath(id);
-  //   final res = await Isolate.run<Result<dynamic>>(() async {
-  //     try {
-  //       final file = File(profilePath);
-  //       if (!await file.exists()) {
-  //         return Result.error("");
-  //       }
-  //       final value = await file.readAsString();
-  //       return Result.success(utils.convertYamlNode(loadYaml(value)));
-  //     } catch (e) {
-  //       return Result.error(e.toString());
-  //     }
-  //   });
-  //   if (res.isSuccess) {
-  //     return res.data as Map<String, dynamic>;
-  //   } else {
-  //     throw res.message;
-  //   }
-  // }
+        ),
+      );
 
   Future<T?> showCommonDialog<T>({
     required Widget child,
     bool dismissible = true,
-  }) async => showModal<T>(
-      context: navigatorKey.currentState!.context,
-      configuration: FadeScaleTransitionConfiguration(
-        barrierColor: Colors.black38,
-        barrierDismissible: dismissible,
-      ),
-      builder: (_) => child,
-      filter: commonFilter,
-    );
+  }) async =>
+      showModal<T>(
+        context: navigatorKey.currentState!.context,
+        configuration: FadeScaleTransitionConfiguration(
+          barrierColor: Colors.black38,
+          barrierDismissible: dismissible,
+        ),
+        builder: (_) => child,
+        filter: commonFilter,
+      );
 
   Future<T?> safeRun<T>(
     FutureOr<T> Function() futureFunction, {
@@ -252,13 +461,16 @@ class GlobalState {
       return res;
     } catch (e) {
       commonPrint.log("$e");
+      final message = ErrorMapper.mapError(e.toString()) ??
+          appLocalizations.genericErrorMessage;
       if (silence) {
-        showNotifier(e.toString());
+        showNotifier(message);
       } else {
         showMessage(
-          title: title ?? appLocalizations.tip,
+          title: title ?? appLocalizations.errorTitle,
+          cancelable: false,
           message: TextSpan(
-            text: e.toString(),
+            text: message,
           ),
         );
       }
@@ -285,6 +497,24 @@ class GlobalState {
     launchUrl(Uri.parse(url));
   }
 
+  /// Opens [url] immediately, WITHOUT the external-link confirm dialog.
+  /// For flows where the user already made an explicit, clearly-labeled
+  /// choice (e.g. the HWID dialog's device-management deep link) a second
+  /// «внешняя ссылка?» prompt is pure friction. URL is provider-supplied —
+  /// guard the parse/launch instead of crashing on malformed header data.
+  Future<void> openUrlDirect(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      commonPrint.log('[openUrl] malformed url from provider header');
+      return;
+    }
+    try {
+      await launchUrl(uri);
+    } catch (e) {
+      commonPrint.log('[openUrl] launch failed: $e');
+    }
+  }
+
   Future<void> migrateOldData(Config config) async {
     final clashConfig = await preferences.getClashConfig();
     if (clashConfig != null) {
@@ -300,7 +530,7 @@ class GlobalState {
     final currentProfile = config.currentProfile;
     return CoreState(
       vpnProps: config.vpnProps,
-      onlyStatisticsProxy: false,
+      onlyStatisticsProxy: config.appSetting.onlyStatisticsProxy,
       currentProfileName: currentProfile?.label ?? currentProfile?.id ?? "",
       bypassDomain: config.networkProps.bypassDomain,
     );
@@ -308,19 +538,24 @@ class GlobalState {
 
   Future<SetupParams> getSetupParams({
     required ClashConfig pathConfig,
+    Map<String, String>? selectedMap,
   }) async {
     final clashConfig = await patchRawConfig(
       patchConfig: pathConfig,
     );
     final params = SetupParams(
       config: clashConfig,
-      selectedMap: config.currentProfile?.selectedMap ?? {},
+      // Callers that have a Riverpod ref can provide the freshest profile
+      // selection explicitly. The mirror is kept as a fallback for service
+      // isolate/quick-start callers.
+      selectedMap: selectedMap ?? config.currentProfile?.selectedMap ?? {},
       testUrl: config.appSetting.testUrl,
     );
     return params;
   }
 
-  Future<ClashConfig> syncNetworkSettingsFromProvider(ClashConfig patchConfig) async {
+  Future<ClashConfig> syncNetworkSettingsFromProvider(
+      ClashConfig patchConfig) async {
     if (config.appSetting.overrideNetworkSettings) {
       return patchConfig; // User wants to override, keep current settings
     }
@@ -336,16 +571,21 @@ class GlobalState {
       final rawConfig = await handleEvaluate(configMap);
 
       final providerIpv6 = rawConfig['ipv6'] as bool? ?? patchConfig.ipv6;
-      final providerAllowLan = rawConfig['allow-lan'] as bool? ?? patchConfig.allowLan;
-      final providerMixedPort = rawConfig['mixed-port'] as int? ?? patchConfig.mixedPort;
-      final providerFindProcessModeStr = rawConfig['find-process-mode'] as String?;
-      final providerFindProcessMode = providerFindProcessModeStr != null 
+      final providerAllowLan =
+          rawConfig['allow-lan'] as bool? ?? patchConfig.allowLan;
+      final providerMixedPort =
+          rawConfig['mixed-port'] as int? ?? patchConfig.mixedPort;
+      final providerFindProcessModeStr =
+          rawConfig['find-process-mode'] as String?;
+      final providerFindProcessMode = providerFindProcessModeStr != null
           ? FindProcessMode.values.firstWhere(
-              (e) => e.name.toLowerCase() == providerFindProcessModeStr.toLowerCase(),
+              (e) =>
+                  e.name.toLowerCase() ==
+                  providerFindProcessModeStr.toLowerCase(),
               orElse: () => patchConfig.findProcessMode,
             )
           : patchConfig.findProcessMode;
-      
+
       final providerTunStackStr = rawConfig['tun']?['stack'] as String?;
       final providerTunStack = providerTunStackStr != null
           ? TunStack.values.firstWhere(
@@ -354,12 +594,15 @@ class GlobalState {
             )
           : patchConfig.tun.stack;
 
-      return patchConfig.copyWith(
-        ipv6: providerIpv6,
-        allowLan: providerAllowLan,
-        mixedPort: providerMixedPort,
-        findProcessMode: providerFindProcessMode,
-      ).copyWith.tun(stack: providerTunStack);
+      return patchConfig
+          .copyWith(
+            ipv6: providerIpv6,
+            allowLan: providerAllowLan,
+            mixedPort: providerMixedPort,
+            findProcessMode: providerFindProcessMode,
+          )
+          .copyWith
+          .tun(stack: providerTunStack);
     } catch (e) {
       commonPrint.log("Error syncing network settings from provider: $e");
       return patchConfig;
@@ -376,83 +619,36 @@ class GlobalState {
     final profileId = profile.id;
     final configMap = await getProfileConfig(profileId);
     final rawConfig = await handleEvaluate(configMap);
-    
+
     final realPatchConfig = patchConfig.copyWith(
       tun: patchConfig.tun.getRealTun(config.networkProps.routeMode),
     );
-    // Custom "description" field on proxy-groups — extracted here because
-    // mihomo's /proxies API doesn't forward arbitrary YAML keys.
-    final parsedGroupDescriptions = <String, String>{};
-    final rawGroups = rawConfig["proxy-groups"];
-    if (rawGroups is List) {
-      for (final g in rawGroups) {
-        if (g is! Map) continue;
-        final name = g["name"];
-        if (name is! String) continue;
-        final desc = g["description"];
-        if (desc is String && desc.trim().isNotEmpty) {
-          parsedGroupDescriptions[name] = desc.trim();
-        }
-      }
-    }
-    groupDescriptions.value = parsedGroupDescriptions;
-    // external-controller: profile value always wins when present. The UI
-    // toggle only acts as a fallback because the enum hardcodes 127.0.0.1:9090
-    // and would otherwise silently override a subscription-provided endpoint
-    // (e.g. :9091). The overrideNetworkSettings gate is intentionally ignored
-    // here — users who set external-controller in their profile mean it.
-    final providerExternalController =
-        (rawConfig["external-controller"] as String?)?.trim() ?? "";
-    final effectiveExternalControllerValue = providerExternalController.isNotEmpty
-        ? providerExternalController
-        : realPatchConfig.externalController.value;
-    rawConfig["external-controller"] = effectiveExternalControllerValue;
-    effectiveExternalController.value = effectiveExternalControllerValue;
+    rawConfig["external-controller"] = realPatchConfig.externalController.value;
+    // Security: always set a random secret on external-controller API
+    // Prevents unauthorized access from other apps via localhost scanning
+    rawConfig["secret"] = _apiSecret;
     if (rawConfig["external-ui"] == null || rawConfig["external-ui"] == "") {
       rawConfig["external-ui"] = "";
     }
     rawConfig["interface-name"] = "";
-    if (rawConfig["external-ui-url"] == null || rawConfig["external-ui-url"] == "") {
+    if (rawConfig["external-ui-url"] == null ||
+        rawConfig["external-ui-url"] == "") {
       rawConfig["external-ui-url"] = "";
     }
-    // These follow the same overrideNetworkSettings gate as other fields:
-    //   override ON  → UI value wins (always written)
-    //   override OFF → profile value wins, UI is fallback only if missing
-    // Effective values are exposed so the UI reflects what's actually applied
-    // when override is OFF (otherwise widgets would still show stored UI prefs).
-    final profileTcpConcurrent = rawConfig["tcp-concurrent"] as bool?;
-    final profileUnifiedDelay = rawConfig["unified-delay"] as bool?;
-    final profileLogLevel = rawConfig["log-level"] as String?;
-    final profileKeepAlive = (rawConfig["keep-alive-interval"] as num?)?.toInt();
-    final isOverride = config.appSetting.overrideNetworkSettings;
-    final effTcpConcurrent = isOverride
-        ? realPatchConfig.tcpConcurrent
-        : (profileTcpConcurrent ?? realPatchConfig.tcpConcurrent);
-    final effUnifiedDelay = isOverride
-        ? realPatchConfig.unifiedDelay
-        : (profileUnifiedDelay ?? realPatchConfig.unifiedDelay);
-    final effLogLevel = isOverride
-        ? realPatchConfig.logLevel.name
-        : (profileLogLevel ?? realPatchConfig.logLevel.name);
-    final effKeepAlive = isOverride
-        ? realPatchConfig.keepAliveInterval
-        : (profileKeepAlive ?? realPatchConfig.keepAliveInterval);
-    rawConfig["tcp-concurrent"] = effTcpConcurrent;
-    rawConfig["unified-delay"] = effUnifiedDelay;
-    rawConfig["log-level"] = effLogLevel;
-    rawConfig["keep-alive-interval"] = effKeepAlive;
-    effectiveTcpConcurrent.value = effTcpConcurrent;
-    effectiveUnifiedDelay.value = effUnifiedDelay;
-    effectiveLogLevel.value = effLogLevel;
-    effectiveKeepAliveInterval.value = effKeepAlive;
+    rawConfig["tcp-concurrent"] = realPatchConfig.tcpConcurrent;
+    rawConfig["unified-delay"] = realPatchConfig.unifiedDelay;
+    rawConfig["log-level"] = realPatchConfig.logLevel.name;
     rawConfig["port"] = 0;
     rawConfig["socks-port"] = 0;
+    rawConfig["keep-alive-interval"] = realPatchConfig.keepAliveInterval;
     rawConfig["port"] = realPatchConfig.port;
     rawConfig["socks-port"] = realPatchConfig.socksPort;
     rawConfig["redir-port"] = realPatchConfig.redirPort;
     rawConfig["tproxy-port"] = realPatchConfig.tproxyPort;
+    // Original three modes — direct passthrough to mihomo:
+    // Mode.rule → "rule", Mode.direct → "direct", Mode.global → "global".
     rawConfig["mode"] = realPatchConfig.mode.name;
-    
+
     // Set network settings: use patchConfig if overriding, otherwise keep provider values
     if (config.appSetting.overrideNetworkSettings) {
       // User wants to override - use values from UI (always write)
@@ -476,28 +672,33 @@ class GlobalState {
       }
     }
 
-    // flclashx-androidsecure header: when set to "true" on Android, force
-    // mixed-port = 0 so the HTTP/SOCKS inbound is disabled and traffic can
-    // only leave through the VpnService/TUN. Applied as a final override
-    // regardless of overrideNetworkSettings or UI-configured port, because
-    // the header expresses an explicit policy from the subscription provider
-    // that should not be overridable from the app side. No-op on other
-    // platforms — desktop TUN gating is handled separately.
-    if (Platform.isAndroid) {
-      final secureHeader =
-          profile.providerHeaders['flclashx-androidsecure']?.trim().toLowerCase();
-      if (secureHeader == 'true') {
-        rawConfig["mixed-port"] = 0;
-      }
+    // === SOCKS PORT PROTECTION ===
+    // Reference: https://habr.com/ru/articles/1022422/
+    if (Platform.isAndroid || Platform.isIOS) {
+      // Mobile: random port + auth (защита от VPN детекторов типа YourVPNDead)
+      final proxyCredentials = currentProxyCredentials;
+      commonPrint.log(
+          '[SOCKS Protection] Mobile: port=${proxyCredentials.port} with auth');
+      rawConfig["mixed-port"] = proxyCredentials.port;
+      rawConfig["port"] = 0;
+      rawConfig["socks-port"] = 0;
+      rawConfig["authentication"] =
+          ProxyCredentialsGenerator.toMihomoAuth(proxyCredentials);
+    } else {
+      // Desktop: фиксированный порт из конфига + skip-auth для localhost
+      // Браузеры используют system proxy (127.0.0.1:7890)
+      commonPrint.log(
+          '[SOCKS Protection] Desktop: using configured port, localhost allowed');
+      rawConfig["skip-auth-prefixes"] = ["127.0.0.1/8", "::1/128"];
     }
-    
+
     if (rawConfig["tun"] == null) {
       rawConfig["tun"] = {};
     }
     rawConfig["tun"]["enable"] = realPatchConfig.tun.enable;
     rawConfig["tun"]["device"] = realPatchConfig.tun.device;
     rawConfig["tun"]["dns-hijack"] = realPatchConfig.tun.dnsHijack;
-    
+
     // Set TUN stack
     if (config.appSetting.overrideNetworkSettings) {
       // User wants to override - use value from UI (always write)
@@ -509,7 +710,7 @@ class GlobalState {
         rawConfig["tun"]["stack"] = realPatchConfig.tun.stack.name;
       }
     }
-    
+
     rawConfig["tun"]["route-address"] = realPatchConfig.tun.routeAddress;
     rawConfig["tun"]["auto-route"] = realPatchConfig.tun.autoRoute;
     rawConfig["geodata-loader"] = realPatchConfig.geodataLoader.name;
@@ -559,23 +760,26 @@ class GlobalState {
     }
 
     rawConfig["profile"]["store-selected"] = false;
-    
+
     final mergedGeoXUrl = <String, dynamic>{};
     final patchGeoX = realPatchConfig.geoXUrl.toJson();
     final profileGeoX = rawConfig["geox-url"];
-    
+
     mergedGeoXUrl['geoip'] = patchGeoX['geoip'];
     mergedGeoXUrl['mmdb'] = patchGeoX['mmdb'];
     mergedGeoXUrl['asn'] = patchGeoX['asn'];
     mergedGeoXUrl['geosite'] = patchGeoX['geosite'];
-    
+
     if (profileGeoX != null && profileGeoX is Map) {
-      if (profileGeoX['geoip'] != null) mergedGeoXUrl['geoip'] = profileGeoX['geoip'];
-      if (profileGeoX['mmdb'] != null) mergedGeoXUrl['mmdb'] = profileGeoX['mmdb'];
+      if (profileGeoX['geoip'] != null)
+        mergedGeoXUrl['geoip'] = profileGeoX['geoip'];
+      if (profileGeoX['mmdb'] != null)
+        mergedGeoXUrl['mmdb'] = profileGeoX['mmdb'];
       if (profileGeoX['asn'] != null) mergedGeoXUrl['asn'] = profileGeoX['asn'];
-      if (profileGeoX['geosite'] != null) mergedGeoXUrl['geosite'] = profileGeoX['geosite'];
+      if (profileGeoX['geosite'] != null)
+        mergedGeoXUrl['geosite'] = profileGeoX['geosite'];
     }
-    
+
     rawConfig["geox-url"] = mergedGeoXUrl;
     rawConfig["global-ua"] = realPatchConfig.globalUa;
     if (rawConfig["hosts"] == null) {
@@ -617,7 +821,32 @@ class GlobalState {
       }
     }
     rawConfig["rule"] = rules;
-    return rawConfig;
+
+    // Additive work-mode group injection. Runs on EVERY setup over the parsed
+    // config (the download-time `patchSmartPool` output is already baked into
+    // the profile file, so its groups are present here). NEVER reshapes the
+    // panel's existing groups/rules — only appends our `Умный` / `Страна <flag>`
+    // group. Mode + selectedMap wiring lives in the controller, not here.
+    //
+    // Defensive backstop (B-3): a Country profile whose country lost all its
+    // nodes (e.g. a LOCAL file edit between revalidation chokepoints) injects no
+    // group, yet selectedMap[GLOBAL] may still point at it. That does NOT break
+    // core startup — the GLOBAL selector silently falls back to its first proxy
+    // — but log it so the dangle is visible. The revalidation chokepoints are
+    // the primary fix; this is only a cheap last-line warning.
+    if (profile.workMode == WorkMode.country &&
+        !countryGroupWillInject(
+          rawConfig,
+          workMode: profile.workMode,
+          staticCountry: profile.staticCountry,
+        )) {
+      commonPrint.log('[workmode] country group missing, config falls back');
+    }
+    return applyWorkModePatch(
+      rawConfig,
+      workMode: profile.workMode,
+      staticCountry: profile.staticCountry,
+    );
   }
 
   Future<Map<String, dynamic>> getProfileConfig(String profileId) async {
@@ -641,13 +870,47 @@ class GlobalState {
       config["proxy-providers"] = {};
     }
     final configJs = json.encode(config);
-    final runtime = getJavascriptRuntime();
+    const evalTimeout = Duration(seconds: 10);
+    // A user/backup-supplied proxy script runs `main(config)` to rewrite the
+    // resolved config. A runaway script (e.g. `while (true) {}`) must not hang
+    // the config-apply pipeline forever. There are TWO guards because
+    // `evaluateAsync` is, on every engine here, `Future.value(evaluate(...))`
+    // — the JS runs SYNCHRONOUSLY on this isolate, so a Dart `.timeout()` Timer
+    // can never fire while a tight loop blocks the event loop:
+    //   1. QuickJS (Android/Windows/Linux): construct the runtime with a native
+    //      interrupt deadline (ms) so the C engine aborts the script itself —
+    //      the only thing that stops a synchronous infinite loop.
+    //   2. A Dart-side `guardWithTimeout` as belt-and-suspenders for engines
+    //      whose eval yields to the event loop (promises/async) and to surface
+    //      a readable error; it disposes the (possibly wedged) runtime on expiry.
+    final isQuickJs =
+        Platform.isAndroid || Platform.isWindows || Platform.isLinux;
+    final JavascriptRuntime runtime;
+    if (isQuickJs) {
+      final quickJs = QuickJsRuntime2(timeout: evalTimeout.inMilliseconds);
+      // Mirror getJavascriptRuntime's setup (fetch is fire-and-forget there).
+      unawaited(quickJs.enableFetch());
+      quickJs.enableHandlePromises();
+      runtime = quickJs;
+    } else {
+      runtime = getJavascriptRuntime();
+    }
     final res = await runtime.evaluateAsync("""
       ${currentScript.content}
       main($configJs)
-    """);
+    """).guardWithTimeout(
+      timeout: evalTimeout,
+      message: 'script evaluation timed out (${evalTimeout.inSeconds}s)',
+      onTimeout: runtime.dispose,
+    );
     if (res.isError) {
-      throw res.stringResult;
+      final error = res.stringResult;
+      // A native QuickJS interrupt surfaces as an "interrupted" exception —
+      // translate it to the same readable timeout error as the Dart path.
+      if (error.toLowerCase().contains('interrupt')) {
+        throw 'script evaluation timed out (${evalTimeout.inSeconds}s)';
+      }
+      throw error;
     }
     final value = switch (res.rawResult is Pointer) {
       true => runtime.convertValue<Map<String, dynamic>>(res),
@@ -660,7 +923,6 @@ class GlobalState {
 final globalState = GlobalState();
 
 class DetectionState {
-
   factory DetectionState() {
     _instance ??= DetectionState._internal();
     return _instance!;

@@ -1,7 +1,7 @@
-display_name: FlClashX
+display_name: avee
 
-packager: pluralplay
-packagerEmail: mail@pluralplay.rw
+packager: avee
+packagerEmail: info@aveevpn.com
 license: Other
 
 priority: optional
@@ -11,11 +11,11 @@ essential: false
 icon: ./assets/images/icon.png
 
 keywords:
-  - FlClashX
+  - avee
   - Clash
     - Proxy
 
-generic_name: FlClashX
+generic_name: avee
 
 group: Applications/Internet
 

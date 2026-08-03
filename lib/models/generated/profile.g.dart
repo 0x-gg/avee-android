@@ -55,6 +55,11 @@ _$ProfileImpl _$$ProfileImplFromJson(Map<String, dynamic> json) =>
             (k, e) => MapEntry(k, e as String),
           ) ??
           const {},
+      fallbackUrl: json['fallbackUrl'] as String?,
+      workMode: $enumDecodeNullable(_$WorkModeEnumMap, json['workMode'],
+              unknownValue: WorkMode.standard) ??
+          WorkMode.standard,
+      staticCountry: json['staticCountry'] as String?,
     );
 
 Map<String, dynamic> _$$ProfileImplToJson(_$ProfileImpl instance) =>
@@ -71,7 +76,16 @@ Map<String, dynamic> _$$ProfileImplToJson(_$ProfileImpl instance) =>
       'unfoldSet': instance.unfoldSet.toList(),
       'overrideData': instance.overrideData,
       'providerHeaders': instance.providerHeaders,
+      'fallbackUrl': instance.fallbackUrl,
+      'workMode': _$WorkModeEnumMap[instance.workMode]!,
+      'staticCountry': instance.staticCountry,
     };
+
+const _$WorkModeEnumMap = {
+  WorkMode.standard: 'standard',
+  WorkMode.smart: 'smart',
+  WorkMode.country: 'country',
+};
 
 _$OverrideDataImpl _$$OverrideDataImplFromJson(Map<String, dynamic> json) =>
     _$OverrideDataImpl(

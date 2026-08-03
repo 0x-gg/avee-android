@@ -5,11 +5,13 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/plugins/app.dart';
-import 'package:flclashx/plugins/tile.dart';
-import 'package:flclashx/plugins/vpn.dart';
-import 'package:flclashx/state.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/plugins/app.dart';
+import 'package:avee/plugins/tile.dart';
+import 'package:avee/plugins/vpn.dart';
+import 'package:avee/services/deep_link_handler.dart';
+import 'package:avee/state.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,52 +19,104 @@ import 'application.dart';
 import 'clash/core.dart';
 import 'clash/lib.dart';
 import 'common/common.dart';
-import 'models/core.dart' as core_models show Action;
 import 'models/models.dart';
+
+/// Installs global handlers so uncaught framework and async errors are routed
+/// through `commonPrint.log` — the central redaction chokepoint — and reach the
+/// file log (and in-app log buffer). Without these, uncaught errors in release
+/// builds vanish silently (no crash-reporting SDK by design for the RU market).
+///
+/// Handlers MUST never throw, so `commonPrint.log` is wrapped defensively even
+/// though it is safe to call before full app init (it queues to the file log
+/// and only touches the app controller once `globalState.isInit` is true).
+void _installGlobalErrorHandlers() {
+  FlutterError.onError = (details) {
+    try {
+      commonPrint.log(
+        '[flutter-error] ${details.exceptionAsString()}\n${details.stack}',
+      );
+    } catch (_) {}
+    // Preserve debug DX: keep the red error screen / console stacktrace.
+    if (kDebugMode) {
+      FlutterError.presentError(details);
+    }
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    try {
+      commonPrint.log('[uncaught] $error\n$stack');
+    } catch (_) {}
+    // Returning true marks the error as handled so it does not propagate.
+    return true;
+  };
+}
 
 Future<void> main() async {
   globalState.isService = false;
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Enable Skia graphics for better performance on desktop
+  _installGlobalErrorHandlers();
+
   if (Platform.isWindows || Platform.isLinux) {
     DartPluginRegistrant.ensureInitialized();
   }
-  
+
+  if (system.isDesktop) {
+    // MUST run before the first `clashCore` access: instantiating ClashService
+    // has side effects (unix bridge-socket rebind, core spawn/restart via the
+    // Windows helper) that hijack or kill the RUNNING instance's core. The
+    // duplicate-launch process must die before touching any of that.
+    if (!await singleInstanceLock.acquire()) {
+      exit(0);
+    }
+  }
+
   final version = await system.version;
   await clashCore.preload();
   await globalState.initApp(version);
   await android?.init();
   await window?.init(version);
-  
-  // Initialize VPN plugin on Android to handle method channel calls from VPN service
+
   if (Platform.isAndroid) {
-    vpn; // Accessing the getter initializes the singleton
+    vpn;
   }
-  HttpOverrides.global = FlClashHttpOverrides();
+  HttpOverrides.global = AveeHttpOverrides();
   runApp(const ProviderScope(
     child: Application(),
   ));
+
+  if (Platform.isAndroid) {
+    unawaited(DeepLinkHandler.init());
+  }
 }
 
 @pragma('vm:entry-point')
 Future<void> _service(List<String> flags) async {
   commonPrint.log("=== [DART] _service entrypoint started, flags: $flags");
-  
+
   globalState.isService = true;
   commonPrint.log("[DART] Setting isService = true");
-  
+
   WidgetsFlutterBinding.ensureInitialized();
+  // The VPN service runs in a separate vm:entry-point isolate with its own
+  // PlatformDispatcher/zone, so install the same guards here too.
+  _installGlobalErrorHandlers();
   // Flush any logs that were queued before bindings were initialized
   fileLogger.flushPendingLogs();
   commonPrint.log("[DART] WidgetsFlutterBinding initialized");
-  
+
   final quickStart = flags.contains("quick");
   commonPrint.log("[DART] quickStart = $quickStart");
-  
-  final clashLibHandler = ClashLibHandler();
-  commonPrint.log("[DART] ClashLibHandler created");
-  
+
+  late final ClashLibHandler clashLibHandler;
+  try {
+    clashLibHandler = ClashLibHandler();
+    commonPrint.log("[DART] ClashLibHandler created");
+  } catch (error, stack) {
+    // Emulator/debug builds without `dart ./setup.dart android` have no
+    // libclash.so. Fail the service isolate cleanly instead of ANR'ing boot.
+    commonPrint.log("[DART] ClashLibHandler unavailable: $error\n$stack");
+    return;
+  }
+
   commonPrint.log("[DART] BEFORE try-catch block");
   try {
     commonPrint.log("[DART] Calling globalState.init()...");
@@ -80,90 +134,35 @@ Future<void> _service(List<String> flags) async {
   commonPrint.log("[DART] Adding tile listener...");
   tile?.addListener(
     _TileListenerWithService(
-      onChangeMode: (mode) async {
-        commonPrint.log("[DART] TileService onChangeMode: $mode");
-        try {
-          final modeEnum = Mode.values.byName(mode);
-          final patched = globalState.config.patchClashConfig.copyWith(
-            mode: modeEnum,
-          );
-          globalState.config = globalState.config.copyWith(
-            patchClashConfig: patched,
-          );
-          await preferences.saveConfig(globalState.config);
-
-          // Try to apply to running core so the switch is immediate.
-          try {
-            final updateParams = UpdateParams(
-              tun: patched.tun
-                  .getRealTun(globalState.config.networkProps.routeMode),
-              allowLan: patched.allowLan,
-              findProcessMode: patched.findProcessMode,
-              mode: modeEnum,
-              logLevel: patched.logLevel,
-              ipv6: patched.ipv6,
-              tcpConcurrent: patched.tcpConcurrent,
-              externalController: patched.externalController,
-              unifiedDelay: patched.unifiedDelay,
-              mixedPort: patched.mixedPort,
-            );
-            final actionJson = json.encode(
-              core_models.Action(
-                id: "${ActionMethod.updateConfig.name}#${utils.id}",
-                method: ActionMethod.updateConfig,
-                data: json.encode(updateParams),
-              ),
-            );
-            final handler = clashLibHandler;
-            if (handler != null) {
-              unawaited(handler.invokeAction(actionJson));
-            }
-          } catch (e) {
-            debugPrint("onChangeMode: live updateConfig error: $e");
-          }
-
-          unawaited(tile?.updateMode(mode));
-        } catch (e) {
-          debugPrint("onChangeMode error: $e");
-        }
-      },
       onStart: () async {
         commonPrint.log("=== [DART] TileService onStart called ===");
         debugPrint("=== TileService onStart called ===");
         try {
           commonPrint.log("TileService: Showing start notification");
           unawaited(app?.tip(appLocalizations.startVpn));
-          
+
           // Initialize GeoIP/GeoSite only if profile enables it (geodata-mode == true)
-          try {
-            final currentProfileId = globalState.config.currentProfileId;
-            if (currentProfileId != null) {
-              final profileConfig = await globalState.getProfileConfig(currentProfileId);
-              final geodataMode = profileConfig["geodata-mode"];
-              if (geodataMode == true) {
-                commonPrint.log("TileService: Initializing GeoIP/GeoSite (geodata-mode=true)...");
-                await ClashCore.initGeo();
-                commonPrint.log("TileService: GeoIP/GeoSite initialized");
-              } else {
-                commonPrint.log("TileService: Skipping Geo init (geodata-mode != true)");
-              }
-            } else {
-              commonPrint.log("TileService: Skipping Geo init (no current profile)");
-            }
-          } catch (e) {
-            commonPrint.log("TileService: Skipping Geo init due to error: $e");
+          if (await Geodata.currentProfileNeedsGeodata()) {
+            commonPrint.log(
+                "TileService: Initializing GeoIP/GeoSite (geodata-mode=true)...");
+            await ClashCore.initGeo();
+            commonPrint.log("TileService: GeoIP/GeoSite initialized");
+          } else {
+            commonPrint
+                .log("TileService: Skipping Geo init (geodata-mode != true)");
           }
-          
+
           commonPrint.log("TileService: Getting paths...");
           final homeDirPath = await appPath.homeDirPath;
           final version = await system.version;
-          commonPrint.log("TileService: homeDirPath=$homeDirPath, version=$version");
-          
+          commonPrint
+              .log("TileService: homeDirPath=$homeDirPath, version=$version");
+
           commonPrint.log("TileService: Creating config...");
           final clashConfig = globalState.config.patchClashConfig.copyWith.tun(
             enable: false,
           );
-          
+
           final profileId = globalState.config.currentProfileId;
           commonPrint.log("TileService: currentProfileId=$profileId");
           if (profileId == null) {
@@ -176,7 +175,7 @@ Future<void> _service(List<String> flags) async {
             pathConfig: clashConfig,
           );
           commonPrint.log("TileService: Setup params ready");
-          
+
           commonPrint.log("TileService: Starting ClashCore with quickStart");
           final res = await clashLibHandler.quickStart(
             InitParams(
@@ -187,7 +186,7 @@ Future<void> _service(List<String> flags) async {
             globalState.getCoreState(),
           );
           commonPrint.log("TileService: quickStart result: $res");
-          
+
           if (res.isNotEmpty) {
             commonPrint.log("TileService: Start failed with error: $res");
             unawaited(app?.tip("Start failed: $res"));
@@ -198,7 +197,7 @@ Future<void> _service(List<String> flags) async {
             }
             exit(0);
           }
-          
+
           commonPrint.log("TileService: Starting VPN service");
           try {
             await vpn?.start(
@@ -208,9 +207,10 @@ Future<void> _service(List<String> flags) async {
           } catch (e) {
             // MissingPluginException may occur if VpnPlugin not yet attached
             // VPN is started by native side via VpnPlugin.handleStart()
-            commonPrint.log("TileService: vpn.start() error (may be handled by native): $e");
+            commonPrint.log(
+                "TileService: vpn.start() error (may be handled by native): $e");
           }
-          
+
           commonPrint.log("TileService: Starting listener");
           clashLibHandler.startListener();
           commonPrint.log("=== TileService onStart completed successfully ===");
@@ -246,24 +246,20 @@ Future<void> _service(List<String> flags) async {
     ),
   );
 
-  // Provide foreground notification params using data from globalState.config
-  // This runs in service isolate, so we read from the in-memory config (loaded at service start)
+  // Provide foreground notification params using data from globalState.config.
+  // Shows: title = selected server (else service name, else "AVEE"),
+  // content = "↑ speed ↓ speed", subText = "uptime • total".
   vpn?.handleGetStartForegroundParams = () {
     try {
       final traffic = clashLibHandler.getTraffic();
       final profile = globalState.config.currentProfile;
-      final profileName = profile?.label ?? profile?.id ?? "FlClashX";
 
-      // Get server group name from header (may be base64-encoded)
-      String? groupName = profile?.providerHeaders['flclashx-serverinfo'];
+      // Get server group name from header (may be base64-encoded, optionally
+      // `base64:`-prefixed). decodeMaybeBase64 returns the raw value on any
+      // decode failure, matching the previous empty-catch fallback.
+      String? groupName = profile?.providerHeaders['avee-serverinfo'];
       if (groupName != null && groupName.isNotEmpty) {
-        try {
-          final normalized = base64.normalize(groupName);
-          groupName = utf8.decode(base64.decode(normalized));
-        } catch (_) {
-          // not base64, keep as is
-        }
-        groupName = groupName?.trim();
+        groupName = decodeMaybeBase64(groupName).trim();
       }
 
       // Get selected proxy name from selectedMap
@@ -273,35 +269,48 @@ Future<void> _service(List<String> flags) async {
         serverName = selectedMap[groupName] ?? "";
       }
 
-      // Build title using active server (keep flags/emojis)
+      // Title: panel profile title (Remnawave `profile-title`, the big
+      // dashboard subscription-card title — may be `base64:`-prefixed), else
+      // selected server name, else provider service name, else "AVEE".
+      final rawProfileTitle = profile?.providerHeaders['profile-title'];
+      final profileTitle = (rawProfileTitle == null || rawProfileTitle.isEmpty)
+          ? ""
+          : decodeMaybeBase64(rawProfileTitle).trim();
       final serverDisplay = serverName.trim();
-      final title = serverDisplay.isNotEmpty ? "$profileName / $serverDisplay" : profileName;
+      final serviceName = profile?.serviceName.trim() ?? "";
+      final title = profileTitle.isNotEmpty
+          ? profileTitle
+          : (serverDisplay.isNotEmpty
+              ? serverDisplay
+              : (serviceName.isNotEmpty ? serviceName : "AVEE"));
 
-      // Service name (subtext) from header flclashx-servicename (constant per profile)
-      String serviceName = "";
+      // Content: "↑ speed  ↓ speed"
+      final content =
+          "\u2191 ${traffic.up.show}/s  \u2193 ${traffic.down.show}/s";
+
+      // SubText: "uptime • total traffic"
+      String subText = "";
       try {
-        String? svc = profile?.providerHeaders['flclashx-servicename'];
-        if (svc != null && svc.isNotEmpty) {
-          try {
-            final normalized = base64.normalize(svc);
-            svc = utf8.decode(base64.decode(normalized));
-          } catch (_) {}
-          serviceName = svc?.trim() ?? "";
+        final startTime = clashLibHandler.getRunTime();
+        if (startTime != null) {
+          final elapsed = DateTime.now().difference(startTime);
+          final h = elapsed.inHours;
+          final m = elapsed.inMinutes % 60;
+          final uptime = h > 0 ? "${h}h ${m}m" : "${m}m";
+          final total = clashLibHandler.getTotalTraffic(false);
+          final totalBytes = total.up.value + total.down.value;
+          final totalShow = TrafficValue(value: totalBytes).show;
+          subText = "$uptime \u2022 $totalShow";
         }
       } catch (_) {}
 
       return json.encode({
         "title": title,
-        "server": serviceName,
-        "content": "$traffic"
+        "server": subText,
+        "content": content,
       });
     } catch (_) {
-      // Fallback minimal
-      return json.encode({
-        "title": "FlClashX",
-        "server": "",
-        "content": ""
-      });
+      return json.encode({"title": "AVEE", "server": "", "content": ""});
     }
   };
 
@@ -314,42 +323,87 @@ Future<void> _service(List<String> flags) async {
       },
     ),
   );
-  
+
   // Signal to native side that Dart service is ready to receive commands
   // This must be called AFTER adding tile listener so pending actions can be handled
   commonPrint.log("[DART] Signaling service ready to native side");
   await tile?.signalServiceReady();
   commonPrint.log("[DART] Service ready signal sent");
 
-  // Push initial mode to widget so the active button is highlighted correctly.
-  try {
-    final currentMode = globalState.config.patchClashConfig.mode.name;
-    unawaited(tile?.updateMode(currentMode));
-    final globalHeader =
-        globalState.config.currentProfile?.providerHeaders['flclashx-globalmode'];
-    final globalEnabled = globalHeader?.toLowerCase() != 'false';
-    unawaited(tile?.updateGlobalModeEnabled(globalEnabled));
-  } catch (e) {
-    debugPrint("Initial updateMode error (ignored): $e");
-  }
-  
   commonPrint.log("[DART] quickStart=$quickStart");
   if (!quickStart) {
     // App is in memory - set up IPC for communication with main isolate
     commonPrint.log("[DART] Not quickStart, calling _handleMainIpc");
     _handleMainIpc(clashLibHandler);
   } else {
-    // App was not in memory - VPN will be started via pending action triggered by signalServiceReady()
-    // The onStart callback in tile listener will handle the actual VPN startup
-    commonPrint.log("[DART] QuickStart mode - VPN will be started via pending action from tile service");
+    // App was not in memory - VPN starts via the pending action from the tile.
+    // No main isolate exists yet, so the full IPC (_handleMainIpc) is deferred:
+    // we register a one-shot control port so a LATER main isolate (user opens
+    // the app onto the tile-started VPN) can request the first handshake and we
+    // build the bridge lazily. The old world instead destroyed+recreated this
+    // engine on app open (tearing the live tunnel, bug 1a/1b); with the destroy
+    // now refused while START, that path would hang the splash forever waiting
+    // on a handshake that never comes (bug 1c-splash).
+    commonPrint.log(
+        "[DART] QuickStart mode - registering lazy rehandshake bridge for a later main isolate");
+    _registerQuickStartRehandshakeBridge(clashLibHandler);
   }
 }
 
+/// Bridges a tile-born (quickStart) service isolate to a main isolate that
+/// appears LATER, when the user opens the app onto an already-running VPN.
+///
+/// In quickStart mode [_handleMainIpc] is never called at boot (no main isolate
+/// to talk to), so this isolate would otherwise expose no [serviceIsolate]
+/// control port — the opening main isolate's `_tryRehandshake` would find
+/// nothing, fall back to destroy+init (refused while the VPN is live), and then
+/// wait forever on its handshake completer (splash hang).
+///
+/// Instead we register a one-shot control port. The opening main isolate
+/// registers its own port ([ClashLib._listenPort]) BEFORE sending `rehandshake`,
+/// so [_handleMainIpc]'s `mainIsolate` lookup succeeds and its initial SendPort
+/// handshake send IS the rehandshake reply that unblocks the main isolate. After
+/// that first handshake, [_handleMainIpc] re-registers its OWN control port for
+/// every subsequent rehandshake (swipe→reopen), so this one-shot port is closed.
+void _registerQuickStartRehandshakeBridge(ClashLibHandler clashLibHandler) {
+  final controlPort = ReceivePort();
+  IsolateNameServer.removePortNameMapping(serviceIsolate);
+  IsolateNameServer.registerPortWithName(controlPort.sendPort, serviceIsolate);
+  var bridged = false;
+  controlPort.listen((msg) {
+    if (msg is Map && msg['action'] == 'rehandshake' && !bridged) {
+      bridged = true;
+      // Builds the full IPC now. attachMessagePort inside re-points core
+      // messages from the tile listener to the main-isolate forwarder — the
+      // same topology as normal in-memory mode, which is exactly what we want.
+      // _handleMainIpc also removePortNameMapping(serviceIsolate) + registers
+      // its own control port, so closing this one-shot port afterwards is safe.
+      _handleMainIpc(clashLibHandler);
+      controlPort.close();
+    }
+  });
+}
+
+/// Mutable holder for the main-isolate [SendPort] this service isolate targets.
+///
+/// The main isolate can be destroyed and recreated while this service isolate
+/// (and the live VPN core it hosts) stays alive — e.g. the user swipes the app
+/// from recents and reopens it. Instead of destroying the service engine (which
+/// tears the tunnel, bug 1a/1b), the fresh main isolate re-looks-up this
+/// isolate's control port and asks for a re-handshake; we then repoint this
+/// holder at the NEW main SendPort so every in-flight IPC send follows the live
+/// isolate rather than a dead port.
+class _SendPortHolder {
+  _SendPortHolder(this.value);
+  SendPort value;
+}
+
 void _handleMainIpc(ClashLibHandler clashLibHandler) {
-  final sendPort = IsolateNameServer.lookupPortByName(mainIsolate);
-  if (sendPort == null) {
+  final initialSendPort = IsolateNameServer.lookupPortByName(mainIsolate);
+  if (initialSendPort == null) {
     return;
   }
+  final sendPortHolder = _SendPortHolder(initialSendPort);
   final serviceReceiverPort = ReceivePort();
   serviceReceiverPort.listen((message) async {
     // Handle special IPC messages for foreground notification updates
@@ -365,40 +419,104 @@ void _handleMainIpc(ClashLibHandler clashLibHandler) {
           newSelectedMap[groupName] = serverName;
           final updatedProfile = profile.copyWith(selectedMap: newSelectedMap);
           globalState.config = globalState.config.copyWith(
-            profiles: globalState.config.profiles.map((p) => 
-              p.id == profile.id ? updatedProfile : p
-            ).toList(),
+            profiles: globalState.config.profiles
+                .map((p) => p.id == profile.id ? updatedProfile : p)
+                .toList(),
           );
         }
-        sendPort.send({'success': true});
+        sendPortHolder.value.send({'success': true});
+        return;
+      }
+      if (action == 'updateMode') {
+        final modeName = message['mode'] as String? ?? 'rule';
+        final mode = Mode.values.firstWhere(
+          (m) => m.name == modeName,
+          orElse: () => Mode.rule,
+        );
+        globalState.config = globalState.config.copyWith(
+          patchClashConfig:
+              globalState.config.patchClashConfig.copyWith(mode: mode),
+        );
+        sendPortHolder.value.send({'success': true});
+        return;
+      }
+      if (action == 'updateCurrentProfile') {
+        // Stale-snapshot fix: the foreground-params composer above reads THIS
+        // service isolate's own globalState.config.currentProfile, which only
+        // ever changed via 'updateForegroundServer'/'updateMode'. A profile
+        // SWITCH (or an active-profile subscription update that rewrites
+        // profile-title / avee-servicename) sends no such IPC, so the service
+        // kept rendering the PREVIOUS profile's title — while live speed updates
+        // masked it, since this isolate was the one answering. Replace the
+        // profile in the service-side list (or append if unseen here) AND
+        // repoint currentProfileId, so currentProfile → the NEW profile and its
+        // title chain (profile-title → avee-serverinfo → servicename)
+        // resolves fresh.
+        final profileJson = message['profile'] as String? ?? '';
+        final profileId = message['profileId'] as String? ?? '';
+        if (profileJson.isNotEmpty && profileId.isNotEmpty) {
+          try {
+            final decoded = Profile.fromJson(
+              json.decode(profileJson) as Map<String, dynamic>,
+            );
+            final exists =
+                globalState.config.profiles.any((p) => p.id == decoded.id);
+            final newProfiles = exists
+                ? globalState.config.profiles
+                    .map((p) => p.id == decoded.id ? decoded : p)
+                    .toList()
+                : [...globalState.config.profiles, decoded];
+            globalState.config = globalState.config.copyWith(
+              profiles: newProfiles,
+              currentProfileId: decoded.id,
+            );
+          } catch (e) {
+            commonPrint.log('[service] updateCurrentProfile decode failed: $e');
+          }
+        }
+        sendPortHolder.value.send({'success': true});
         return;
       }
     }
     final res = await clashLibHandler.invokeAction(message);
-    sendPort.send(res);
+    sendPortHolder.value.send(res);
   });
-  sendPort.send(serviceReceiverPort.sendPort);
+  sendPortHolder.value.send(serviceReceiverPort.sendPort);
   final messageReceiverPort = ReceivePort();
   clashLibHandler.attachMessagePort(
     messageReceiverPort.sendPort.nativePort,
   );
-  messageReceiverPort.listen(sendPort.send);
+  // Route native messages through the holder (not a captured tear-off) so a
+  // post-rehandshake repoint is honored.
+  messageReceiverPort.listen((msg) => sendPortHolder.value.send(msg));
+
+  // Register a control port so a freshly (re)started main isolate can trigger a
+  // re-handshake — reattaching to this live service isolate — instead of the
+  // old destroy-service-engine path that tore the VPN tunnel (bug 1a/1b).
+  final controlPort = ReceivePort();
+  IsolateNameServer.removePortNameMapping(serviceIsolate);
+  IsolateNameServer.registerPortWithName(controlPort.sendPort, serviceIsolate);
+  controlPort.listen((msg) {
+    if (msg is Map && msg['action'] == 'rehandshake') {
+      final fresh = IsolateNameServer.lookupPortByName(mainIsolate);
+      if (fresh != null) {
+        sendPortHolder.value = fresh;
+        fresh.send(serviceReceiverPort.sendPort); // repeat SendPort handshake
+      }
+    }
+  });
 }
 
 @immutable
 class _TileListenerWithService with TileListener {
-
   const _TileListenerWithService({
     required Function() onStart,
     required Function() onStop,
-    required Function(String mode) onChangeMode,
-  }) : _onStart = onStart,
-       _onStop = onStop,
-       _onChangeMode = onChangeMode;
+  })  : _onStart = onStart,
+        _onStop = onStop;
 
   final Function() _onStart;
   final Function() _onStop;
-  final Function(String mode) _onChangeMode;
 
   @override
   void onStart() {
@@ -409,16 +527,10 @@ class _TileListenerWithService with TileListener {
   void onStop() {
     _onStop();
   }
-
-  @override
-  void onChangeMode(String mode) {
-    _onChangeMode(mode);
-  }
 }
 
 @immutable
 class _VpnListenerWithService with VpnListener {
-
   const _VpnListenerWithService({
     required Function(String dns) onDnsChanged,
   }) : _onDnsChanged = onDnsChanged;

@@ -4,7 +4,6 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 
 class ConnectivityManager extends StatefulWidget {
-
   const ConnectivityManager({
     super.key,
     this.onConnectivityChanged,

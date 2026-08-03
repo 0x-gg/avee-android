@@ -1,15 +1,15 @@
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/plugins/app.dart';
-import 'package:flclashx/state.dart';
-import 'package:flclashx/widgets/input.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/plugins/app.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/input.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class System {
-
   factory System() {
     _instance ??= System._internal();
     return _instance!;
@@ -19,10 +19,28 @@ class System {
   static System? _instance;
   List<String>? originDns;
 
+  /// SharedPreferences key for the persisted pre-injection macOS DNS. Persisting
+  /// the TRUE origin survives a crash/force-kill while the VPN is connected — a
+  /// later launch must NOT read the already-poisoned live DNS (containing the
+  /// injected 1.1.1.1) as "origin". Stored as a `List<String>`; an empty list is
+  /// a valid "no DNS set" state, distinct from the key being absent.
+  static const _macosOriginDnsKey = 'macos_origin_dns';
+
+  /// Serializes every set/restore so rapid VPN toggles can't run parallel
+  /// `networksetup` invocations and capture the injected DNS as the origin.
+  Future<void> _dnsOp = Future.value();
+
   bool get isDesktop =>
       Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
   bool get isMobile => Platform.isAndroid || Platform.isIOS;
+
+  /// Whether decoding a QR code from a gallery image is supported.
+  ///
+  /// `mobile_scanner`'s `analyzeImage` only has a native implementation on
+  /// Android, iOS and macOS. On Windows/Linux it throws
+  /// MissingPluginException, so callers must gate the feature on this.
+  bool get supportsQrFromImage => !Platform.isWindows && !Platform.isLinux;
 
   Future<bool> get isAndroidTV async {
     if (!Platform.isAndroid) return false;
@@ -41,7 +59,10 @@ class System {
   }
 
   Future<bool> checkIsAdmin() async {
-    final corePath = appPath.corePath.replaceAll(' ', r'\\ ');
+    // Process.run passes args directly to exec (no shell) — the core path must
+    // NOT be shell-escaped, or a path containing spaces gets literal backslashes
+    // baked in and `stat` fails on the mangled path.
+    final corePath = appPath.corePath;
     if (Platform.isWindows) {
       final result = await windows?.checkService();
       return result == WindowsHelperServiceStatus.running;
@@ -72,7 +93,6 @@ class System {
       return AuthorizeCode.none;
     }
 
-    final corePath = appPath.corePath.replaceAll(' ', r'\\ ');
     final isAdmin = await checkIsAdmin();
     if (isAdmin) {
       return AuthorizeCode.none;
@@ -84,7 +104,7 @@ class System {
       if (startedWithoutUac == true) {
         return AuthorizeCode.success;
       }
-      
+
       // Service not installed or couldn't start - need to install with UAC
       final result = await windows?.installService();
       if (result == true) {
@@ -92,21 +112,35 @@ class System {
       }
       return AuthorizeCode.error;
     } else if (Platform.isLinux) {
-      final shell = Platform.environment['SHELL'] ?? 'bash';
       final password = await globalState.showCommonDialog<String>(
         child: InputDialog(
           title: appLocalizations.pleaseInputAdminPassword,
           value: '',
         ),
       );
-      final arguments = [
-        "-c",
-        'echo "$password" | sudo -S chown root:root "$corePath" && echo "$password" | sudo -S chmod +sx "$corePath"'
-      ];
-      final result = await Process.run(shell, arguments);
-      if (result.exitCode != 0) {
+      if (password == null || password.isEmpty) {
         return AuthorizeCode.error;
       }
+
+      // SECURITY: password via stdin, not shell interpolation (injection risk).
+      final corePathRaw = appPath.corePath;
+
+      Future<int> runSudo(List<String> cmd) async {
+        final process = await Process.start(
+          'sudo',
+          ['-S', '--prompt=', ...cmd],
+          runInShell: false,
+        );
+        process.stdin.writeln(password);
+        await process.stdin.flush();
+        await process.stdin.close();
+        return process.exitCode;
+      }
+
+      final chownCode = await runSudo(['chown', 'root:root', corePathRaw]);
+      if (chownCode != 0) return AuthorizeCode.error;
+      final chmodCode = await runSudo(['chmod', '+sx', corePathRaw]);
+      if (chmodCode != 0) return AuthorizeCode.error;
       return AuthorizeCode.success;
     }
     return AuthorizeCode.error;
@@ -121,7 +155,11 @@ class System {
     final deviceLine = output
         .split('\n')
         .firstWhere((s) => s.contains('interface:'), orElse: () => "");
-    final lineSplits = deviceLine.trim().split(' ');
+    // `route -n get default` pads the "interface: enX" line with variable
+    // whitespace (tabs/multiple spaces) depending on macOS version — split on
+    // any run of whitespace so a two-space gap doesn't yield empty tokens and
+    // fail the length check.
+    final lineSplits = deviceLine.trim().split(RegExp(r'\s+'));
     if (lineSplits.length != 2) {
       return null;
     }
@@ -141,12 +179,18 @@ class System {
     final currentServiceNameLine = currentService.split("\n").firstWhere(
         (line) => RegExp(r'^\(\d+\).*').hasMatch(line),
         orElse: () => "");
-    final currentServiceNameLineSplits =
-        currentServiceNameLine.trim().split(' ');
-    if (currentServiceNameLineSplits.length < 2) {
+    // Service names can contain spaces ("Thunderbolt Ethernet",
+    // "USB 10/100/1000 LAN"), so a naive split(' ')[1] truncates them and the
+    // subsequent -getdnsservers/-setdnsservers calls hit the wrong service or
+    // fail. Strip only the leading "(N) " index and keep the full remainder.
+    final trimmedLine = currentServiceNameLine.trim();
+    final serviceName = trimmedLine.replaceFirst(RegExp(r'^\(\d+\)\s*'), '');
+    // When the regex didn't match (no "(N)" prefix) the string is unchanged —
+    // preserve the old "couldn't parse" semantics and bail out.
+    if (serviceName.isEmpty || serviceName == trimmedLine) {
       return null;
     }
-    return currentServiceNameLineSplits[1];
+    return serviceName;
   }
 
   Future<List<String>?> getMacOSOriginDns() async {
@@ -170,7 +214,47 @@ class System {
     return originDns;
   }
 
-  Future<void> setMacOSDns(bool restore) async {
+  /// Reads the persisted pre-injection DNS. Returns null when the key is absent
+  /// (no unclean-exit recovery needed); an empty list means "origin had no DNS".
+  Future<List<String>?> _readPersistedOriginDns() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getStringList(_macosOriginDnsKey);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _persistOriginDns(List<String> dns) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_macosOriginDnsKey, dns);
+    } catch (_) {
+      // Best-effort: failure to persist degrades crash recovery, not the
+      // live inject/restore which still works off in-memory [originDns].
+    }
+  }
+
+  Future<void> _clearPersistedOriginDns() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_macosOriginDnsKey);
+    } catch (_) {
+      // Best-effort.
+    }
+  }
+
+  /// Public entry point — signature is unchanged for callers. Every set/restore
+  /// is chained onto [_dnsOp] so they run strictly one-at-a-time; this prevents
+  /// a concurrent restore from re-reading the injected DNS as the new origin.
+  Future<void> setMacOSDns(bool restore) {
+    final next =
+        _dnsOp.then((_) => _setMacOSDnsInner(restore)).catchError((_) {});
+    _dnsOp = next;
+    return next;
+  }
+
+  Future<void> _setMacOSDnsInner(bool restore) async {
     if (!Platform.isMacOS) {
       return;
     }
@@ -180,22 +264,37 @@ class System {
     }
     List<String>? nextDns;
     if (restore) {
-      nextDns = originDns;
+      // Restore target: in-memory origin if this session captured it, else the
+      // persisted list — which covers restoring after a crash on next launch.
+      nextDns = originDns ?? await _readPersistedOriginDns();
     } else {
-      final originDns = await system.getMacOSOriginDns();
-      if (originDns == null) {
-        return;
+      // Establish the TRUE pre-injection DNS. If a persisted origin already
+      // exists, a previous session injected 1.1.1.1 but never restored (unclean
+      // exit) — the live DNS is poisoned, so trust the persisted origin instead
+      // of re-reading. Otherwise read the live DNS and persist it BEFORE the
+      // inject so a crash mid-session is still recoverable on next launch.
+      final persisted = await _readPersistedOriginDns();
+      List<String>? origin;
+      if (persisted != null) {
+        origin = persisted;
+        originDns = persisted;
+      } else {
+        origin = await system.getMacOSOriginDns();
+        if (origin == null) {
+          return;
+        }
+        await _persistOriginDns(origin);
       }
       const needAddDns = "1.1.1.1"; // Cloudflare DNS
-      if (originDns.contains(needAddDns)) {
+      if (origin.contains(needAddDns)) {
         return;
       }
-      nextDns = List.from(originDns)..add(needAddDns);
+      nextDns = List.from(origin)..add(needAddDns);
     }
     if (nextDns == null) {
       return;
     }
-    await Process.run(
+    final result = await Process.run(
       'networksetup',
       [
         '-setdnsservers',
@@ -204,6 +303,23 @@ class System {
         if (nextDns.isEmpty) "Empty",
       ],
     );
+    if (restore) {
+      // Only drop the persisted origin when the restore ACTUALLY succeeded.
+      // Clearing it on a failed `networksetup` would delete the sole record of
+      // the user's real DNS, permanently stranding the system on injected
+      // 1.1.1.1. On failure keep the backup so the next launch's unclean-exit
+      // recovery path can retry the restore.
+      if (result.exitCode == 0) {
+        // Clean state after a successful restore: drop the persisted origin so
+        // the next inject reads fresh live DNS rather than a stale recovery
+        // value.
+        await _clearPersistedOriginDns();
+      } else {
+        commonPrint.log(
+          '[dns] restore failed (exit=${result.exitCode}), keeping persisted origin',
+        );
+      }
+    }
   }
 
   Future<void> back() async {

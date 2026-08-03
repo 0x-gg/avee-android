@@ -1,23 +1,26 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/state.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 
 class Request {
-
   Request() {
     _dio = Dio(
       BaseOptions(
         headers: {
           "User-Agent": browserUa,
         },
+        connectTimeout: const Duration(seconds: 15),
+        sendTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 30),
       ),
     );
     _clashDio = Dio();
@@ -25,7 +28,7 @@ class Request {
       final client = HttpClient();
       client.findProxy = (uri) {
         client.userAgent = globalState.ua;
-        return FlClashHttpOverrides.handleFindProxy(uri);
+        return AveeHttpOverrides.handleFindProxy(uri);
       };
       return client;
     });
@@ -33,6 +36,9 @@ class Request {
   late final Dio _dio;
   late final Dio _clashDio;
   String? userAgent;
+
+  /// SECURITY: cap on subscription payload size — prevents OOM from rogue providers.
+  static const int _maxProfileBytes = 50 * 1024 * 1024; // 50 MiB
 
   Future<Response<Uint8List>> getFileResponseForUrl(
     String url, {
@@ -51,14 +57,18 @@ class Request {
       ),
     );
 
+    Response<Uint8List> response = firstResponse;
     if (firstResponse.isRedirect == true) {
       final newUrl = firstResponse.headers.value('location');
       if (newUrl == null) {
         throw Exception('Redirect detected, but no location header was found.');
       }
 
-      print('↪️ Redirecting to: $newUrl');
-      final finalResponse = await _dio.get<Uint8List>(
+      // SECURITY: don't log redirect URLs — subscription tokens leak through them.
+      if (kDebugMode) {
+        debugPrint('Subscription redirect followed (length=${newUrl.length})');
+      }
+      response = await _dio.get<Uint8List>(
         newUrl,
         options: Options(
           responseType: ResponseType.bytes,
@@ -68,9 +78,22 @@ class Request {
           validateStatus: (status) => status != null && status < 500,
         ),
       );
-      return finalResponse;
     }
-    return firstResponse;
+
+    final contentLengthHeader = response.headers.value('content-length');
+    final contentLength = int.tryParse(contentLengthHeader ?? '');
+    if (contentLength != null && contentLength > _maxProfileBytes) {
+      throw Exception(
+        'Subscription too large: $contentLength bytes (max $_maxProfileBytes)',
+      );
+    }
+    final actualLength = response.data?.length ?? 0;
+    if (actualLength > _maxProfileBytes) {
+      throw Exception(
+        'Subscription too large: $actualLength bytes (max $_maxProfileBytes)',
+      );
+    }
+    return response;
   }
 
   Future<Response> getTextResponseForUrl(String url) async {
@@ -80,6 +103,19 @@ class Request {
         responseType: ResponseType.plain,
       ),
     );
+    final contentLengthHeader = response.headers.value('content-length');
+    final contentLength = int.tryParse(contentLengthHeader ?? '');
+    if (contentLength != null && contentLength > _maxProfileBytes) {
+      throw Exception(
+        'Subscription too large: $contentLength bytes (max $_maxProfileBytes)',
+      );
+    }
+    final actualLength = (response.data as String?)?.length ?? 0;
+    if (actualLength > _maxProfileBytes) {
+      throw Exception(
+        'Subscription too large: $actualLength bytes (max $_maxProfileBytes)',
+      );
+    }
     return response;
   }
 
@@ -96,21 +132,121 @@ class Request {
     return MemoryImage(data);
   }
 
+  /// Update check against our own update server (aveevpn.com/update.json,
+  /// backed by YC Object Storage) instead of the GitHub API. РФ-reliable and
+  /// independent of GitHub. The manifest is adapted to the shape
+  /// [Controller.checkUpdateResultHandle] expects (tag_name / body / html_url),
+  /// so downstream handling is unchanged. Absent manifest (404) => no update.
   Future<Map<String, dynamic>?> checkForUpdate() async {
-    final response = await _dio.get(
-      "https://api.github.com/repos/$repository/releases/latest",
-      options: Options(
-        responseType: ResponseType.json,
-      ),
-    );
-    if (response.statusCode != 200) return null;
-    final data = response.data as Map<String, dynamic>;
-    final remoteVersion = data['tag_name'];
-    final version = globalState.packageInfo.version;
-    final hasUpdate =
-        utils.compareVersions(remoteVersion.replaceAll('v', ''), version) > 0;
-    if (!hasUpdate) return null;
-    return data;
+    try {
+      final response = await _dio.get(
+        kUpdateManifestUrl,
+        options: Options(
+          responseType: ResponseType.json,
+        ),
+      );
+      if (response.statusCode != 200) return null;
+      final raw = response.data;
+      final manifest = raw is Map<String, dynamic>
+          ? raw
+          : (raw is String
+              ? json.decode(raw) as Map<String, dynamic>
+              : <String, dynamic>{});
+      final remoteVersion = (manifest['version']?.toString() ?? '').trim();
+      if (remoteVersion.isEmpty) return null;
+      final localVersion = globalState.packageInfo.version;
+      if (utils.compareVersions(remoteVersion, localVersion) <= 0) return null;
+
+      final notes = manifest['notes'] is List
+          ? (manifest['notes'] as List).map((e) => e.toString()).toList()
+          : const <String>[];
+      var downloadUrl = 'https://aveevpn.com/downloads';
+      final platforms = manifest['platforms'];
+      if (platforms is Map) {
+        final entry = platforms[_platformKey()];
+        if (entry is Map &&
+            entry['url'] is String &&
+            (entry['url'] as String).isNotEmpty) {
+          downloadUrl = entry['url'] as String;
+        }
+      }
+      return <String, dynamic>{
+        'tag_name':
+            remoteVersion.startsWith('v') ? remoteVersion : 'v$remoteVersion',
+        'body': notes.map((n) => '- $n').join('\n'),
+        'html_url': downloadUrl,
+      };
+    } catch (e) {
+      debugPrint('checkForUpdate failed: $e');
+      return null;
+    }
+  }
+
+  /// Raw fetch of the update manifest (aveevpn.com/update.json → Vercel → YC),
+  /// reused by the Android in-app updater. Returns the decoded JSON map, or null
+  /// on any non-200 / parse failure / network error.
+  ///
+  /// Tunnel-aware (the RU update path): when [viaProxy] is true — the caller
+  /// knows the tunnel is connected — the request goes through the proxy-routed
+  /// [_clashDio] so a ТСПУ block on aveevpn.com/YC is bypassed via the active
+  /// node; otherwise it goes direct via [_dio]. The caller owns the tunnel-state
+  /// decision and the direct→proxy fallback ordering.
+  Future<Map<String, dynamic>?> fetchUpdateManifest(
+      {bool viaProxy = false}) async {
+    try {
+      final response = await (viaProxy ? _clashDio : _dio).get(
+        kUpdateManifestUrl,
+        options: Options(responseType: ResponseType.json),
+      );
+      if (response.statusCode != 200) return null;
+      final raw = response.data;
+      if (raw is Map<String, dynamic>) return raw;
+      if (raw is String) return json.decode(raw) as Map<String, dynamic>;
+      return null;
+    } catch (e) {
+      debugPrint('fetchUpdateManifest failed: $e');
+      return null;
+    }
+  }
+
+  /// Tunnel-aware APK download for the in-app updater. Streams [url] to
+  /// [savePath] through the proxy-routed client when [viaProxy] is true (the
+  /// caller knows the tunnel is up) so a ТСПУ block on YC/GitHub is bypassed via
+  /// the active node; direct otherwise. Returns true on a completed download. A
+  /// user cancel via [cancelToken] is rethrown so the caller can tell cancel from
+  /// failure; any other error returns false.
+  Future<bool> downloadUpdateApk({
+    required String url,
+    required String savePath,
+    bool viaProxy = false,
+    void Function(int received, int total)? onReceiveProgress,
+    CancelToken? cancelToken,
+  }) async {
+    try {
+      await (viaProxy ? _clashDio : _dio).download(
+        url,
+        savePath,
+        onReceiveProgress: onReceiveProgress,
+        cancelToken: cancelToken,
+        options: Options(headers: {"User-Agent": globalState.ua}),
+      );
+      return true;
+    } on DioException catch (e) {
+      if (CancelToken.isCancel(e)) rethrow;
+      debugPrint('downloadUpdateApk failed (viaProxy=$viaProxy): ${e.type}');
+      return false;
+    } catch (e) {
+      debugPrint('downloadUpdateApk failed: $e');
+      return false;
+    }
+  }
+
+  String _platformKey() {
+    if (Platform.isAndroid) return 'android-arm64';
+    if (Platform.isWindows) return 'windows-amd64';
+    if (Platform.isMacOS) return 'macos';
+    if (Platform.isLinux) return 'linux-amd64';
+    return 'android-arm64';
   }
 
   final Map<String, IpInfo Function(Map<String, dynamic>)> _ipInfoSources = {
@@ -121,39 +257,57 @@ class Request {
   };
 
   Future<Result<IpInfo?>> checkIp({CancelToken? cancelToken}) async {
-    var failureCount = 0;
-    final futures = _ipInfoSources.entries.map((source) async {
-      final completer = Completer<Result<IpInfo?>>();
-      final future = Dio().get<Map<String, dynamic>>(
-        source.key,
-        cancelToken: cancelToken,
-        options: Options(
-          responseType: ResponseType.json,
-        ),
-      );
-      future.then((res) {
-        if (res.statusCode == HttpStatus.ok && res.data != null) {
-          completer.complete(Result.success(source.value(res.data!)));
-        } else {
-          failureCount++;
-          if (failureCount == _ipInfoSources.length) {
-            completer.complete(Result.success(null));
+    // Dedicated Dio with per-request timeouts so a hung geo endpoint can never
+    // stall the check indefinitely (the previous bare Dio() had no timeouts).
+    final dio = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 5),
+        receiveTimeout: const Duration(seconds: 3),
+      ),
+    );
+    try {
+      // Try each source sequentially, stopping at the first success. This avoids
+      // firing all four geo APIs through the proxy on every check.
+      for (final source in _ipInfoSources.entries) {
+        try {
+          final res = await dio.get<Map<String, dynamic>>(
+            source.key,
+            cancelToken: cancelToken,
+            options: Options(
+              responseType: ResponseType.json,
+            ),
+          );
+          final data = res.data;
+          if (res.statusCode == HttpStatus.ok && data != null) {
+            return Result.success(source.value(data));
           }
+        } on DioException catch (e) {
+          // Honor caller cancellation; do NOT cancel the token ourselves.
+          if (e.type == DioExceptionType.cancel) {
+            return Result.error("cancelled");
+          }
+          // Timeout / network error — fall through and try the next source.
+        } catch (_) {
+          // Malformed payload — fall through and try the next source.
         }
-      }).catchError((e) {
-        failureCount++;
-        if (e == DioExceptionType.cancel) {
-          completer.complete(Result.error("cancelled"));
-        }
-      });
-      return completer.future;
-    });
-    final res = await Future.any(futures);
-    cancelToken?.cancel();
-    return res;
+      }
+      return Result.success(null);
+    } finally {
+      dio.close();
+    }
   }
 
-  Future<bool> pingHelper() async {
+  Future<bool> pingHelper() async =>
+      await pingHelperDetailed() == HelperPingResult.ok;
+
+  /// Probe the helper and distinguish "starting up" from "wrong helper".
+  /// The /ping body is the core SHA256 baked into the helper at build time
+  /// (env!("TOKEN") in services/helper/src/service/hub.rs). A token mismatch
+  /// is a definitive identity failure (stale helper after an app update, or a
+  /// foreign clash-lineage helper) — retrying cannot fix it. Network errors
+  /// mean the HTTP server is not (yet) bound, which is transient during
+  /// service start, so callers may poll on [HelperPingResult.unreachable].
+  Future<HelperPingResult> pingHelperDetailed() async {
     try {
       final response = await _dio
           .get(
@@ -168,16 +322,30 @@ class Request {
             ),
           );
       if (response.statusCode != HttpStatus.ok) {
-        return false;
+        return HelperPingResult.unreachable;
       }
-      return (response.data as String) == globalState.coreSHA256;
+      return (response.data as String) == globalState.coreSHA256
+          ? HelperPingResult.ok
+          : HelperPingResult.mismatch;
     } catch (_) {
-      return false;
+      return HelperPingResult.unreachable;
     }
   }
 
   Future<bool> startCoreByHelper(String arg) async {
     try {
+      // CONFLICT CHECK (by identity, not by a hardcoded process name): only
+      // hand our start request to the helper on the fixed port 47896 if it is
+      // verifiably OURS. pingHelper() compares the helper's reported core hash
+      // against our coreSHA256. If a foreign clash-lineage helper (e.g.
+      // FlClashX) or a stale instance squats the port, this returns false and
+      // we bail — the caller (ClashService.reStart) then spawns our own core
+      // directly. We never drive someone else's helper.
+      if (!await pingHelper()) {
+        commonPrint.log(
+            "[helper] $helperPort is not our verified helper — skipping helper, will spawn core directly");
+        return false;
+      }
       final homeDirPath = await appPath.homeDirPath;
       final response = await _dio
           .post(
@@ -225,13 +393,15 @@ class Request {
 
   Future<Map<String, dynamic>?> getCoreVersion() async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        "http://$defaultExternalController/version",
-        options: Options(
-          responseType: ResponseType.json,
-        ),
-      ).timeout(const Duration(seconds: 2));
-      
+      final response = await _dio
+          .get<Map<String, dynamic>>(
+            "http://$defaultExternalController/version",
+            options: Options(
+              responseType: ResponseType.json,
+            ),
+          )
+          .timeout(const Duration(seconds: 2));
+
       if (response.statusCode != HttpStatus.ok) return null;
       return response.data;
     } catch (_) {

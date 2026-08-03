@@ -1,11 +1,11 @@
 import 'dart:io';
 
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/providers/providers.dart';
-import 'package:flclashx/state.dart';
-import 'package:flclashx/widgets/widgets.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -166,7 +166,7 @@ class _RequestsViewState extends ConsumerState<RequestsView> with PageMixin {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-      builder: (_, constraints) => Consumer(
+        builder: (_, constraints) => Consumer(
           builder: (_, ref, child) {
             final value = ref.watch(
               patchClashConfigProvider.select(
@@ -252,5 +252,5 @@ class _RequestsViewState extends ConsumerState<RequestsView> with PageMixin {
             },
           ),
         ),
-    );
+      );
 }

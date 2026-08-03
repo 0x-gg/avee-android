@@ -1,234 +1,181 @@
-<div>
-
-[**Russian**](README.md)
-
+<div align="right">
+  <a href="README.md">Русский</a>
 </div>
 
-## FlClashX
+<img src="assets/images/header.png" alt="AVEE — private VPN client for Android, Windows, macOS and Linux" width="720" />
 
-[![Downloads](https://img.shields.io/github/downloads/pluralplay/FlClashX/total?style=flat-square&logo=github)](https://github.com/pluralplay/FlClashX/releases/)
-[![Last Version](https://img.shields.io/github/release/pluralplay/FlClashX/all.svg?style=flat-square)](https://github.com/pluralplay/FlClashX/releases/)
-[![License](https://img.shields.io/github/license/pluralplay/FlClashX?style=flat-square)](LICENSE)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/images/wordmark-dark.png">
+  <img src="assets/images/wordmark-light.png" alt="AVEE" height="46">
+</picture>
 
-[![Channel](https://img.shields.io/badge/Telegram-Chat-blue?style=flat-square&logo=telegram)](https://t.me/FlClashX)
+<a href="https://github.com/0x-gg/avee-android/releases">
+  <img src="https://img.shields.io/github/v/release/0x-gg/avee-android?include_prereleases&style=for-the-badge&color=15803D&labelColor=0D1117&label=release" alt="Latest Release">
+</a>
+<a href="https://github.com/0x-gg/avee-android/stargazers">
+  <img src="https://img.shields.io/github/stars/0x-gg/avee-android?style=for-the-badge&color=15803D&labelColor=0D1117" alt="GitHub Stars">
+</a>
+<a href="LICENSE">
+  <img src="https://img.shields.io/badge/license-GPL--3.0-15803D?style=for-the-badge&labelColor=0D1117" alt="License GPL-3.0">
+</a>
 
-A fork of the multi-platform proxy client FlClash based on ClashMeta, simple and easy to use, open source and ad-free.
+<br>
 
-on Desktop:
+<a href="https://github.com/0x-gg/avee-android/releases">
+  <img src="https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android">
+</a>
+<a href="https://github.com/0x-gg/avee-android/releases">
+  <img src="https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows">
+</a>
+<a href="https://github.com/0x-gg/avee-android/releases">
+  <img src="https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS">
+</a>
+<a href="https://github.com/0x-gg/avee-android/releases">
+  <img src="https://img.shields.io/badge/Linux-1793D1?style=for-the-badge&logo=linux&logoColor=white" alt="Linux">
+</a>
 
-<p style="text-align: center;">
-    <img alt="desktop" src="snapshots/desktop.gif">
-</p>
+---
 
-on Mobile:
+**AVEE** is a private VPN and proxy client for Android, Windows, macOS and Linux, built on the mihomo (Clash.Meta) core. You connect your own configuration; AVEE establishes the connection and handles routing.
 
-<p style="text-align: center;">
-    <img alt="mobile" src="snapshots/mobile.gif">
-</p>
+The AVEE team follows open-source principles, privacy by default, and predictable behavior across every platform. No activity logs are kept; AVEE does not provide servers and does not interfere with traffic — configurations and keys remain on the device.
 
-## Added Functionality
+<table>
+  <tr>
+    <td><img src="docs/screenshots/connected.png" alt="AVEE dashboard with an active connection" width="240" /></td>
+    <td><img src="docs/screenshots/modes.png" alt="Work modes and country selection" width="240" /></td>
+    <td><img src="docs/screenshots/menu.png" alt="Account menu on the dashboard" width="240" /></td>
+  </tr>
+</table>
 
-🛠️ Fixed default settings: process search mode on, TUN mode on, system proxy mode off, proxy list display mode set to 'list', changed camera behavior when adding a subscription via QR.
+---
 
-📱 **Android 120Hz Display Support:** Added support for high refresh rate displays (120Hz) on Android devices for smoother animations and scrolling.
+## <img src="docs/icons/diff.svg" width="24" alt="" /> Key differentiators
 
-🗑️ **Clear Application Data:** Added "Clear Data" button in Application Settings that removes all profiles from the profiles folder. Useful for troubleshooting or resetting the application.
+### <img src="docs/icons/shield.svg" width="20" alt="" /> On-device leak protection
 
-🇷🇺 Added Russian language to the installer and redesigned the localization in the application.
+Most clients keep an open local proxy port that any app on the same device can reach — a potential channel for leaking your IP. On mobile, AVEE closes it by default: a random port on every launch, mandatory proxy authentication, and routing through the TUN interface only, with no separate listeners. The local proxy is not reachable by other apps on the device.
 
-✈️ Transmit HWID to the panel (Works only with <a href="https://github.com/remnawave/panel">Remnawave</a>).
+### <img src="docs/icons/ai.svg" width="20" alt="" /> Intelligent route selection
 
-💻 Added a new "Announcements" widget. It transmits announcements from the panel to the widget. (Works only with <a href="https://github.com/remnawave/panel">Remnawave</a>).
+The **Smart** mode relies on the core's ML model (LightGBM): it predicts the best node from real connection metrics instead of constant probe pings. This reduces background polling; node selection requires no manual tuning.
 
-📺 Optimized controls for Android TV:
+### <img src="docs/icons/fingerprint.svg" width="20" alt="" /> Modern TLS profiles
 
-- Added a "Paste" button to the menu for adding a subscription via a link.
-- Added a profile selection button.
-- Added the ability to transfer a profile from the mobile app via a QR code.
+AVEE shapes the TLS handshake of outbound connections after a current browser profile, including custom **Firefox 148** and **Safari 26** profiles with the post-quantum **X25519MLKEM768** key exchange. These profiles are not available in upstream uTLS.
 
-🪪 Redesigned the profile card:
+### <img src="docs/icons/puzzle.svg" width="20" alt="" /> Connection resilience
 
-- Uses a traffic volume indicator with color change (not displayed if traffic is unlimited).
-- Displays subscription expiration date (if the year is 2099, it displays "Your subscription is permanent").
-- Added a new "Support" button in the profile, which pulls the supportUrl from the panel.
-- The autoupdateinterval parameter for the profile is now correctly transmitted from the panel.
+An optional feature improves the reliability of TLS connections on unstable and congested networks by splitting the initial handshake into segments. Enabled via a single toggle; no additional configuration required.
 
-🪪
-- Added "Meta-Info" widget. Transmits subscription parameters to the widget: remaining traffic, subscription expiration date, profile name, and prominently displays days remaining until subscription expires (3 days before expiration).
-- Added "serviceInfo" widget. Displays your service name. You can additionally pass the `flclashx-servicelogo` header for a custom logo (supports svg/png links), and clicking opens the support link (supportURL).
-- Added "changeServerButton" widget. Clicking redirects to the proxy page.
+### <img src="docs/icons/flash.svg" width="20" alt="" /> Accurate connection state
 
-🌐 Added parsing of custom headers from the subscription page:
+The indicator becomes active only when the tunnel is established: the core confirms readiness to the UI. False "connected" states are not possible; on failure, the app rolls back to the disconnected state.
 
-- flclashx-widgets: arranges widgets in the order received from the subscription.
+---
 
-  |        Value         | Name widget                                                 |
-  | :------------------: | ----------------------------------------------------------- |
-  |      `announce`      | Announce Badge                                              |
-  |    `networkSpeed`    | Network speed                                               |
-  |   `outboundModeV2`   | Proxy mode (new type)                                       |
-  |    `outboundMode`    | Proxy mode (old type)                                       |
-  |    `trafficUsage`    | Traffic usage                                               |
-  |  `networkDetection`  | Determining location and IP                                 |
-  |     `tunButton`      | TUN button (Desktop only)                                   |
-  |     `vpnButton`      | VPN button (Android only)                                   |
-  | `systemProxyButton`  | System Proxy Button (Desktop only)                          |
-  |     `intranetIp`     | Local IP-Address                                            |
-  |     `memoryInfo`     | Memory usage                                                |
-  |      `metainfo`      | Profile information                                         |
-  | `changeServerButton` | Change server button                                        |
-  |    `serviceInfo`     | Service information (only with header flclashx-servicename) |
+## <img src="docs/icons/compare.svg" width="24" alt="" /> Comparison
 
-Usage:
+| Capability | AVEE | mihomo/Clash GUIs | Xray/sing-box GUIs |
+|---|:---:|:---:|:---:|
+| On-device privacy (local proxy isolation) | <img src="docs/icons/yes.svg" width="15" alt="yes" /> by default | <img src="docs/icons/partial.svg" width="15" alt="partial" /> rare / optional | <img src="docs/icons/partial.svg" width="15" alt="partial" /> rare |
+| TLS connection resilience (ClientHello fragmentation) | <img src="docs/icons/yes.svg" width="15" alt="yes" /> | <img src="docs/icons/no.svg" width="15" alt="no" /> | <img src="docs/icons/partial.svg" width="15" alt="partial" /> in the core, usually manual JSON only |
+| Modern TLS profiles (Firefox 148 / Safari 26, post-quantum) | <img src="docs/icons/yes.svg" width="15" alt="yes" /> | <img src="docs/icons/no.svg" width="15" alt="no" /> uTLS presets only | <img src="docs/icons/partial.svg" width="15" alt="partial" /> often incompatible |
+| Intelligent route selection (ML, LightGBM) | <img src="docs/icons/yes.svg" width="15" alt="yes" /> Smart mode | <img src="docs/icons/partial.svg" width="15" alt="partial" /> YAML only | <img src="docs/icons/no.svg" width="15" alt="no" /> |
+| One-tap modes (Standard / Smart / Country) | <img src="docs/icons/yes.svg" width="15" alt="yes" /> | <img src="docs/icons/no.svg" width="15" alt="no" /> | <img src="docs/icons/no.svg" width="15" alt="no" /> |
+| Accurate connection state (UI waits for the real tunnel) | <img src="docs/icons/yes.svg" width="15" alt="yes" /> | <img src="docs/icons/no.svg" width="15" alt="no" /> | <img src="docs/icons/no.svg" width="15" alt="no" /> |
+| Android + Windows + macOS + Linux from one codebase | <img src="docs/icons/yes.svg" width="15" alt="yes" /> | partial | rare |
 
-```bash
-    flclashx-widgets: announce,metainfo,outboundModeV2,networkDetection
-```
+<sub><img src="docs/icons/yes.svg" width="13" alt="" /> — out of the box · <img src="docs/icons/partial.svg" width="13" alt="" /> — partial / manual only · <img src="docs/icons/no.svg" width="13" alt="" /> — none. Comparison reflects the ecosystem as of 2026; many features exist in the cores but aren't surfaced in the client UI.</sub>
 
-- flclashx-view: Configures the appearance of the proxy page obtained from the subscription.
+---
 
-|  Value   | Description                   | Possible values                   |
-| :------: | ----------------------------- | --------------------------------- |
-|  `type`  | Display mode                  | `list`,`tab`                      |
-|  `sort`  | Sorting type                  | `none`,`delay`,`name`             |
-| `layout` | Layout                        | `loose`,`standard`,`tight`        |
-|  `icon`  | Icon style (for list display) | `none`,`icon`          |
-|  `card`  | Card size                     | `expand`,`shrink`,`min`,`oneline` |
+## <img src="docs/icons/features.svg" width="24" alt="" /> Features
 
-Usage:
+**Connectivity**
+- Subscription import via URL and QR code, background auto-update
+- One-tap work modes: **Standard**, **Smart** (ML), **Country** (route all traffic through a chosen country)
+- Cascade routes and a fallback pool of nodes
+- Core protocols: VLESS (Reality / Vision / XHTTP), VMess, Trojan, Hysteria2, TUIC, ShadowTLS, AnyTLS, WireGuard
+- sing-box config import
 
-```bash
-    flclashx-view: type:list; sort:delay; layout:tight; icon:icon; card:shrink
-```
+**Privacy & security**
+- Local proxy isolation: random port + authentication, routing through TUN only
+- Modern TLS profiles with post-quantum key exchange
+- Optional TLS fragmentation for connection resilience
+- Rule-based routing, geosite/geoip, per-app split tunneling
+- mihomo (Clash.Meta) core with up-to-date security fixes (DoS/OOB) from mihomo v1.19.27
 
-- flclashx-custom: Controls the application of styles for Dashboard and ProxyView.
+**Interface**
+- Dark **Lumina** theme; rendering performance is maintained on mid-range hardware
+- Native system tray on Windows/Linux and status bar on macOS
+- Independent update delivery
 
-|  Value   | Description                                                  |
-| :------: | ------------------------------------------------------------ |
-|  `add`   | Styles are applied only when the subscription is first added |
-| `update` | Styles are applied every time the subscription is updated    |
+---
 
-Usage:
+## <img src="docs/icons/efficiency.svg" width="24" alt="" /> Efficiency & reliability
 
-```bash
-    flclashx-custom: update
-```
+AVEE uses less battery and memory than comparable clients built on the same core, through targeted optimizations across the stack.
 
-- flclashx-denywidgets: When set to true, editing the Dashboard page is disabled. Accepts true/false.
+**Battery & background**
+- Proxy-group polling stops when the app is backgrounded, eliminating the 20-second wakeup cycle
+- UI rendering is paused in the background
+- The network is refreshed only when the screen turns on — fewer radio and CPU wakeups
+- Smart mode doesn't fire constant probe pings across servers
+- The battery-optimization exemption is requested contextually — only after the first successful connection
 
-Usage:
+**Memory & stability**
+- Bounded Go heap (192 MB soft limit + earlier GC) — predictable RAM usage on mid-range hardware
+- Core panic protection: a failure in one goroutine doesn't take down the VPN process
+- Config caching — instant switching with no core re-initialization
+- Atomic profile writes and lazy geodata loading
 
-```bash
-    flclashx-denywidgets: true
-```
+**Built for modern Android**
+- 16 KB memory page alignment — compatible with new devices and Google Play requirements
+- minSdk 24 and strict (fail-closed) release signing
 
-- flclashx-servicename: Your service name displayed in the ServiceInfo widget.
+---
 
-Usage:
+## <img src="docs/icons/customize.svg" width="24" alt="" /> Provider customization
 
-```bash
-    flclashx-servicename: FlClashX
-```
+An operator defines the client's appearance and behavior through the subscription response HTTP headers — no separate build, no fork. A single client binary can be branded independently for any number of operators.
 
-- flclashx-servicelogo: Your logo used in the ServiceInfo widget (works only with active flclashx-servicename header). Supports png/svg.
+Through `avee-*` headers an operator can set:
 
-Usage:
+- **Single-header theme** — accent color, two background-orb colors, a color-scheme filter and blur (`avee-theme`)
+- **Logo and service name** on the subscription card (`avee-logo`, `avee-servicename`)
+- **Account area and subscription management** — a cabinet link and contextual actions (`avee-cabinet`)
+- **An emergency fallback pool** of nodes for when the primary ones are unreachable (`avee-disconeko`)
+- **Announcements and service metadata** (`announce`, `support-url`)
 
-```bash
-    flclashx-servicelogo: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/remnawave.svg
-```
+The user retains control of appearance: the **"Theme from subscription"** and **"Logo from subscription"** toggles (on by default) restore the default appearance at any time; operator-supplied values are not applied when these toggles are off.
 
-- flclashx-serverinfo: Proxy group name to display in the ChangeServerButton widget. The widget shows the active server from the specified group with country flag, ping, and a quick switch button.
+---
 
-**Displayed elements:**
-  - Country flag (automatically extracted from serverDescription or proxy name)
-  - Active server name
-  - Current ping with color indication (green < 600ms, orange >= 600ms, red - timeout)
-  - Quick navigation button to proxy page
+## <img src="docs/icons/privacy.svg" width="24" alt="" /> Privacy
 
-Usage:
+AVEE is a client: the app does not provide server infrastructure. You connect your own configuration (subscription), which the app uses to establish a connection. Traffic is not modified, no ads are shown, and no logs of network activity are retained. Configurations and keys are stored in on-device secure storage and are not transmitted.
 
-```bash
-    flclashx-serverinfo: Proxy
-```
+---
 
-- flclashx-background: Sets a custom background image for the application. Provide a direct link to an image.
+## <img src="docs/icons/opensource.svg" width="24" alt="" /> Open source
 
-**Image Recommendations:**
-  - Format: PNG, JPG, or WebP
-  - Resolution: 1920x1080 or higher for desktop, 1080x1920 for mobile
-  - File size: Keep under 2MB for better performance
-  - Content: Use images with subtle patterns or gradients; avoid too bright or busy images
-  - Contrast: Ensure good readability of text over the background
+AVEE is distributed under the **GPL-3.0** license — the source code is fully open and available for audit. The project is based on FlClashX (a fork of FlClash) and uses the mihomo (Clash.Meta) core; we are grateful to their authors and communities.
 
-Usage:
+- FlClashX (© pluralplay) — https://github.com/pluralplay/FlClashX
+- FlClash (© chen08209) — https://github.com/chen08209/FlClash
+- mihomo / Clash.Meta (© MetaCubeX) — https://github.com/MetaCubeX/mihomo
 
-```bash
-    flclashx-background: https://example.com/background.jpg
-```
+---
 
-- flclashx-settings: Manage application settings via header (with client-side override option). By default, all parameters are **disabled**. If you pass a parameter, it will be **enabled**. If you don't pass it - it stays **disabled**.
+## <img src="docs/icons/community.svg" width="24" alt="" /> Community
 
-|   Parameter   | Description                                      | Default      |
-| :-----------: | ------------------------------------------------ | :----------: |
-|  `minimize`   | Minimize application on exit instead of closing  | ❌ Disabled  |
-|   `autorun`   | Launch application on system startup             | ❌ Disabled  |
-| `shadowstart` | Launch application minimized to tray             | ❌ Disabled  |
-|  `autostart`  | Automatically start proxy on application launch  | ❌ Disabled  |
-| `autoupdate`  | Automatically check for application updates      | ❌ Disabled  |
+- [Telegram discussion forum](https://t.me/+gnnahAxAtisxZmVi)
 
-**Client-side override:** Users can enable "Override provider settings" in Application Settings to apply their local configuration instead of subscription settings.
+## <img src="docs/icons/license.svg" width="24" alt="" /> License
 
-Usage:
+GPL-3.0 — see [LICENSE](LICENSE).
 
-```bash
-    flclashx-settings: minimize, autorun, shadowstart, autostart, autoupdate
-```
+---
 
-### Configuration Settings Override
-
-By default, the following configuration parameters received from the subscription are **not overridden** by the client:
-
-- `allow-lan` - Allow LAN connections
-- `ipv6` - Enable IPv6 support
-- `find-process-mode` - Process search mode
-- `tun-stack` - TUN mode network stack
-- `mixed-port` - Mixed port for HTTP/SOCKS proxy
-
-**Client-side override:** Users can enable "Override provider settings" or "Override network settings" in Application Settings to apply their local configuration instead of subscription settings. This is useful when you need custom network settings.
-
-## Application Usage
-
-### Linux
-
-⚠️ Before use, ensure the following dependencies are installed:
-
-```bash
- sudo apt-get install libayatana-appindicator3-dev
- sudo apt-get install libkeybinder-3.0-dev
-```
-
-### Android
-
-The following actions are supported:
-
-```bash
- com.follow.clashx.action.START
-
- com.follow.clashx.action.STOP
-
- com.follow.clashx.action.CHANGE
-```
-
-## Download
-
-<a href="https://github.com/pluralplay/FlClashX/releases"><img alt="Get it on GitHub" src="snapshots/get-it-on-github.svg" width="200px"/></a>
-
-## Star
-
-<p style="text-align: center;">
-The easiest way to support the developers is to click the star (⭐) at the top of the page.<br>
-If you want to support with a small donation, you can <a href="https://t.me/tribute/app?startapp=dtyh">do so here.</a>
-</p>
-
-**TON USDT:** `UQDSfrJ_k1BdsknhdR_zj4T3Is3OdMylD8PnDJ9mxO35i-TE`
+<sub>AVEE is a tool for the privacy and security of your own traffic. Permitted use is defined by the laws of your country; the user is responsible for how the app is used.</sub>

@@ -1,16 +1,13 @@
 import 'dart:async';
 
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/plugins/tile.dart';
-import 'package:flclashx/providers/providers.dart';
-import 'package:flclashx/state.dart';
-import 'package:flutter/foundation.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/services/backend_compatibility.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AppStateManager extends ConsumerStatefulWidget {
-
   const AppStateManager({
     super.key,
     required this.child,
@@ -27,6 +24,13 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Unclean-exit recovery (macOS): if a previous session injected 1.1.1.1
+    // into the system DNS and crashed before restoring, the true origin sits
+    // in SharedPreferences (`macos_origin_dns`). Restoring here heals the
+    // system DNS at launch instead of waiting for the next connect cycle.
+    // In a clean state (no persisted origin, no in-memory origin) this is a
+    // no-op, and the _dnsOp queue serializes it ahead of any auto-connect.
+    unawaited(system.setMacOSDns(true));
     ref.listenManual(layoutChangeProvider, (prev, next) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (prev != next) {
@@ -54,48 +58,15 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
         if (prev == next) {
           return;
         }
+        // Fire-and-forget is safe: set/restore ordering is guaranteed by the
+        // _dnsOp promise queue inside System.setMacOSDns, so rapid toggles can't
+        // interleave and capture the injected DNS as the origin.
         if (next.a == true && next.b == true) {
           system.setMacOSDns(false);
         } else {
           system.setMacOSDns(true);
         }
       },
-    );
-    ref.listenManual(
-      patchClashConfigProvider.select((state) => state.mode),
-      (prev, next) {
-        if (prev != next) {
-          tile?.updateMode(next.name);
-        }
-      },
-      fireImmediately: true,
-    );
-    ref.listenManual(
-      globalModeEnabledProvider,
-      (prev, next) {
-        if (prev != next) {
-          tile?.updateGlobalModeEnabled(next);
-        }
-      },
-      fireImmediately: true,
-    );
-    ref.listenManual(
-      globalModeEnabledProvider,
-      (prev, next) {
-        if (next) {
-          return;
-        }
-        final currentMode = ref.read(
-          patchClashConfigProvider.select((state) => state.mode),
-        );
-        if (currentMode != Mode.global) {
-          return;
-        }
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          globalState.appController.changeMode(Mode.rule);
-        });
-      },
-      fireImmediately: true,
     );
   }
 
@@ -105,8 +76,10 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
   }
 
   @override
-  void dispose() async {
-    await system.setMacOSDns(true);
+  void dispose() {
+    // dispose() is sync; DNS reset is fire-and-forget. Ordering vs. any pending
+    // set/restore is guaranteed by the _dnsOp queue inside System.setMacOSDns.
+    unawaited(system.setMacOSDns(true));
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -116,9 +89,33 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
     commonPrint.log("$state");
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
-      globalState.appController.savePreferences();
+      globalState.appController.savePreferencesDebounce();
+    } else if (state == AppLifecycleState.resumed) {
+      render?.resume();
+      // One foreground check; there is no periodic background compatibility
+      // polling or battery work.
+      unawaited(backendCompatibilityService.checkAndNotify());
+      // Reconcile FAB with native state — QS tile / notification STOP don't notify us.
+      unawaited(globalState.appController.syncRunStateFromNative());
+      // HWID device-limit recovery: the user likely just freed a slot in the
+      // panel cabinet (browser) — retry the flagged profile immediately.
+      globalState.appController.resumeHwidRecovery();
     } else {
       render?.resume();
+    }
+    // Gate the 20s proxy-group poll on real backgrounding only. inactive fires
+    // for transient overlays (permission dialog, notification shade) and on
+    // desktop window blur — it must NOT pause the poll. Pause on
+    // paused/hidden/detached; resume (with an immediate refresh) on resumed.
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.detached:
+        globalState.pauseGroupsPolling?.call();
+      case AppLifecycleState.resumed:
+        globalState.resumeGroupsPolling?.call();
+      case AppLifecycleState.inactive:
+        break;
     }
   }
 
@@ -131,15 +128,14 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
 
   @override
   Widget build(BuildContext context) => Listener(
-      onPointerHover: (_) {
-        render?.resume();
-      },
-      child: widget.child,
-    );
+        onPointerHover: (_) {
+          render?.resume();
+        },
+        child: widget.child,
+      );
 }
 
 class AppEnvManager extends StatelessWidget {
-
   const AppEnvManager({
     super.key,
     required this.child,
@@ -148,22 +144,6 @@ class AppEnvManager extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (kDebugMode) {
-      if (globalState.isPre) {
-        return Banner(
-          message: 'DEBUG',
-          location: BannerLocation.topEnd,
-          child: child,
-        );
-      }
-    }
-    if (globalState.isPre) {
-      return Banner(
-        message: 'PRE',
-        location: BannerLocation.topEnd,
-        child: child,
-      );
-    }
     return child;
   }
 }

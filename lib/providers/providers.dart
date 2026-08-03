@@ -1,4 +1,4 @@
 export 'app.dart';
+export 'app_update.dart';
 export 'config.dart';
-export 'controllers.dart';
 export 'state.dart';

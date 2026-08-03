@@ -1,7 +1,7 @@
 // ignore_for_file: invalid_annotation_target
 
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
 import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -38,22 +38,31 @@ const defaultWindowProps = WindowProps();
 const defaultAccessControl = AccessControl();
 const defaultThemeProps = ThemeProps(
   primaryColor: defaultPrimaryColor,
+  orbColorPrimary: 0xFF009938,
+  orbColorSecondary: 0xFF2BFF7A,
+  orbBlur: 4.0,
 );
 
 const List<DashboardWidget> defaultDashboardWidgets = [
-  DashboardWidget.announce,
   DashboardWidget.metainfo,
-  DashboardWidget.outboundModeV2,
+  DashboardWidget.changeServerButton,
 ];
 
 List<DashboardWidget> dashboardWidgetsSafeFormJson(
   List<dynamic>? dashboardWidgets,
 ) {
+  if (dashboardWidgets == null) {
+    return defaultDashboardWidgets;
+  }
   try {
+    // Degrade-to-skip: a persisted layout may reference a widget that no longer
+    // exists (e.g. the removed rule/global `outboundMode`/`outboundModeV2`).
+    // Drop unknown names instead of resetting the whole layout to defaults.
+    final known = _$DashboardWidgetEnumMap.values.toSet();
     return dashboardWidgets
-            ?.map((e) => $enumDecode(_$DashboardWidgetEnumMap, e))
-            .toList() ??
-        defaultDashboardWidgets;
+        .where(known.contains)
+        .map((e) => $enumDecode(_$DashboardWidgetEnumMap, e))
+        .toList();
   } catch (_) {
     return defaultDashboardWidgets;
   }
@@ -74,23 +83,30 @@ class AppSettingProps with _$AppSettingProps {
     @Default(true) bool closeConnections,
     @Default(defaultTestUrl) String testUrl,
     @Default(true) bool isAnimateToPage,
-    @Default(false) bool autoCheckUpdate,
+    // Sideloaded RU build self-updates from aveevpn.com/update.json by default;
+    // Play build ignores this (gated by kIsPlayBuild). Desktop just opens the
+    // release page on a newer version. See docs/plans/2026-06-25-auto-update.md.
+    @Default(true) bool autoCheckUpdate,
+
+    /// Epoch-ms of the last in-app update check; drives the once/day cadence of
+    /// the Android updater (see shouldRunScheduledCheck). 0 = never checked.
+    @Default(0) int lastUpdateCheckMs,
     @Default(false) bool showLabel,
     @Default(false) bool disclaimerAccepted,
-    @Default(false) bool minimizeOnExit,
+    @Default(true) bool minimizeOnExit,
     @Default(false) bool hidden,
     @Default(false) bool developerMode,
     @Default(false) bool overrideProviderSettings,
+    @Default(true) bool applySubscriptionTheme,
+    @Default(true) bool applySubscriptionLogo,
     @Default(false) bool overrideNetworkSettings,
-    @Default(RecoveryStrategy.compatible) RecoveryStrategy recoveryStrategy,
   }) = _AppSettingProps;
 
   factory AppSettingProps.fromJson(Map<String, Object?> json) =>
       _$AppSettingPropsFromJson(json);
 
-  factory AppSettingProps.safeFromJson(Map<String, Object?>? json) => json == null
-        ? defaultAppSettingProps
-        : AppSettingProps.fromJson(json);
+  factory AppSettingProps.safeFromJson(Map<String, Object?>? json) =>
+      json == null ? defaultAppSettingProps : AppSettingProps.fromJson(json);
 }
 
 @freezed
@@ -120,7 +136,7 @@ extension AccessControlExt on AccessControl {
 class WindowProps with _$WindowProps {
   const factory WindowProps({
     @Default(450) double width,
-    @Default(900) double height,
+    @Default(650) double height,
     double? top,
     double? left,
   }) = _WindowProps;
@@ -133,9 +149,9 @@ class WindowProps with _$WindowProps {
 class VpnProps with _$VpnProps {
   const factory VpnProps({
     @Default(true) bool enable,
-    @Default(false) bool systemProxy,
+    @Default(true) bool systemProxy,
     @Default(true) bool ipv6,
-    @Default(false) bool allowBypass,
+    @Default(true) bool allowBypass,
     @Default(defaultAccessControl) AccessControl accessControl,
   }) = _VpnProps;
 
@@ -188,10 +204,13 @@ class TextScale with _$TextScale {
 class ThemeProps with _$ThemeProps {
   const factory ThemeProps({
     int? primaryColor,
+    int? orbColorPrimary,
+    int? orbColorSecondary,
+    @Default(5.0) double orbBlur,
     @Default(defaultPrimaryColors) List<int> primaryColors,
     @Default(ThemeMode.dark) ThemeMode themeMode,
-    @Default(DynamicSchemeVariant.content) DynamicSchemeVariant schemeVariant,
-    @Default(false) bool pureBlack,
+    @Default(DynamicSchemeVariant.fidelity) DynamicSchemeVariant schemeVariant,
+    @Default(true) bool pureBlack,
     @Default(TextScale()) TextScale textScale,
   }) = _ThemeProps;
 
@@ -249,7 +268,6 @@ class Config with _$Config {
     @Default([]) List<HotKeyAction> hotKeyActions,
     String? currentProfileId,
     @Default(false) bool overrideDns,
-    DAV? dav,
     @Default(defaultNetworkProps) NetworkProps networkProps,
     @Default(defaultVpnProps) VpnProps vpnProps,
     @JsonKey(fromJson: ThemeProps.safeFromJson) required ThemeProps themeProps,
@@ -271,7 +289,7 @@ class Config with _$Config {
           (json["vpnProps"]! as Map)["accessControl"] = accessControlMap;
         }
       }
-      
+
       // Migration: Replace deprecated "standard" iconStyle with "icon"
       final proxiesStyle = json["proxiesStyle"];
       if (proxiesStyle is Map) {
@@ -279,7 +297,9 @@ class Config with _$Config {
           proxiesStyle["iconStyle"] = "icon";
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      commonPrint.log('[config] swallowed config migration error: $e');
+    }
     return Config.fromJson(json);
   }
 }

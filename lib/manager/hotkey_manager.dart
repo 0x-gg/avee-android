@@ -1,15 +1,14 @@
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/common.dart';
-import 'package:flclashx/providers/config.dart';
-import 'package:flclashx/state.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/common.dart';
+import 'package:avee/providers/config.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 
 class HotKeyManager extends ConsumerStatefulWidget {
-
   const HotKeyManager({
     super.key,
     required this.child,
@@ -38,7 +37,13 @@ class _HotKeyManagerState extends ConsumerState<HotKeyManager> {
   Future<void> _handleHotKeyAction(HotAction action) async {
     switch (action) {
       case HotAction.mode:
-        globalState.appController.updateMode();
+        // No-op: the rule/global/direct mode axis is dead — mode is DERIVED
+        // from the current profile's work mode in _setupClashConfig. The enum
+        // value is retained (persisted keybindings deserialize it via
+        // $enumDecode with no unknownEnumValue fallback, so removing it would
+        // throw on load), but the hotkey no longer cycles mode.
+        commonPrint
+            .log('HotAction.mode ignored: mode is derived from work mode');
       case HotAction.start:
         globalState.appController.updateStart();
       case HotAction.view:
@@ -54,9 +59,12 @@ class _HotKeyManagerState extends ConsumerState<HotKeyManager> {
     required List<HotKeyAction> hotKeyActions,
   }) async {
     await hotKeyManager.unregisterAll();
-    final hotkeyActionHandles = hotKeyActions.where(
-      (hotKeyAction) => hotKeyAction.key != null && hotKeyAction.modifiers.isNotEmpty,
-    ).map<Future>(
+    final hotkeyActionHandles = hotKeyActions
+        .where(
+      (hotKeyAction) =>
+          hotKeyAction.key != null && hotKeyAction.modifiers.isNotEmpty,
+    )
+        .map<Future>(
       (hotKeyAction) async {
         final modifiers = hotKeyAction.modifiers
             .map((item) => item.toHotKeyModifier())
@@ -77,25 +85,25 @@ class _HotKeyManagerState extends ConsumerState<HotKeyManager> {
   }
 
   Shortcuts _buildShortcuts(Widget child) => Shortcuts(
-      shortcuts: {
-        utils.controlSingleActivator(LogicalKeyboardKey.keyW):
-            const CloseWindowIntent(),
-      },
-      child: Actions(
-        actions: {
-          CloseWindowIntent: CallbackAction<CloseWindowIntent>(
-            onInvoke: (_) => globalState.appController.handleBackOrExit(),
-          ),
-          DoNothingIntent: CallbackAction<DoNothingIntent>(
-            onInvoke: (_) => null,
-          ),
+        shortcuts: {
+          utils.controlSingleActivator(LogicalKeyboardKey.keyW):
+              const CloseWindowIntent(),
         },
-        child: child,
-      ),
-    );
+        child: Actions(
+          actions: {
+            CloseWindowIntent: CallbackAction<CloseWindowIntent>(
+              onInvoke: (_) => globalState.appController.handleBackOrExit(),
+            ),
+            DoNothingIntent: CallbackAction<DoNothingIntent>(
+              onInvoke: (_) => null,
+            ),
+          },
+          child: child,
+        ),
+      );
 
   @override
   Widget build(BuildContext context) => _buildShortcuts(
-      widget.child,
-    );
+        widget.child,
+      );
 }

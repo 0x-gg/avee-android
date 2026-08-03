@@ -2,8 +2,8 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
 import 'package:path/path.dart';
 import 'package:win32/win32.dart';
 
@@ -24,6 +24,17 @@ class Windows {
   static Windows? _instance;
   late DynamicLibrary _shell32;
   late DynamicLibrary _uxtheme;
+
+  /// Kernel-level kill for last-resort exit watchdogs. Bypasses CRT teardown
+  /// and DLL PROCESS_DETACH entirely — exit(0) with live engine/plugin
+  /// threads is exactly the "Unknown Hard Error" crash on Windows, and
+  /// re-posting WM_QUIT is a no-op when the message loop is wedged.
+  Never forceExit() {
+    TerminateProcess(GetCurrentProcess(), 0);
+    // TerminateProcess never returns for the calling process, but the
+    // analyzer can't know that.
+    exit(0);
+  }
 
   bool isDarkMode() {
     try {
@@ -223,7 +234,73 @@ class Windows {
       final parts = line.trim().split(RegExp(r'\s+'));
       final pid = int.tryParse(parts.last);
       if (pid != null) {
+        commonPrint
+            .log("[helper-conflict] freeing port $port: killing pid=$pid");
         await Process.run('taskkill', ['/PID', pid.toString(), '/F']);
+      }
+    }
+  }
+
+  /// Detect and resolve a conflict on our fixed helper port (47896)
+  /// DYNAMICALLY — by detected PID + identity probe, never by a hardcoded
+  /// process name.
+  ///
+  /// We ping the port: if it answers with OUR core hash (pingHelper compares
+  /// coreSHA256) it is our own healthy helper, so we leave it untouched.
+  /// Otherwise the port is squatted by a stale own instance or a foreign
+  /// clash-lineage helper (e.g. FlClashX), which would block our helper from
+  /// binding — so we free it by killing the detected PID. This is legitimate
+  /// desktop conflict resolution: we never touch a verified-healthy holder,
+  /// and we never target by application name.
+  Future<void> resolveHelperPortConflict() async {
+    if (await request.pingHelper()) {
+      commonPrint.log(
+          "[helper-conflict] port $helperPort held by our healthy helper — keeping");
+      return;
+    }
+    commonPrint.log(
+        "[helper-conflict] port $helperPort is not our verified helper — freeing it for our service");
+    await _killProcess(helperPort);
+  }
+
+  /// Poll the helper until it verifiably answers /ping with OUR core hash.
+  /// Replaces the old fixed 300/500ms sleeps after `sc start`, which raced
+  /// SCM service startup + the helper's HTTP bind and made the caller fall
+  /// back to an unprivileged core spawn on first launch. A token [mismatch]
+  /// aborts immediately — waiting cannot turn a stale/foreign helper into
+  /// ours, and burning the full timeout there would stall every core restart.
+  Future<bool> waitHelperReady(
+    Duration timeout, {
+    bool tolerateMismatch = false,
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (true) {
+      final result = await request.pingHelperDetailed();
+      switch (result) {
+        case HelperPingResult.ok:
+          return true;
+        case HelperPingResult.mismatch:
+          if (!tolerateMismatch) {
+            commonPrint.log(
+                "[helper] ping answered with a foreign core hash — not our helper, not waiting");
+            return false;
+          }
+          // Post-install poll: we JUST issued sc create/start for OUR binary —
+          // a foreign hash here is the old helper mid-replacement still
+          // answering. Keep polling until the deadline for the new one.
+          if (DateTime.now().isAfter(deadline)) {
+            commonPrint.log(
+                "[helper] still answering with a foreign core hash after ${timeout.inMilliseconds}ms");
+            return false;
+          }
+          await Future.delayed(const Duration(milliseconds: 300));
+        case HelperPingResult.unreachable:
+          if (DateTime.now().isAfter(deadline)) {
+            commonPrint
+                .log("[helper] not ready within ${timeout.inMilliseconds}ms");
+            return false;
+          }
+          await Future.delayed(const Duration(milliseconds: 300));
       }
     }
   }
@@ -256,15 +333,31 @@ class Windows {
       return true;
     }
 
-    await _killProcess(helperPort);
+    await resolveHelperPortConflict();
 
     final command = [
       "/c",
       if (status == WindowsHelperServiceStatus.presence) ...[
         "sc",
+        "stop",
+        appHelperService,
+        "&",
+        "sc",
         "delete",
         appHelperService,
-        "&&",
+        "&",
+        // `sc delete` is async: SCM only *marks* the service for deletion and
+        // an immediate `sc create` races it (error 1072, "marked for
+        // deletion"), which would skip `&& sc start` and doom the poll below.
+        // Give SCM a moment to settle. `ping -n 2 127.0.0.1` ≈ 1s sleep that,
+        // unlike `timeout /t`, works without interactive console stdin.
+        "ping",
+        "-n",
+        "2",
+        "127.0.0.1",
+        ">",
+        "nul",
+        "&",
       ],
       "sc",
       "create",
@@ -278,12 +371,17 @@ class Windows {
     ].join(" ");
 
     final res = runas("cmd.exe", command);
-
-    await Future.delayed(
-      const Duration(milliseconds: 300),
-    );
-
-    return res;
+    if (!res) {
+      // UAC denied or ShellExecute failed — no point polling.
+      return false;
+    }
+    // runas() returns as soon as the elevated cmd is LAUNCHED — sc create,
+    // sc start, the SCM state transition and the helper's HTTP bind all
+    // happen after it. The old fixed 300ms sleep lost that race on nearly
+    // every first launch, so the follow-up restartCore() spawned an
+    // unprivileged core and TUN silently died until an app restart. Poll for
+    // verified readiness instead; 15s bounds slow disks/AV scanning.
+    return waitHelperReady(const Duration(seconds: 15), tolerateMismatch: true);
   }
 
   /// Try to start an existing service without UAC.
@@ -304,11 +402,10 @@ class Windows {
     final result = await Process.run('sc', ['start', appHelperService]);
 
     if (result.exitCode == 0) {
-      // Wait for service to fully start
-      await Future.delayed(const Duration(milliseconds: 500));
-      // Verify it's actually running and responding
-      final newStatus = await checkService();
-      return newStatus == WindowsHelperServiceStatus.running;
+      // `sc start` returns before the service reports RUNNING and before the
+      // helper binds its HTTP port — poll for verified readiness instead of
+      // the old fixed 500ms sleep.
+      return waitHelperReady(const Duration(seconds: 8));
     }
 
     return false;

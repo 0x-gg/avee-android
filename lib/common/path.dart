@@ -1,12 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flclashx/common/common.dart';
+import 'package:avee/common/common.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 
 class AppPath {
-
   factory AppPath() {
     _instance ??= AppPath._internal();
     return _instance!;
@@ -39,15 +38,16 @@ class AppPath {
 
   String get corePath {
     if (Platform.isMacOS) {
-      // Core is stored in Application Support/com.follow.clash/cores/ (copied by Swift code on launch)
+      // Core is stored in Application Support/com.avee.vpn/cores/ (copied by Swift code on launch)
       // Permissions are set automatically in Swift
       final home = Platform.environment['HOME'] ?? '';
-      return '$home/Library/Application Support/com.follow.clash/cores/FlClashCore';
+      return '$home/Library/Application Support/com.avee.vpn/cores/AveeCore';
     }
-    return join(executableDirPath, "FlClashCore$executableExtension");
+    return join(executableDirPath, "AveeCore$executableExtension");
   }
 
-  String get helperPath => join(executableDirPath, "$appHelperService$executableExtension");
+  String get helperPath =>
+      join(executableDirPath, "$appHelperService$executableExtension");
 
   Future<String> get downloadDirPath async {
     final directory = await downloadDir.future;
@@ -61,7 +61,7 @@ class AppPath {
 
   Future<String> get lockFilePath async {
     final directory = await dataDir.future;
-    return join(directory.path, "FlClashX.lock");
+    return join(directory.path, "avee.lock");
   }
 
   Future<String> get sharedPreferencesPath async {

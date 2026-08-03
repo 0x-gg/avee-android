@@ -31,16 +31,24 @@ mixin _$AppSettingProps {
   bool get openLogs => throw _privateConstructorUsedError;
   bool get closeConnections => throw _privateConstructorUsedError;
   String get testUrl => throw _privateConstructorUsedError;
-  bool get isAnimateToPage => throw _privateConstructorUsedError;
+  bool get isAnimateToPage =>
+      throw _privateConstructorUsedError; // Sideloaded RU build self-updates from aveevpn.com/update.json by default;
+// Play build ignores this (gated by kIsPlayBuild). Desktop just opens the
+// release page on a newer version. See docs/plans/2026-06-25-auto-update.md.
   bool get autoCheckUpdate => throw _privateConstructorUsedError;
+
+  /// Epoch-ms of the last in-app update check; drives the once/day cadence of
+  /// the Android updater (see shouldRunScheduledCheck). 0 = never checked.
+  int get lastUpdateCheckMs => throw _privateConstructorUsedError;
   bool get showLabel => throw _privateConstructorUsedError;
   bool get disclaimerAccepted => throw _privateConstructorUsedError;
   bool get minimizeOnExit => throw _privateConstructorUsedError;
   bool get hidden => throw _privateConstructorUsedError;
   bool get developerMode => throw _privateConstructorUsedError;
   bool get overrideProviderSettings => throw _privateConstructorUsedError;
+  bool get applySubscriptionTheme => throw _privateConstructorUsedError;
+  bool get applySubscriptionLogo => throw _privateConstructorUsedError;
   bool get overrideNetworkSettings => throw _privateConstructorUsedError;
-  RecoveryStrategy get recoveryStrategy => throw _privateConstructorUsedError;
 
   /// Serializes this AppSettingProps to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -71,14 +79,16 @@ abstract class $AppSettingPropsCopyWith<$Res> {
       String testUrl,
       bool isAnimateToPage,
       bool autoCheckUpdate,
+      int lastUpdateCheckMs,
       bool showLabel,
       bool disclaimerAccepted,
       bool minimizeOnExit,
       bool hidden,
       bool developerMode,
       bool overrideProviderSettings,
-      bool overrideNetworkSettings,
-      RecoveryStrategy recoveryStrategy});
+      bool applySubscriptionTheme,
+      bool applySubscriptionLogo,
+      bool overrideNetworkSettings});
 }
 
 /// @nodoc
@@ -107,14 +117,16 @@ class _$AppSettingPropsCopyWithImpl<$Res, $Val extends AppSettingProps>
     Object? testUrl = null,
     Object? isAnimateToPage = null,
     Object? autoCheckUpdate = null,
+    Object? lastUpdateCheckMs = null,
     Object? showLabel = null,
     Object? disclaimerAccepted = null,
     Object? minimizeOnExit = null,
     Object? hidden = null,
     Object? developerMode = null,
     Object? overrideProviderSettings = null,
+    Object? applySubscriptionTheme = null,
+    Object? applySubscriptionLogo = null,
     Object? overrideNetworkSettings = null,
-    Object? recoveryStrategy = null,
   }) {
     return _then(_value.copyWith(
       locale: freezed == locale
@@ -161,6 +173,10 @@ class _$AppSettingPropsCopyWithImpl<$Res, $Val extends AppSettingProps>
           ? _value.autoCheckUpdate
           : autoCheckUpdate // ignore: cast_nullable_to_non_nullable
               as bool,
+      lastUpdateCheckMs: null == lastUpdateCheckMs
+          ? _value.lastUpdateCheckMs
+          : lastUpdateCheckMs // ignore: cast_nullable_to_non_nullable
+              as int,
       showLabel: null == showLabel
           ? _value.showLabel
           : showLabel // ignore: cast_nullable_to_non_nullable
@@ -185,14 +201,18 @@ class _$AppSettingPropsCopyWithImpl<$Res, $Val extends AppSettingProps>
           ? _value.overrideProviderSettings
           : overrideProviderSettings // ignore: cast_nullable_to_non_nullable
               as bool,
+      applySubscriptionTheme: null == applySubscriptionTheme
+          ? _value.applySubscriptionTheme
+          : applySubscriptionTheme // ignore: cast_nullable_to_non_nullable
+              as bool,
+      applySubscriptionLogo: null == applySubscriptionLogo
+          ? _value.applySubscriptionLogo
+          : applySubscriptionLogo // ignore: cast_nullable_to_non_nullable
+              as bool,
       overrideNetworkSettings: null == overrideNetworkSettings
           ? _value.overrideNetworkSettings
           : overrideNetworkSettings // ignore: cast_nullable_to_non_nullable
               as bool,
-      recoveryStrategy: null == recoveryStrategy
-          ? _value.recoveryStrategy
-          : recoveryStrategy // ignore: cast_nullable_to_non_nullable
-              as RecoveryStrategy,
     ) as $Val);
   }
 }
@@ -218,14 +238,16 @@ abstract class _$$AppSettingPropsImplCopyWith<$Res>
       String testUrl,
       bool isAnimateToPage,
       bool autoCheckUpdate,
+      int lastUpdateCheckMs,
       bool showLabel,
       bool disclaimerAccepted,
       bool minimizeOnExit,
       bool hidden,
       bool developerMode,
       bool overrideProviderSettings,
-      bool overrideNetworkSettings,
-      RecoveryStrategy recoveryStrategy});
+      bool applySubscriptionTheme,
+      bool applySubscriptionLogo,
+      bool overrideNetworkSettings});
 }
 
 /// @nodoc
@@ -252,14 +274,16 @@ class __$$AppSettingPropsImplCopyWithImpl<$Res>
     Object? testUrl = null,
     Object? isAnimateToPage = null,
     Object? autoCheckUpdate = null,
+    Object? lastUpdateCheckMs = null,
     Object? showLabel = null,
     Object? disclaimerAccepted = null,
     Object? minimizeOnExit = null,
     Object? hidden = null,
     Object? developerMode = null,
     Object? overrideProviderSettings = null,
+    Object? applySubscriptionTheme = null,
+    Object? applySubscriptionLogo = null,
     Object? overrideNetworkSettings = null,
-    Object? recoveryStrategy = null,
   }) {
     return _then(_$AppSettingPropsImpl(
       locale: freezed == locale
@@ -306,6 +330,10 @@ class __$$AppSettingPropsImplCopyWithImpl<$Res>
           ? _value.autoCheckUpdate
           : autoCheckUpdate // ignore: cast_nullable_to_non_nullable
               as bool,
+      lastUpdateCheckMs: null == lastUpdateCheckMs
+          ? _value.lastUpdateCheckMs
+          : lastUpdateCheckMs // ignore: cast_nullable_to_non_nullable
+              as int,
       showLabel: null == showLabel
           ? _value.showLabel
           : showLabel // ignore: cast_nullable_to_non_nullable
@@ -330,14 +358,18 @@ class __$$AppSettingPropsImplCopyWithImpl<$Res>
           ? _value.overrideProviderSettings
           : overrideProviderSettings // ignore: cast_nullable_to_non_nullable
               as bool,
+      applySubscriptionTheme: null == applySubscriptionTheme
+          ? _value.applySubscriptionTheme
+          : applySubscriptionTheme // ignore: cast_nullable_to_non_nullable
+              as bool,
+      applySubscriptionLogo: null == applySubscriptionLogo
+          ? _value.applySubscriptionLogo
+          : applySubscriptionLogo // ignore: cast_nullable_to_non_nullable
+              as bool,
       overrideNetworkSettings: null == overrideNetworkSettings
           ? _value.overrideNetworkSettings
           : overrideNetworkSettings // ignore: cast_nullable_to_non_nullable
               as bool,
-      recoveryStrategy: null == recoveryStrategy
-          ? _value.recoveryStrategy
-          : recoveryStrategy // ignore: cast_nullable_to_non_nullable
-              as RecoveryStrategy,
     ));
   }
 }
@@ -357,15 +389,17 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
       this.closeConnections = true,
       this.testUrl = defaultTestUrl,
       this.isAnimateToPage = true,
-      this.autoCheckUpdate = false,
+      this.autoCheckUpdate = true,
+      this.lastUpdateCheckMs = 0,
       this.showLabel = false,
       this.disclaimerAccepted = false,
-      this.minimizeOnExit = false,
+      this.minimizeOnExit = true,
       this.hidden = false,
       this.developerMode = false,
       this.overrideProviderSettings = false,
-      this.overrideNetworkSettings = false,
-      this.recoveryStrategy = RecoveryStrategy.compatible})
+      this.applySubscriptionTheme = true,
+      this.applySubscriptionLogo = true,
+      this.overrideNetworkSettings = false})
       : _dashboardWidgets = dashboardWidgets;
 
   factory _$AppSettingPropsImpl.fromJson(Map<String, dynamic> json) =>
@@ -407,9 +441,18 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
   @override
   @JsonKey()
   final bool isAnimateToPage;
+// Sideloaded RU build self-updates from aveevpn.com/update.json by default;
+// Play build ignores this (gated by kIsPlayBuild). Desktop just opens the
+// release page on a newer version. See docs/plans/2026-06-25-auto-update.md.
   @override
   @JsonKey()
   final bool autoCheckUpdate;
+
+  /// Epoch-ms of the last in-app update check; drives the once/day cadence of
+  /// the Android updater (see shouldRunScheduledCheck). 0 = never checked.
+  @override
+  @JsonKey()
+  final int lastUpdateCheckMs;
   @override
   @JsonKey()
   final bool showLabel;
@@ -430,14 +473,17 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
   final bool overrideProviderSettings;
   @override
   @JsonKey()
-  final bool overrideNetworkSettings;
+  final bool applySubscriptionTheme;
   @override
   @JsonKey()
-  final RecoveryStrategy recoveryStrategy;
+  final bool applySubscriptionLogo;
+  @override
+  @JsonKey()
+  final bool overrideNetworkSettings;
 
   @override
   String toString() {
-    return 'AppSettingProps(locale: $locale, dashboardWidgets: $dashboardWidgets, onlyStatisticsProxy: $onlyStatisticsProxy, autoLaunch: $autoLaunch, silentLaunch: $silentLaunch, autoRun: $autoRun, openLogs: $openLogs, closeConnections: $closeConnections, testUrl: $testUrl, isAnimateToPage: $isAnimateToPage, autoCheckUpdate: $autoCheckUpdate, showLabel: $showLabel, disclaimerAccepted: $disclaimerAccepted, minimizeOnExit: $minimizeOnExit, hidden: $hidden, developerMode: $developerMode, overrideProviderSettings: $overrideProviderSettings, overrideNetworkSettings: $overrideNetworkSettings, recoveryStrategy: $recoveryStrategy)';
+    return 'AppSettingProps(locale: $locale, dashboardWidgets: $dashboardWidgets, onlyStatisticsProxy: $onlyStatisticsProxy, autoLaunch: $autoLaunch, silentLaunch: $silentLaunch, autoRun: $autoRun, openLogs: $openLogs, closeConnections: $closeConnections, testUrl: $testUrl, isAnimateToPage: $isAnimateToPage, autoCheckUpdate: $autoCheckUpdate, lastUpdateCheckMs: $lastUpdateCheckMs, showLabel: $showLabel, disclaimerAccepted: $disclaimerAccepted, minimizeOnExit: $minimizeOnExit, hidden: $hidden, developerMode: $developerMode, overrideProviderSettings: $overrideProviderSettings, applySubscriptionTheme: $applySubscriptionTheme, applySubscriptionLogo: $applySubscriptionLogo, overrideNetworkSettings: $overrideNetworkSettings)';
   }
 
   @override
@@ -464,6 +510,8 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
                 other.isAnimateToPage == isAnimateToPage) &&
             (identical(other.autoCheckUpdate, autoCheckUpdate) ||
                 other.autoCheckUpdate == autoCheckUpdate) &&
+            (identical(other.lastUpdateCheckMs, lastUpdateCheckMs) ||
+                other.lastUpdateCheckMs == lastUpdateCheckMs) &&
             (identical(other.showLabel, showLabel) ||
                 other.showLabel == showLabel) &&
             (identical(other.disclaimerAccepted, disclaimerAccepted) ||
@@ -476,11 +524,13 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
             (identical(
                     other.overrideProviderSettings, overrideProviderSettings) ||
                 other.overrideProviderSettings == overrideProviderSettings) &&
+            (identical(other.applySubscriptionTheme, applySubscriptionTheme) ||
+                other.applySubscriptionTheme == applySubscriptionTheme) &&
+            (identical(other.applySubscriptionLogo, applySubscriptionLogo) ||
+                other.applySubscriptionLogo == applySubscriptionLogo) &&
             (identical(
                     other.overrideNetworkSettings, overrideNetworkSettings) ||
-                other.overrideNetworkSettings == overrideNetworkSettings) &&
-            (identical(other.recoveryStrategy, recoveryStrategy) ||
-                other.recoveryStrategy == recoveryStrategy));
+                other.overrideNetworkSettings == overrideNetworkSettings));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -498,14 +548,16 @@ class _$AppSettingPropsImpl implements _AppSettingProps {
         testUrl,
         isAnimateToPage,
         autoCheckUpdate,
+        lastUpdateCheckMs,
         showLabel,
         disclaimerAccepted,
         minimizeOnExit,
         hidden,
         developerMode,
         overrideProviderSettings,
-        overrideNetworkSettings,
-        recoveryStrategy
+        applySubscriptionTheme,
+        applySubscriptionLogo,
+        overrideNetworkSettings
       ]);
 
   /// Create a copy of AppSettingProps
@@ -539,14 +591,16 @@ abstract class _AppSettingProps implements AppSettingProps {
       final String testUrl,
       final bool isAnimateToPage,
       final bool autoCheckUpdate,
+      final int lastUpdateCheckMs,
       final bool showLabel,
       final bool disclaimerAccepted,
       final bool minimizeOnExit,
       final bool hidden,
       final bool developerMode,
       final bool overrideProviderSettings,
-      final bool overrideNetworkSettings,
-      final RecoveryStrategy recoveryStrategy}) = _$AppSettingPropsImpl;
+      final bool applySubscriptionTheme,
+      final bool applySubscriptionLogo,
+      final bool overrideNetworkSettings}) = _$AppSettingPropsImpl;
 
   factory _AppSettingProps.fromJson(Map<String, dynamic> json) =
       _$AppSettingPropsImpl.fromJson;
@@ -571,9 +625,17 @@ abstract class _AppSettingProps implements AppSettingProps {
   @override
   String get testUrl;
   @override
-  bool get isAnimateToPage;
+  bool
+      get isAnimateToPage; // Sideloaded RU build self-updates from aveevpn.com/update.json by default;
+// Play build ignores this (gated by kIsPlayBuild). Desktop just opens the
+// release page on a newer version. See docs/plans/2026-06-25-auto-update.md.
   @override
   bool get autoCheckUpdate;
+
+  /// Epoch-ms of the last in-app update check; drives the once/day cadence of
+  /// the Android updater (see shouldRunScheduledCheck). 0 = never checked.
+  @override
+  int get lastUpdateCheckMs;
   @override
   bool get showLabel;
   @override
@@ -587,9 +649,11 @@ abstract class _AppSettingProps implements AppSettingProps {
   @override
   bool get overrideProviderSettings;
   @override
-  bool get overrideNetworkSettings;
+  bool get applySubscriptionTheme;
   @override
-  RecoveryStrategy get recoveryStrategy;
+  bool get applySubscriptionLogo;
+  @override
+  bool get overrideNetworkSettings;
 
   /// Create a copy of AppSettingProps
   /// with the given fields replaced by the non-null parameter values.
@@ -1030,7 +1094,7 @@ class __$$WindowPropsImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$WindowPropsImpl implements _WindowProps {
   const _$WindowPropsImpl(
-      {this.width = 450, this.height = 900, this.top, this.left});
+      {this.width = 450, this.height = 650, this.top, this.left});
 
   factory _$WindowPropsImpl.fromJson(Map<String, dynamic> json) =>
       _$$WindowPropsImplFromJson(json);
@@ -1270,9 +1334,9 @@ class __$$VpnPropsImplCopyWithImpl<$Res>
 class _$VpnPropsImpl implements _VpnProps {
   const _$VpnPropsImpl(
       {this.enable = true,
-      this.systemProxy = false,
+      this.systemProxy = true,
       this.ipv6 = true,
-      this.allowBypass = false,
+      this.allowBypass = true,
       this.accessControl = defaultAccessControl});
 
   factory _$VpnPropsImpl.fromJson(Map<String, dynamic> json) =>
@@ -2044,6 +2108,9 @@ ThemeProps _$ThemePropsFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$ThemeProps {
   int? get primaryColor => throw _privateConstructorUsedError;
+  int? get orbColorPrimary => throw _privateConstructorUsedError;
+  int? get orbColorSecondary => throw _privateConstructorUsedError;
+  double get orbBlur => throw _privateConstructorUsedError;
   List<int> get primaryColors => throw _privateConstructorUsedError;
   ThemeMode get themeMode => throw _privateConstructorUsedError;
   DynamicSchemeVariant get schemeVariant => throw _privateConstructorUsedError;
@@ -2068,6 +2135,9 @@ abstract class $ThemePropsCopyWith<$Res> {
   @useResult
   $Res call(
       {int? primaryColor,
+      int? orbColorPrimary,
+      int? orbColorSecondary,
+      double orbBlur,
       List<int> primaryColors,
       ThemeMode themeMode,
       DynamicSchemeVariant schemeVariant,
@@ -2093,6 +2163,9 @@ class _$ThemePropsCopyWithImpl<$Res, $Val extends ThemeProps>
   @override
   $Res call({
     Object? primaryColor = freezed,
+    Object? orbColorPrimary = freezed,
+    Object? orbColorSecondary = freezed,
+    Object? orbBlur = null,
     Object? primaryColors = null,
     Object? themeMode = null,
     Object? schemeVariant = null,
@@ -2104,6 +2177,18 @@ class _$ThemePropsCopyWithImpl<$Res, $Val extends ThemeProps>
           ? _value.primaryColor
           : primaryColor // ignore: cast_nullable_to_non_nullable
               as int?,
+      orbColorPrimary: freezed == orbColorPrimary
+          ? _value.orbColorPrimary
+          : orbColorPrimary // ignore: cast_nullable_to_non_nullable
+              as int?,
+      orbColorSecondary: freezed == orbColorSecondary
+          ? _value.orbColorSecondary
+          : orbColorSecondary // ignore: cast_nullable_to_non_nullable
+              as int?,
+      orbBlur: null == orbBlur
+          ? _value.orbBlur
+          : orbBlur // ignore: cast_nullable_to_non_nullable
+              as double,
       primaryColors: null == primaryColors
           ? _value.primaryColors
           : primaryColors // ignore: cast_nullable_to_non_nullable
@@ -2148,6 +2233,9 @@ abstract class _$$ThemePropsImplCopyWith<$Res>
   @useResult
   $Res call(
       {int? primaryColor,
+      int? orbColorPrimary,
+      int? orbColorSecondary,
+      double orbBlur,
       List<int> primaryColors,
       ThemeMode themeMode,
       DynamicSchemeVariant schemeVariant,
@@ -2172,6 +2260,9 @@ class __$$ThemePropsImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? primaryColor = freezed,
+    Object? orbColorPrimary = freezed,
+    Object? orbColorSecondary = freezed,
+    Object? orbBlur = null,
     Object? primaryColors = null,
     Object? themeMode = null,
     Object? schemeVariant = null,
@@ -2183,6 +2274,18 @@ class __$$ThemePropsImplCopyWithImpl<$Res>
           ? _value.primaryColor
           : primaryColor // ignore: cast_nullable_to_non_nullable
               as int?,
+      orbColorPrimary: freezed == orbColorPrimary
+          ? _value.orbColorPrimary
+          : orbColorPrimary // ignore: cast_nullable_to_non_nullable
+              as int?,
+      orbColorSecondary: freezed == orbColorSecondary
+          ? _value.orbColorSecondary
+          : orbColorSecondary // ignore: cast_nullable_to_non_nullable
+              as int?,
+      orbBlur: null == orbBlur
+          ? _value.orbBlur
+          : orbBlur // ignore: cast_nullable_to_non_nullable
+              as double,
       primaryColors: null == primaryColors
           ? _value._primaryColors
           : primaryColors // ignore: cast_nullable_to_non_nullable
@@ -2212,10 +2315,13 @@ class __$$ThemePropsImplCopyWithImpl<$Res>
 class _$ThemePropsImpl implements _ThemeProps {
   const _$ThemePropsImpl(
       {this.primaryColor,
+      this.orbColorPrimary,
+      this.orbColorSecondary,
+      this.orbBlur = 5.0,
       final List<int> primaryColors = defaultPrimaryColors,
       this.themeMode = ThemeMode.dark,
-      this.schemeVariant = DynamicSchemeVariant.content,
-      this.pureBlack = false,
+      this.schemeVariant = DynamicSchemeVariant.fidelity,
+      this.pureBlack = true,
       this.textScale = const TextScale()})
       : _primaryColors = primaryColors;
 
@@ -2224,6 +2330,13 @@ class _$ThemePropsImpl implements _ThemeProps {
 
   @override
   final int? primaryColor;
+  @override
+  final int? orbColorPrimary;
+  @override
+  final int? orbColorSecondary;
+  @override
+  @JsonKey()
+  final double orbBlur;
   final List<int> _primaryColors;
   @override
   @JsonKey()
@@ -2248,7 +2361,7 @@ class _$ThemePropsImpl implements _ThemeProps {
 
   @override
   String toString() {
-    return 'ThemeProps(primaryColor: $primaryColor, primaryColors: $primaryColors, themeMode: $themeMode, schemeVariant: $schemeVariant, pureBlack: $pureBlack, textScale: $textScale)';
+    return 'ThemeProps(primaryColor: $primaryColor, orbColorPrimary: $orbColorPrimary, orbColorSecondary: $orbColorSecondary, orbBlur: $orbBlur, primaryColors: $primaryColors, themeMode: $themeMode, schemeVariant: $schemeVariant, pureBlack: $pureBlack, textScale: $textScale)';
   }
 
   @override
@@ -2258,6 +2371,11 @@ class _$ThemePropsImpl implements _ThemeProps {
             other is _$ThemePropsImpl &&
             (identical(other.primaryColor, primaryColor) ||
                 other.primaryColor == primaryColor) &&
+            (identical(other.orbColorPrimary, orbColorPrimary) ||
+                other.orbColorPrimary == orbColorPrimary) &&
+            (identical(other.orbColorSecondary, orbColorSecondary) ||
+                other.orbColorSecondary == orbColorSecondary) &&
+            (identical(other.orbBlur, orbBlur) || other.orbBlur == orbBlur) &&
             const DeepCollectionEquality()
                 .equals(other._primaryColors, _primaryColors) &&
             (identical(other.themeMode, themeMode) ||
@@ -2275,6 +2393,9 @@ class _$ThemePropsImpl implements _ThemeProps {
   int get hashCode => Object.hash(
       runtimeType,
       primaryColor,
+      orbColorPrimary,
+      orbColorSecondary,
+      orbBlur,
       const DeepCollectionEquality().hash(_primaryColors),
       themeMode,
       schemeVariant,
@@ -2300,6 +2421,9 @@ class _$ThemePropsImpl implements _ThemeProps {
 abstract class _ThemeProps implements ThemeProps {
   const factory _ThemeProps(
       {final int? primaryColor,
+      final int? orbColorPrimary,
+      final int? orbColorSecondary,
+      final double orbBlur,
       final List<int> primaryColors,
       final ThemeMode themeMode,
       final DynamicSchemeVariant schemeVariant,
@@ -2311,6 +2435,12 @@ abstract class _ThemeProps implements ThemeProps {
 
   @override
   int? get primaryColor;
+  @override
+  int? get orbColorPrimary;
+  @override
+  int? get orbColorSecondary;
+  @override
+  double get orbBlur;
   @override
   List<int> get primaryColors;
   @override
@@ -2519,7 +2649,6 @@ mixin _$Config {
   List<HotKeyAction> get hotKeyActions => throw _privateConstructorUsedError;
   String? get currentProfileId => throw _privateConstructorUsedError;
   bool get overrideDns => throw _privateConstructorUsedError;
-  DAV? get dav => throw _privateConstructorUsedError;
   NetworkProps get networkProps => throw _privateConstructorUsedError;
   VpnProps get vpnProps => throw _privateConstructorUsedError;
   @JsonKey(fromJson: ThemeProps.safeFromJson)
@@ -2550,7 +2679,6 @@ abstract class $ConfigCopyWith<$Res> {
       List<HotKeyAction> hotKeyActions,
       String? currentProfileId,
       bool overrideDns,
-      DAV? dav,
       NetworkProps networkProps,
       VpnProps vpnProps,
       @JsonKey(fromJson: ThemeProps.safeFromJson) ThemeProps themeProps,
@@ -2560,7 +2688,6 @@ abstract class $ConfigCopyWith<$Res> {
       ScriptProps scriptProps});
 
   $AppSettingPropsCopyWith<$Res> get appSetting;
-  $DAVCopyWith<$Res>? get dav;
   $NetworkPropsCopyWith<$Res> get networkProps;
   $VpnPropsCopyWith<$Res> get vpnProps;
   $ThemePropsCopyWith<$Res> get themeProps;
@@ -2590,7 +2717,6 @@ class _$ConfigCopyWithImpl<$Res, $Val extends Config>
     Object? hotKeyActions = null,
     Object? currentProfileId = freezed,
     Object? overrideDns = null,
-    Object? dav = freezed,
     Object? networkProps = null,
     Object? vpnProps = null,
     Object? themeProps = null,
@@ -2620,10 +2746,6 @@ class _$ConfigCopyWithImpl<$Res, $Val extends Config>
           ? _value.overrideDns
           : overrideDns // ignore: cast_nullable_to_non_nullable
               as bool,
-      dav: freezed == dav
-          ? _value.dav
-          : dav // ignore: cast_nullable_to_non_nullable
-              as DAV?,
       networkProps: null == networkProps
           ? _value.networkProps
           : networkProps // ignore: cast_nullable_to_non_nullable
@@ -2662,20 +2784,6 @@ class _$ConfigCopyWithImpl<$Res, $Val extends Config>
   $AppSettingPropsCopyWith<$Res> get appSetting {
     return $AppSettingPropsCopyWith<$Res>(_value.appSetting, (value) {
       return _then(_value.copyWith(appSetting: value) as $Val);
-    });
-  }
-
-  /// Create a copy of Config
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $DAVCopyWith<$Res>? get dav {
-    if (_value.dav == null) {
-      return null;
-    }
-
-    return $DAVCopyWith<$Res>(_value.dav!, (value) {
-      return _then(_value.copyWith(dav: value) as $Val);
     });
   }
 
@@ -2764,7 +2872,6 @@ abstract class _$$ConfigImplCopyWith<$Res> implements $ConfigCopyWith<$Res> {
       List<HotKeyAction> hotKeyActions,
       String? currentProfileId,
       bool overrideDns,
-      DAV? dav,
       NetworkProps networkProps,
       VpnProps vpnProps,
       @JsonKey(fromJson: ThemeProps.safeFromJson) ThemeProps themeProps,
@@ -2775,8 +2882,6 @@ abstract class _$$ConfigImplCopyWith<$Res> implements $ConfigCopyWith<$Res> {
 
   @override
   $AppSettingPropsCopyWith<$Res> get appSetting;
-  @override
-  $DAVCopyWith<$Res>? get dav;
   @override
   $NetworkPropsCopyWith<$Res> get networkProps;
   @override
@@ -2811,7 +2916,6 @@ class __$$ConfigImplCopyWithImpl<$Res>
     Object? hotKeyActions = null,
     Object? currentProfileId = freezed,
     Object? overrideDns = null,
-    Object? dav = freezed,
     Object? networkProps = null,
     Object? vpnProps = null,
     Object? themeProps = null,
@@ -2841,10 +2945,6 @@ class __$$ConfigImplCopyWithImpl<$Res>
           ? _value.overrideDns
           : overrideDns // ignore: cast_nullable_to_non_nullable
               as bool,
-      dav: freezed == dav
-          ? _value.dav
-          : dav // ignore: cast_nullable_to_non_nullable
-              as DAV?,
       networkProps: null == networkProps
           ? _value.networkProps
           : networkProps // ignore: cast_nullable_to_non_nullable
@@ -2887,7 +2987,6 @@ class _$ConfigImpl implements _Config {
       final List<HotKeyAction> hotKeyActions = const [],
       this.currentProfileId,
       this.overrideDns = false,
-      this.dav,
       this.networkProps = defaultNetworkProps,
       this.vpnProps = defaultVpnProps,
       @JsonKey(fromJson: ThemeProps.safeFromJson) required this.themeProps,
@@ -2928,8 +3027,6 @@ class _$ConfigImpl implements _Config {
   @JsonKey()
   final bool overrideDns;
   @override
-  final DAV? dav;
-  @override
   @JsonKey()
   final NetworkProps networkProps;
   @override
@@ -2953,7 +3050,7 @@ class _$ConfigImpl implements _Config {
 
   @override
   String toString() {
-    return 'Config(appSetting: $appSetting, profiles: $profiles, hotKeyActions: $hotKeyActions, currentProfileId: $currentProfileId, overrideDns: $overrideDns, dav: $dav, networkProps: $networkProps, vpnProps: $vpnProps, themeProps: $themeProps, proxiesStyle: $proxiesStyle, windowProps: $windowProps, patchClashConfig: $patchClashConfig, scriptProps: $scriptProps)';
+    return 'Config(appSetting: $appSetting, profiles: $profiles, hotKeyActions: $hotKeyActions, currentProfileId: $currentProfileId, overrideDns: $overrideDns, networkProps: $networkProps, vpnProps: $vpnProps, themeProps: $themeProps, proxiesStyle: $proxiesStyle, windowProps: $windowProps, patchClashConfig: $patchClashConfig, scriptProps: $scriptProps)';
   }
 
   @override
@@ -2970,7 +3067,6 @@ class _$ConfigImpl implements _Config {
                 other.currentProfileId == currentProfileId) &&
             (identical(other.overrideDns, overrideDns) ||
                 other.overrideDns == overrideDns) &&
-            (identical(other.dav, dav) || other.dav == dav) &&
             (identical(other.networkProps, networkProps) ||
                 other.networkProps == networkProps) &&
             (identical(other.vpnProps, vpnProps) ||
@@ -2996,7 +3092,6 @@ class _$ConfigImpl implements _Config {
       const DeepCollectionEquality().hash(_hotKeyActions),
       currentProfileId,
       overrideDns,
-      dav,
       networkProps,
       vpnProps,
       themeProps,
@@ -3029,7 +3124,6 @@ abstract class _Config implements Config {
       final List<HotKeyAction> hotKeyActions,
       final String? currentProfileId,
       final bool overrideDns,
-      final DAV? dav,
       final NetworkProps networkProps,
       final VpnProps vpnProps,
       @JsonKey(fromJson: ThemeProps.safeFromJson)
@@ -3052,8 +3146,6 @@ abstract class _Config implements Config {
   String? get currentProfileId;
   @override
   bool get overrideDns;
-  @override
-  DAV? get dav;
   @override
   NetworkProps get networkProps;
   @override

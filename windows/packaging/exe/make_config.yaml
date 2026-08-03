@@ -1,11 +1,11 @@
 script_template: inno_setup.iss
-app_id: 728B3532-C74B-4870-9068-BE70FE12A3E6
-app_name: FlClashX
-publisher: pluralplay
-publisher_url: https://github.com/pluralplay/FlClashX
-display_name: FlClashX
-executable_name: FlClashX.exe
-output_base_file_name: FlClashX.exe
+app_id: 6997C740-3DF8-47BE-8EDC-8FF02E826EDD
+app_name: avee
+publisher: avee
+publisher_url: https://github.com/0x-gg/avee-android-app
+display_name: avee
+executable_name: avee.exe
+output_base_file_name: avee.exe
 setup_icon_file: ..\windows\runner\resources\app_icon.ico
 locales:
   - lang: ru

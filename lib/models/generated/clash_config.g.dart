@@ -51,6 +51,7 @@ const _$GroupTypeEnumMap = {
   GroupType.Fallback: 'Fallback',
   GroupType.LoadBalance: 'LoadBalance',
   GroupType.Relay: 'Relay',
+  GroupType.Smart: 'Smart',
 };
 
 _$RuleProviderImpl _$$RuleProviderImplFromJson(Map<String, dynamic> json) =>
@@ -345,11 +346,12 @@ _$ClashConfigImpl _$$ClashConfigImplFromJson(Map<String, dynamic> json) =>
       findProcessMode: $enumDecodeNullable(
               _$FindProcessModeEnumMap, json['find-process-mode'],
               unknownValue: FindProcessMode.always) ??
-          FindProcessMode.always,
+          FindProcessMode.strict,
       keepAliveInterval: (json['keep-alive-interval'] as num?)?.toInt() ??
           defaultKeepAliveInterval,
       unifiedDelay: json['unified-delay'] as bool? ?? true,
       tcpConcurrent: json['tcp-concurrent'] as bool? ?? true,
+      tlsFragment: json['tls-fragment'] as bool? ?? false,
       tun: json['tun'] == null
           ? defaultTun
           : Tun.safeFormJson(json['tun'] as Map<String, Object?>?),
@@ -394,6 +396,7 @@ Map<String, dynamic> _$$ClashConfigImplToJson(_$ClashConfigImpl instance) =>
       'keep-alive-interval': instance.keepAliveInterval,
       'unified-delay': instance.unifiedDelay,
       'tcp-concurrent': instance.tcpConcurrent,
+      'tls-fragment': instance.tlsFragment,
       'tun': instance.tun,
       'dns': instance.dns,
       'geox-url': instance.geoXUrl,

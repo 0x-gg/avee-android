@@ -1,16 +1,17 @@
 import 'dart:math';
 
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/providers/app.dart';
-import 'package:flclashx/providers/config.dart';
-import 'package:flclashx/providers/state.dart';
-import 'package:flclashx/state.dart';
-import 'package:flclashx/widgets/widgets.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/providers/app.dart';
+import 'package:avee/providers/config.dart';
+import 'package:avee/providers/state.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import 'card.dart';
 import 'common.dart';
@@ -38,10 +39,27 @@ class _ProxiesListViewState extends State<ProxiesListView> {
   int _lastGroupsVersion = 0;
   List<String> _lastGroupNames = [];
 
+  // Coalesce scroll-driven header updates to one per frame. ScrollController
+  // fires 60+ times per second; without this debounce we rebuilt the sticky
+  // header on every pixel of movement. mounted + hasClients guards prevent
+  // post-dispose access if the widget tree is torn down between scroll and
+  // the post-frame callback.
+  bool _headerUpdateScheduled = false;
+
   @override
   void initState() {
     super.initState();
-    _controller.addListener(_adjustHeader);
+    _controller.addListener(_scheduleHeaderUpdate);
+  }
+
+  void _scheduleHeaderUpdate() {
+    if (_headerUpdateScheduled) return;
+    _headerUpdateScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _headerUpdateScheduled = false;
+      if (!mounted || !_controller.hasClients) return;
+      _adjustHeader();
+    });
   }
 
   void _adjustHeader() {
@@ -66,7 +84,7 @@ class _ProxiesListViewState extends State<ProxiesListView> {
   void dispose() {
     _headerStateNotifier.dispose();
     _controller
-      ..removeListener(_adjustHeader)
+      ..removeListener(_scheduleHeaderUpdate)
       ..dispose();
     super.dispose();
   }
@@ -147,69 +165,68 @@ class _ProxiesListViewState extends State<ProxiesListView> {
 
   @override
   Widget build(BuildContext context) => Consumer(
-      builder: (_, ref, __) {
-        final state = ref.watch(proxiesListSelectorStateProvider);
+        builder: (_, ref, __) {
+          final state = ref.watch(proxiesListSelectorStateProvider);
 
-        final groupsVersion = ref.watch(versionProvider);
+          final groupsVersion = ref.watch(versionProvider);
 
-        ref.watch(themeSettingProvider.select((state) => state.textScale));
+          ref.watch(themeSettingProvider.select((state) => state.textScale));
 
-        if (_lastGroupsVersion != groupsVersion ||
-            !listEquals(_lastGroupNames, state.groupNames)) {
-          _lastGroupsVersion = groupsVersion;
-          _lastGroupNames = state.groupNames;
+          if (_lastGroupsVersion != groupsVersion ||
+              !listEquals(_lastGroupNames, state.groupNames)) {
+            _lastGroupsVersion = groupsVersion;
+            _lastGroupNames = state.groupNames;
 
-          _lastGroupNameProxiesMap.clear();
+            _lastGroupNameProxiesMap.clear();
 
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              setState(() {});
-            }
-          });
-        }
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {});
+              }
+            });
+          }
 
-        if (state.groupNames.isEmpty) {
-          return NullStatus(
-            label: appLocalizations.nullTip(appLocalizations.proxies),
+          if (state.groupNames.isEmpty) {
+            return NullStatus(
+              label: appLocalizations.nullTip(appLocalizations.proxies),
+            );
+          }
+          final items = _buildItems(
+            ref,
+            groupNames: state.groupNames,
+            currentUnfoldSet: state.currentUnfoldSet,
+            columns: state.columns,
+            type: state.proxyCardType,
+            query: state.query,
           );
-        }
-        final items = _buildItems(
-          ref,
-          groupNames: state.groupNames,
-          currentUnfoldSet: state.currentUnfoldSet,
-          columns: state.columns,
-          type: state.proxyCardType,
-          query: state.query,
-        );
-        return RepaintBoundary(
-          child: CommonScrollBar(
-            controller: _controller,
-            child: Stack(
-              children: [
-              Positioned.fill(
-                child: ScrollConfiguration(
-                  behavior: HiddenBarScrollBehavior(),
-                  child: FocusTraversalGroup(
-                    policy: WidgetOrderTraversalPolicy(),
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      controller: _controller,
-                      itemCount: items.length,
-                      itemBuilder: (_, index) => items[index],
+          return RepaintBoundary(
+            child: CommonScrollBar(
+              controller: _controller,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: ScrollConfiguration(
+                      behavior: HiddenBarScrollBehavior(),
+                      child: FocusTraversalGroup(
+                        policy: WidgetOrderTraversalPolicy(),
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          controller: _controller,
+                          itemCount: items.length,
+                          itemBuilder: (_, index) => items[index],
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-              ],
             ),
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
 }
 
 class ProxyGroupCard extends StatefulWidget {
-
   const ProxyGroupCard({
     super.key,
     required this.group,
@@ -234,7 +251,6 @@ class _ProxyGroupCardState extends State<ProxyGroupCard>
 
   bool get isExpand => _expansibleController.isExpanded;
 
-
   @override
   void dispose() {
     _expansibleController.dispose();
@@ -244,7 +260,7 @@ class _ProxyGroupCardState extends State<ProxyGroupCard>
   void _toggleExpansion(Set<String> currentUnfoldSet) {
     final appController = globalState.appController;
     final unfoldSet = Set<String>.from(currentUnfoldSet);
-    
+
     if (_expansibleController.isExpanded) {
       _expansibleController.collapse();
       unfoldSet.remove(groupName);
@@ -266,42 +282,42 @@ class _ProxyGroupCardState extends State<ProxyGroupCard>
   }
 
   Widget _buildIcon() => Consumer(
-      builder: (_, ref, child) {
-        final iconStyle = ref.watch(
-          proxiesStyleSettingProvider.select(
-            (state) => state.iconStyle,
-          ),
-        );
-        final icon = ref.watch(proxiesStyleSettingProvider.select((state) {
-          final iconMapEntryList = state.iconMap.entries.toList();
-          final index = iconMapEntryList.indexWhere((item) {
-            try {
-              return RegExp(item.key).hasMatch(groupName);
-            } catch (_) {
-              return false;
+        builder: (_, ref, child) {
+          final iconStyle = ref.watch(
+            proxiesStyleSettingProvider.select(
+              (state) => state.iconStyle,
+            ),
+          );
+          final icon = ref.watch(proxiesStyleSettingProvider.select((state) {
+            final iconMapEntryList = state.iconMap.entries.toList();
+            final index = iconMapEntryList.indexWhere((item) {
+              try {
+                return RegExp(item.key).hasMatch(groupName);
+              } catch (_) {
+                return false;
+              }
+            });
+            if (index != -1) {
+              return iconMapEntryList[index].value;
             }
-          });
-          if (index != -1) {
-            return iconMapEntryList[index].value;
-          }
-          return this.icon;
-        }));
-        return switch (iconStyle) {
-          ProxiesIconStyle.icon => Container(
-              margin: const EdgeInsets.only(
-                right: 16,
-              ),
-              child: LayoutBuilder(
-                builder: (_, constraints) => CommonTargetIcon(
+            return this.icon;
+          }));
+          return switch (iconStyle) {
+            ProxiesIconStyle.icon => Container(
+                margin: const EdgeInsets.only(
+                  right: 16,
+                ),
+                child: LayoutBuilder(
+                  builder: (_, constraints) => CommonTargetIcon(
                     src: icon,
                     size: 38,
                   ),
+                ),
               ),
-            ),
-          ProxiesIconStyle.none => Container(),
-        };
-      },
-    );
+            ProxiesIconStyle.none => Container(),
+          };
+        },
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -309,9 +325,10 @@ class _ProxyGroupCardState extends State<ProxyGroupCard>
     final colorScheme = context.colorScheme;
     return Consumer(
       builder: (_, ref, __) {
-        final unfoldSet = ref.watch(unfoldSetProvider);
-        final shouldExpand = unfoldSet.contains(groupName);
-        
+        final shouldExpand = ref.watch(
+          unfoldSetProvider.select((set) => set.contains(groupName)),
+        );
+
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (shouldExpand && !_expansibleController.isExpanded) {
             _expansibleController.expand();
@@ -319,14 +336,14 @@ class _ProxyGroupCardState extends State<ProxyGroupCard>
             _expansibleController.collapse();
           }
         });
-        
+
         return RepaintBoundary(
           child: FocusTraversalGroup(
             policy: OrderedTraversalPolicy(),
             child: Expansible(
               controller: _expansibleController,
               headerBuilder: (context, animation) => GestureDetector(
-                onTap: () => _toggleExpansion(unfoldSet),
+                onTap: () => _toggleExpansion(ref.read(unfoldSetProvider)),
                 child: Container(
                   decoration: BoxDecoration(
                     color: colorScheme.surfaceContainerLow.opacity80,
@@ -359,7 +376,8 @@ class _ProxyGroupCardState extends State<ProxyGroupCard>
                                     child: Consumer(
                                       builder: (_, ref, __) {
                                         final proxyName = ref
-                                            .watch(getSelectedProxyNameProvider(groupName))
+                                            .watch(getSelectedProxyNameProvider(
+                                                groupName))
                                             .getSafeValue("");
                                         if (proxyName.isEmpty) {
                                           return const SizedBox.shrink();
@@ -367,7 +385,8 @@ class _ProxyGroupCardState extends State<ProxyGroupCard>
                                         return EmojiText(
                                           overflow: TextOverflow.ellipsis,
                                           proxyName,
-                                          style: context.textTheme.labelMedium?.toLight,
+                                          style: context
+                                              .textTheme.labelMedium?.toLight,
                                         );
                                       },
                                     ),
@@ -385,13 +404,16 @@ class _ProxyGroupCardState extends State<ProxyGroupCard>
                             IconButton(
                               onPressed: _delayTest,
                               visualDensity: VisualDensity.standard,
-                              icon: const Icon(Icons.network_ping),
+                              icon: HugeIcon(
+                                  icon: HugeIcons.strokeRoundedWifiConnected01,
+                                  size: 24),
                             ),
                             const SizedBox(width: 6),
                           ] else
                             const SizedBox(width: 4),
                           IconButton.filledTonal(
-                            onPressed: () => _toggleExpansion(unfoldSet),
+                            onPressed: () =>
+                                _toggleExpansion(ref.read(unfoldSetProvider)),
                             icon: CommonExpandIcon(expand: isExpand),
                           ),
                         ],

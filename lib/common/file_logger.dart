@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flclashx/common/path.dart';
+import 'package:avee/common/log_redaction.dart';
+import 'package:avee/common/path.dart';
 import 'package:flutter/widgets.dart';
-import 'package:intl/intl.dart';
 import 'package:path/path.dart';
 
 class FileLogger {
@@ -28,7 +28,7 @@ class FileLogger {
   /// Check if Flutter bindings are initialized
   bool _checkBindingInitialized() {
     if (_isBindingInitialized) return true;
-    
+
     try {
       // Try to access WidgetsBinding - this will throw if not initialized
       WidgetsBinding.instance;
@@ -49,13 +49,37 @@ class FileLogger {
     return logsDir;
   }
 
-  String _getTodayDate() => DateFormat('yyyy-MM-dd').format(DateTime.now());
+  String _getTodayDate() {
+    // Manual ISO format — DateFormat with default locale throws in
+    // intl_helpers.verifiedLocale if Intl.systemLocale isn't initialized,
+    // which happens during cold start before locale data loads. The
+    // exception was being silently caught by _processQueue, which then
+    // recursively retried via unawaited(_processQueue()), creating an
+    // infinite microtask loop that starved runApp's widget mount.
+    final now = DateTime.now();
+    final y = now.year.toString().padLeft(4, '0');
+    final m = now.month.toString().padLeft(2, '0');
+    final d = now.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  String _getTimestamp() {
+    final now = DateTime.now();
+    final y = now.year.toString().padLeft(4, '0');
+    final mo = now.month.toString().padLeft(2, '0');
+    final d = now.day.toString().padLeft(2, '0');
+    final h = now.hour.toString().padLeft(2, '0');
+    final mi = now.minute.toString().padLeft(2, '0');
+    final s = now.second.toString().padLeft(2, '0');
+    final ms = now.millisecond.toString().padLeft(3, '0');
+    return '$y-$mo-$d $h:$mi:$s.$ms';
+  }
 
   String _getLogFileName(String date, {int index = 0}) {
     if (index == 0) {
-      return 'FlClashX_$date.log';
+      return 'avee_$date.log';
     }
-    return 'FlClashX_$date\_$index.log';
+    return 'avee_$date\_$index.log';
   }
 
   Future<void> _rotateLogs() async {
@@ -166,31 +190,41 @@ class FileLogger {
 
     _isWriting = true;
 
+    var sinkFailed = false;
     try {
       await _ensureSink();
 
       while (_writeQueue.isNotEmpty) {
         final message = _writeQueue.removeAt(0);
-        final timestamp =
-            DateFormat('yyyy-MM-dd HH:mm:ss.SSS').format(DateTime.now());
-        _currentSink?.writeln('[$timestamp] $message');
+        _currentSink?.writeln('[${_getTimestamp()}] $message');
       }
 
       await _currentSink?.flush();
-    } catch (e) {
-      // Silently fail write
+    } catch (_) {
+      // Drop queue on sink failure — retrying the same broken sink would
+      // create an infinite microtask loop that starves the event loop
+      // (see splash-hang root cause: DateFormat throwing during cold start
+      // before locale data loads).
+      sinkFailed = true;
+      _writeQueue.clear();
     } finally {
       _isWriting = false;
     }
 
-    // Process remaining items if any were added during write
-    if (_writeQueue.isNotEmpty) {
+    // Only retry if there are NEW items added during a successful write.
+    if (!sinkFailed && _writeQueue.isNotEmpty) {
       unawaited(_processQueue());
     }
   }
 
   void log(String message) {
-    _writeQueue.add(message);
+    // SECURITY: second central chokepoint. Callers that bypass
+    // `commonPrint.log` (e.g. `lib/manager/clash_manager.dart` forwarding
+    // mihomo core logs) must still get URL credentials/query/fragment
+    // stripped before anything reaches disk. Double-application from
+    // `commonPrint.log` is safe because `redactUrls` is idempotent on
+    // text that already contains the `[REDACTED]` markers.
+    _writeQueue.add(redactUrls(message));
     unawaited(_processQueue());
   }
 

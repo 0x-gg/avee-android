@@ -1,11 +1,10 @@
 import 'package:collection/collection.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/state.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 
 class CommonScrollBar extends StatelessWidget {
-
   const CommonScrollBar({
     super.key,
     required this.child,
@@ -16,18 +15,17 @@ class CommonScrollBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scrollbar(
-      controller: controller,
-      thumbVisibility: true,
-      trackVisibility: true,
-      thickness: 8,
-      radius: const Radius.circular(8),
-      interactive: true,
-      child: child,
-    );
+        controller: controller,
+        thumbVisibility: true,
+        trackVisibility: true,
+        thickness: 8,
+        radius: const Radius.circular(8),
+        interactive: true,
+        child: child,
+      );
 }
 
 class CommonAutoHiddenScrollBar extends StatelessWidget {
-
   const CommonAutoHiddenScrollBar({
     super.key,
     required this.child,
@@ -38,16 +36,15 @@ class CommonAutoHiddenScrollBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scrollbar(
-      controller: controller,
-      thickness: 8,
-      radius: const Radius.circular(8),
-      interactive: true,
-      child: child,
-    );
+        controller: controller,
+        thickness: 8,
+        radius: const Radius.circular(8),
+        interactive: true,
+        child: child,
+      );
 }
 
 class ScrollToEndBox<T> extends StatefulWidget {
-
   const ScrollToEndBox({
     super.key,
     required this.child,
@@ -89,20 +86,20 @@ class _ScrollToEndBoxState<T> extends State<ScrollToEndBox<T>> {
   }
 
   @override
-  Widget build(BuildContext context) => NotificationListener<UserScrollNotification>(
-      onNotification: (details) {
-        globalState.cacheScrollPosition[widget.tag] =
-            details.metrics.pixels == details.metrics.maxScrollExtent
-                ? -1
-                : details.metrics.pixels;
-        return false;
-      },
-      child: widget.child,
-    );
+  Widget build(BuildContext context) =>
+      NotificationListener<UserScrollNotification>(
+        onNotification: (details) {
+          globalState.cacheScrollPosition[widget.tag] =
+              details.metrics.pixels == details.metrics.maxScrollExtent
+                  ? -1
+                  : details.metrics.pixels;
+          return false;
+        },
+        child: widget.child,
+      );
 }
 
 class CacheItemExtentListView extends StatefulWidget {
-
   const CacheItemExtentListView({
     super.key,
     this.physics,
@@ -144,24 +141,23 @@ class CacheItemExtentListViewState extends State<CacheItemExtentListView> {
 
   @override
   Widget build(BuildContext context) => ListView.builder(
-      itemBuilder: widget.itemBuilder,
-      itemCount: widget.itemCount,
-      physics: widget.physics,
-      reverse: widget.reverse,
-      shrinkWrap: widget.shrinkWrap,
-      controller: widget.controller,
-      itemExtentBuilder: (index, __) {
-        _updateCacheHeightMap();
-        return globalState.cacheHeightMap[widget.tag]?.updateCacheValue(
-          widget.keyBuilder(index),
-          () => widget.itemExtentBuilder(index),
-        );
-      },
-    );
+        itemBuilder: widget.itemBuilder,
+        itemCount: widget.itemCount,
+        physics: widget.physics,
+        reverse: widget.reverse,
+        shrinkWrap: widget.shrinkWrap,
+        controller: widget.controller,
+        itemExtentBuilder: (index, __) {
+          _updateCacheHeightMap();
+          return globalState.cacheHeightMap[widget.tag]?.updateCacheValue(
+            widget.keyBuilder(index),
+            () => widget.itemExtentBuilder(index),
+          );
+        },
+      );
 }
 
 class CacheItemExtentSliverReorderableList extends StatefulWidget {
-
   const CacheItemExtentSliverReorderableList({
     super.key,
     required this.itemBuilder,
@@ -200,10 +196,11 @@ class CacheItemExtentSliverReorderableListState
     return SliverReorderableList(
       itemBuilder: widget.itemBuilder,
       itemCount: widget.itemCount,
-      itemExtentBuilder: (index, __) => globalState.cacheHeightMap[widget.tag]?.updateCacheValue(
-          widget.keyBuilder(index),
-          () => widget.itemExtentBuilder(index),
-        ),
+      itemExtentBuilder: (index, __) =>
+          globalState.cacheHeightMap[widget.tag]?.updateCacheValue(
+        widget.keyBuilder(index),
+        () => widget.itemExtentBuilder(index),
+      ),
       onReorder: widget.onReorder,
       proxyDecorator: widget.proxyDecorator,
     );

@@ -1,0 +1,62 @@
+# Manual tester for the Telegram Rich Message release post.
+# Lets us iterate on post styling against a test chat without cutting a release.
+name: tg-post
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to announce (e.g. v0.8.4). Empty = latest tag."
+        required: false
+        default: ""
+      chat_id:
+        description: "Target chat id / @username. Empty = dry-run (print payload only)."
+        required: false
+        default: ""
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build release.md from git history
+        id: prep
+        run: |
+          tag="${{ github.event.inputs.tag }}"
+          [ -z "$tag" ] && tag=$(git tag --sort=-creatordate | head -1)
+          preTag=$(git tag --sort=-creatordate | grep -v "^$tag$" | head -1)
+          if [ -n "$preTag" ]; then
+            changelog_range="$preTag..$tag"
+          else
+            changelog_range="$tag"
+          fi
+          # Same curated pipeline as build.yaml "Generate release.md" — the
+          # test post must look exactly like the real release post.
+          echo "## Что нового" > release.md
+          echo "" >> release.md
+          git log --pretty=format:"%s" "$changelog_range" \
+            | grep -E '^(feat|fix|perf)(\([^)]+\))?!?:' \
+            | sed -E 's/^(feat|fix|perf)(\([^)]+\))?!?:[[:space:]]*//' \
+            | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' \
+            | awk 'NF && !seen[$0]++ { print "- " toupper(substr($0,1,1)) substr($0,2) }' \
+            | head -15 >> release.md
+          echo "" >> release.md
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+          if [[ "$tag" == *-* ]]; then echo "stable=false" >> $GITHUB_OUTPUT; else echo "stable=true" >> $GITHUB_OUTPUT; fi
+          cat release.md
+
+      - name: Post (or dry-run)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_IDS: ${{ github.event.inputs.chat_id }}
+          TELEGRAM_PRERELEASE_CHAT_IDS: ${{ github.event.inputs.chat_id }}
+          VERSION: ${{ steps.prep.outputs.tag }}
+          IS_STABLE: ${{ steps.prep.outputs.stable }}
+        run: |
+          extra=""
+          [ -z "${{ github.event.inputs.chat_id }}" ] && extra="--dry-run"
+          python3 .github/scripts/notify_telegram.py --release-md release.md $extra

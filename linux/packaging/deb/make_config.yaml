@@ -1,8 +1,8 @@
-display_name: FlClashX
-package_name: FlClashX
+display_name: avee
+package_name: avee
 maintainer:
-  name: pluralplay
-  email: mail@pluralplay.rw
+  name: avee
+  email: info@aveevpn.com
 
 priority: optional
 section: x11
@@ -15,12 +15,12 @@ dependencies:
   - libkeybinder-3.0-dev
 
 keywords:
-  - FlClashX
+  - avee
   - Clash
   - ClashMeta
   - Proxy
 
-generic_name: FlClashX
+generic_name: avee
 
 categories:
   - Network

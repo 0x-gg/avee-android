@@ -1,13 +1,17 @@
+import 'dart:async';
 import 'dart:io';
 
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/providers/config.dart';
-import 'package:flclashx/state.dart';
-import 'package:flclashx/widgets/widgets.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/l10n/l10n.dart';
+import 'package:avee/plugins/app.dart';
+import 'package:avee/providers/config.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
-import 'package:path/path.dart';
+import 'package:path/path.dart' hide context;
 
 class OpenLogsFolderItem extends ConsumerWidget {
   const OpenLogsFolderItem({super.key});
@@ -17,12 +21,12 @@ class OpenLogsFolderItem extends ConsumerWidget {
       final homePath = await appPath.homeDirPath;
       final logsPath = join(homePath, 'logs');
       final logsDir = Directory(logsPath);
-      
+
       // Create logs directory if it doesn't exist
       if (!await logsDir.exists()) {
         await logsDir.create(recursive: true);
       }
-      
+
       // Open the folder based on platform
       if (Platform.isWindows) {
         await Process.run('explorer', [logsPath]);
@@ -39,8 +43,8 @@ class OpenLogsFolderItem extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => ListItem(
         title: Text(appLocalizations.openLogsFolder),
-        leading: const Icon(Icons.folder_open),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        leading: HugeIcon(icon: HugeIcons.strokeRoundedFolderOpen, size: 24),
+        trailing: HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, size: 16),
         onTap: _openLogsFolder,
       );
 }
@@ -55,28 +59,29 @@ class ResetAppItem extends ConsumerWidget {
           style: TextStyle(
             color: context.colorScheme.error,
             fontWeight: FontWeight.bold,
-        ),
-      ),
-      leading: Icon(
-        Icons.delete_forever,
-        color: context.colorScheme.error,
-      ),
-      onTap: () async {
-        final res = await globalState.showMessage(
-          title: appLocalizations.clearData,
-          message: TextSpan(
-            text: appLocalizations.clearDataTip,
-            style: TextStyle(
-              color: context.colorScheme.onSurface,
-            ),
           ),
-        );
-        if (res == true) {
-          await globalState.appController.handleClear();
-          system.exit();
-        }
-      },
-    );
+        ),
+        leading: HugeIcon(
+          icon: HugeIcons.strokeRoundedDelete01,
+          size: 24,
+          color: context.colorScheme.error,
+        ),
+        onTap: () async {
+          final res = await globalState.showMessage(
+            title: appLocalizations.clearData,
+            message: TextSpan(
+              text: appLocalizations.clearDataTip,
+              style: TextStyle(
+                color: context.colorScheme.onSurface,
+              ),
+            ),
+          );
+          if (res == true) {
+            await globalState.appController.handleClear();
+            system.exit();
+          }
+        },
+      );
 }
 
 class OverrideProviderSettingsItem extends ConsumerWidget {
@@ -107,11 +112,14 @@ class OverrideProviderSettingsItem extends ConsumerWidget {
         if (!overrideProviderSettings)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            color: Theme.of(context)
+                .colorScheme
+                .surfaceContainerHighest
+                .withValues(alpha: 0.5),
             child: Row(
               children: [
-                Icon(
-                  Icons.info_outline,
+                HugeIcon(
+                  icon: HugeIcons.strokeRoundedInformationCircle,
                   size: 16,
                   color: Theme.of(context).colorScheme.primary,
                 ),
@@ -184,6 +192,26 @@ class UsageItem extends ConsumerWidget {
   }
 }
 
+/// Per-color dim for provider-managed (disabled) rows. Replaces a
+/// saveLayer-forcing `Opacity(0.5)` wrapper with alpha pushed into the
+/// title/subtitle/leading-icon colors (no compositing layer). When [enabled]
+/// the record is all-null, so the row renders at full ListTile defaults and
+/// the enabled diff is byte-identical to before.
+({TextStyle? title, TextStyle? subtitle, Color? icon}) _dimRow(
+  BuildContext context,
+  bool enabled,
+) {
+  if (enabled) return (title: null, subtitle: null, icon: null);
+  final scheme = context.colorScheme;
+  final text = Theme.of(context).textTheme;
+  return (
+    title: text.bodyLarge?.copyWith(color: scheme.onSurface.opacity50),
+    subtitle:
+        text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant.opacity50),
+    icon: scheme.onSurfaceVariant.opacity50,
+  );
+}
+
 class MinimizeItem extends ConsumerWidget {
   const MinimizeItem({super.key});
 
@@ -196,21 +224,23 @@ class MinimizeItem extends ConsumerWidget {
       appSettingProvider.select((state) => state.overrideProviderSettings),
     );
     final isEnabled = overrideProviderSettings;
-    return Opacity(
-      opacity: isEnabled ? 1.0 : 0.5,
-      child: ListItem.switchItem(
-        title: Text(appLocalizations.minimizeOnExit),
-        subtitle: Text(appLocalizations.minimizeOnExitDesc),
-        delegate: SwitchDelegate(
-          value: minimizeOnExit,
-          onChanged: isEnabled ? (bool value) {
-            ref.read(appSettingProvider.notifier).updateState(
-                  (state) => state.copyWith(
-                    minimizeOnExit: value,
-                  ),
-                );
-          } : null,
-        ),
+    final dim = _dimRow(context, isEnabled);
+    return ListItem.switchItem(
+      titleTextStyle: dim.title,
+      subtitleTextStyle: dim.subtitle,
+      title: Text(appLocalizations.minimizeOnExit),
+      subtitle: Text(appLocalizations.minimizeOnExitDesc),
+      delegate: SwitchDelegate(
+        value: minimizeOnExit,
+        onChanged: isEnabled
+            ? (bool value) {
+                ref.read(appSettingProvider.notifier).updateState(
+                      (state) => state.copyWith(
+                        minimizeOnExit: value,
+                      ),
+                    );
+              }
+            : null,
       ),
     );
   }
@@ -224,25 +254,22 @@ class AutoLaunchItem extends ConsumerWidget {
     final autoLaunch = ref.watch(
       appSettingProvider.select((state) => state.autoLaunch),
     );
-    final overrideProviderSettings = ref.watch(
-      appSettingProvider.select((state) => state.overrideProviderSettings),
-    );
-    final isEnabled = overrideProviderSettings;
-    return Opacity(
-      opacity: isEnabled ? 1.0 : 0.5,
-      child: ListItem.switchItem(
-        title: Text(appLocalizations.autoLaunch),
-        subtitle: Text(appLocalizations.autoLaunchDesc),
-        delegate: SwitchDelegate(
-          value: autoLaunch,
-          onChanged: isEnabled ? (bool value) {
-            ref.read(appSettingProvider.notifier).updateState(
-                  (state) => state.copyWith(
-                    autoLaunch: value,
-                  ),
-                );
-          } : null,
-        ),
+    // Launch-at-login is independent of provider-config overrides; it must
+    // stay interactive on every desktop platform (the previous
+    // `overrideProviderSettings` gating left the macOS toggle permanently
+    // disabled, so login-item registration could never be triggered).
+    return ListItem.switchItem(
+      title: Text(appLocalizations.autoLaunch),
+      subtitle: Text(appLocalizations.autoLaunchDesc),
+      delegate: SwitchDelegate(
+        value: autoLaunch,
+        onChanged: (bool value) {
+          ref.read(appSettingProvider.notifier).updateState(
+                (state) => state.copyWith(
+                  autoLaunch: value,
+                ),
+              );
+        },
       ),
     );
   }
@@ -260,21 +287,23 @@ class SilentLaunchItem extends ConsumerWidget {
       appSettingProvider.select((state) => state.overrideProviderSettings),
     );
     final isEnabled = overrideProviderSettings;
-    return Opacity(
-      opacity: isEnabled ? 1.0 : 0.5,
-      child: ListItem.switchItem(
-        title: Text(appLocalizations.silentLaunch),
-        subtitle: Text(appLocalizations.silentLaunchDesc),
-        delegate: SwitchDelegate(
-          value: silentLaunch,
-          onChanged: isEnabled ? (bool value) {
-            ref.read(appSettingProvider.notifier).updateState(
-                  (state) => state.copyWith(
-                    silentLaunch: value,
-                  ),
-                );
-          } : null,
-        ),
+    final dim = _dimRow(context, isEnabled);
+    return ListItem.switchItem(
+      titleTextStyle: dim.title,
+      subtitleTextStyle: dim.subtitle,
+      title: Text(appLocalizations.silentLaunch),
+      subtitle: Text(appLocalizations.silentLaunchDesc),
+      delegate: SwitchDelegate(
+        value: silentLaunch,
+        onChanged: isEnabled
+            ? (bool value) {
+                ref.read(appSettingProvider.notifier).updateState(
+                      (state) => state.copyWith(
+                        silentLaunch: value,
+                      ),
+                    );
+              }
+            : null,
       ),
     );
   }
@@ -292,21 +321,23 @@ class AutoRunItem extends ConsumerWidget {
       appSettingProvider.select((state) => state.overrideProviderSettings),
     );
     final isEnabled = overrideProviderSettings;
-    return Opacity(
-      opacity: isEnabled ? 1.0 : 0.5,
-      child: ListItem.switchItem(
-        title: Text(appLocalizations.autoRun),
-        subtitle: Text(appLocalizations.autoRunDesc),
-        delegate: SwitchDelegate(
-          value: autoRun,
-          onChanged: isEnabled ? (bool value) {
-            ref.read(appSettingProvider.notifier).updateState(
-                  (state) => state.copyWith(
-                    autoRun: value,
-                  ),
-                );
-          } : null,
-        ),
+    final dim = _dimRow(context, isEnabled);
+    return ListItem.switchItem(
+      titleTextStyle: dim.title,
+      subtitleTextStyle: dim.subtitle,
+      title: Text(appLocalizations.autoRun),
+      subtitle: Text(appLocalizations.autoRunDesc),
+      delegate: SwitchDelegate(
+        value: autoRun,
+        onChanged: isEnabled
+            ? (bool value) {
+                ref.read(appSettingProvider.notifier).updateState(
+                      (state) => state.copyWith(
+                        autoRun: value,
+                      ),
+                    );
+              }
+            : null,
       ),
     );
   }
@@ -333,6 +364,30 @@ class HiddenItem extends ConsumerWidget {
               );
         },
       ),
+    );
+  }
+}
+
+class AlwaysOnVpnItem extends ConsumerWidget {
+  const AlwaysOnVpnItem({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // AppLocalizations.of(context) (not the appLocalizations global) so this
+    // const-instantiated row registers a Localizations dependency and rebuilds
+    // when the app language changes — the global getter alone gives fresh
+    // strings only on rebuild, and nothing else rebuilds this row.
+    final l10n = AppLocalizations.of(context);
+    return ListItem(
+      title: Text(l10n.alwaysOnVpn),
+      leading: HugeIcon(icon: HugeIcons.strokeRoundedShield01, size: 24),
+      trailing: HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, size: 16),
+      onTap: () async {
+        final ok = await app?.openVpnSettings() ?? false;
+        if (!ok) {
+          globalState.showNotifier(l10n.alwaysOnVpnOpenFailed);
+        }
+      },
     );
   }
 }
@@ -399,21 +454,23 @@ class AutoCheckUpdateItem extends ConsumerWidget {
       appSettingProvider.select((state) => state.overrideProviderSettings),
     );
     final isEnabled = overrideProviderSettings;
-    return Opacity(
-      opacity: isEnabled ? 1.0 : 0.5,
-      child: ListItem.switchItem(
-        title: Text(appLocalizations.autoCheckUpdate),
-        subtitle: Text(appLocalizations.autoCheckUpdateDesc),
-        delegate: SwitchDelegate(
-          value: autoCheckUpdate,
-          onChanged: isEnabled ? (bool value) {
-            ref.read(appSettingProvider.notifier).updateState(
-                  (state) => state.copyWith(
-                    autoCheckUpdate: value,
-                  ),
-                );
-          } : null,
-        ),
+    final dim = _dimRow(context, isEnabled);
+    return ListItem.switchItem(
+      titleTextStyle: dim.title,
+      subtitleTextStyle: dim.subtitle,
+      title: Text(appLocalizations.autoCheckUpdate),
+      subtitle: Text(appLocalizations.autoCheckUpdateDesc),
+      delegate: SwitchDelegate(
+        value: autoCheckUpdate,
+        onChanged: isEnabled
+            ? (bool value) {
+                ref.read(appSettingProvider.notifier).updateState(
+                      (state) => state.copyWith(
+                        autoCheckUpdate: value,
+                      ),
+                    );
+              }
+            : null,
       ),
     );
   }
@@ -443,7 +500,11 @@ class ApplicationSettingView extends StatelessWidget {
       AnimateTabItem(),
       OpenLogsItem(),
       CloseConnectionsItem(),
-      AutoCheckUpdateItem(),
+      UsageItem(),
+      // Android is the Google Play target: in-app GitHub update checks are
+      // disabled there (see `shouldRunAutoUpdateCheck`), so the setting
+      // would be a misleading no-op.
+      if (!Platform.isAndroid) AutoCheckUpdateItem(),
       if (system.isDesktop) ...[
         Padding(
           padding: const EdgeInsets.only(top: 16),

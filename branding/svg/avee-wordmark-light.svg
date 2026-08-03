@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360">
+  <rect width="1200" height="360" rx="72" fill="#F6F7FA"/>
+  <text x="54" y="194" fill="#07101E" font-family="Arial, sans-serif" font-size="116" font-weight="800" letter-spacing="12">AVEE</text>
+  <rect x="58" y="222" width="278" height="5" rx="2.5" fill="#D97800"/>
+  <text x="62" y="282" fill="#D97800" font-family="Arial, sans-serif" font-size="38" font-weight="800" letter-spacing="13">VPN</text>
+</svg>

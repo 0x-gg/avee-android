@@ -1,0 +1,80 @@
+name: Android CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, integration/mvp]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.0'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.41.6
+          cache: true
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Format check
+        shell: bash
+        run: |
+          # The repository contains a pinned upstream snapshot with legacy
+          # formatting. Keep CI focused on the AVEE-owned contract files
+          # instead of formatting the entire imported tree on every PR.
+          dart format --output=none --set-exit-if-changed \
+            lib/services/avee_api.dart \
+            test/avee_api_test.dart
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - name: Unit tests
+        run: flutter test
+      - name: Build native core for arm64 CI smoke target
+        shell: bash
+        run: |
+          export ANDROID_NDK="$ANDROID_SDK_ROOT/ndk/28.2.13676358"
+          dart setup.dart android --arch arm64 --out core
+      - name: Build debug APK
+        shell: bash
+        run: |
+          # This project has product flavors, so Flutter's generic APK
+          # resolver looks for app-debug.apk even though AGP emits the
+          # flavored artifact. Pass the flavor explicitly so Flutter resolves
+          # the correct variant and normalize the artifact name for upload.
+          export AVEE_CI_ABI=arm64-v8a
+          flutter build apk --debug --flavor sideload --target-platform android-arm64 --android-skip-build-dependency-validation
+          apk=build/app/outputs/flutter-apk/app-sideload-debug.apk
+          test -f "$apk"
+          mkdir -p build/ci
+          cp "$apk" build/ci/app-debug.apk
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: avee-debug-apk-${{ github.run_number }}
+          path: build/ci/app-debug.apk
+          if-no-files-found: error
+      - name: Verify Play permission overlay
+        shell: bash
+        run: |
+          if grep -q 'REQUEST_INSTALL_PACKAGES' android/app/src/play/AndroidManifest.xml && \
+             ! grep -q 'tools:node="remove"' android/app/src/play/AndroidManifest.xml; then
+            echo 'Play manifest must remove REQUEST_INSTALL_PACKAGES'
+            exit 1
+          fi
+      - name: Dependency audit
+        run: flutter pub deps --json > /tmp/avee-pub-deps.json

@@ -2,6 +2,7 @@ import Cocoa
 import FlutterMacOS
 import window_ext
 import LaunchAtLogin
+import CryptoKit
 
 @main
 class AppDelegate: FlutterAppDelegate {
@@ -11,6 +12,18 @@ class AppDelegate: FlutterAppDelegate {
     
     override init() {
         super.init()
+
+        // SIGPIPE hardening (field incident: exit 141). When the AveeCore
+        // helper dies — e.g. `bad CPU type in executable` from a poisoned
+        // Application Support core — the main app's next write to the now-dead
+        // helper socket raises SIGPIPE, whose default disposition kills the
+        // process instantly (128 + 13 = 141). The tray icon flashes for one
+        // frame and the app vanishes with no error. Ignoring SIGPIPE turns that
+        // write into a normal EPIPE error the socket code can surface/handle,
+        // instead of a silent kill. Set here (earliest entry) so no early write
+        // can race it. Darwin's signal()/SIG_IGN come in via Cocoa.
+        signal(SIGPIPE, SIG_IGN)
+
         flutterUIPopover.behavior = NSPopover.Behavior.transient
     }
     
@@ -39,6 +52,21 @@ class AppDelegate: FlutterAppDelegate {
         super.applicationDidFinishLaunching(aNotification)
         
         mainFlutterWindow?.close()
+
+        // Status-bar app: there is no window, so after launch/install the UI
+        // stays invisible until the user clicks the menu-bar icon — the
+        // recurring "app doesn't open after install" complaint. Open the
+        // popover once, on launch. Deferred a beat so NSApp.activate + the show
+        // land AFTER the launch settles; a transient popover shown too early
+        // gets auto-dismissed the moment focus settles (why the Dart-side
+        // StatusBarManager.showWindow() call alone didn't stick).
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+            guard let self = self, let controller = self.statusBarController else { return }
+            NSApp.activate(ignoringOtherApps: true)
+            if !self.flutterUIPopover.isShown {
+                controller.showPopover(self)
+            }
+        }
     }
     
     func setupStatusBarChannel(flutterViewController: FlutterViewController) {
@@ -57,6 +85,14 @@ class AppDelegate: FlutterAppDelegate {
                 } else {
                     result(FlutterError(code: "INVALID_ARGS", message: "Invalid arguments", details: nil))
                 }
+            case "showWindow":
+                // Bring the status-bar popover to the foreground (e.g. on a
+                // deep-link import) so an in-app dialog is actually visible.
+                NSApp.activate(ignoringOtherApps: true)
+                if let strongSelf = self, !strongSelf.flutterUIPopover.isShown {
+                    strongSelf.statusBarController?.showPopover(strongSelf)
+                }
+                result(true)
             default:
                 result(FlutterMethodNotImplemented)
             }
@@ -72,8 +108,8 @@ class AppDelegate: FlutterAppDelegate {
         }
         
         let bundleURL = Bundle.main.bundleURL
-        let bundleCorePath = bundleURL.appendingPathComponent("Contents/MacOS/FlClashCore")
-        let appSupportCorePath = appSupportURL.appendingPathComponent("com.follow.clash/cores/FlClashCore")
+        let bundleCorePath = bundleURL.appendingPathComponent("Contents/MacOS/AveeCore")
+        let appSupportCorePath = appSupportURL.appendingPathComponent("com.avee.vpn/cores/AveeCore")
         let appSupportDir = appSupportCorePath.deletingLastPathComponent()
         
         do {
@@ -81,7 +117,7 @@ class AppDelegate: FlutterAppDelegate {
             print("Directory created: \(appSupportDir.path)")
             
             let coreExists = FileManager.default.fileExists(atPath: appSupportCorePath.path)
-            let needsUpdate = !coreExists || shouldUpdateCore(bundlePath: bundleCorePath.path, appSupportPath: appSupportCorePath.path)
+            let needsUpdate = !coreExists || coreContentDiffers(bundlePath: bundleCorePath.path, appSupportPath: appSupportCorePath.path)
             
             if needsUpdate {
                 try? FileManager.default.removeItem(at: appSupportCorePath)
@@ -89,7 +125,7 @@ class AppDelegate: FlutterAppDelegate {
                 try FileManager.default.copyItem(at: bundleCorePath, to: appSupportCorePath)
                 
                 if setCorePermissions(corePath: appSupportCorePath.path) {
-                    print("FlClashCore updated to: \(appSupportCorePath.path)")
+                    print("Core binary updated to: \(appSupportCorePath.path)")
                 }
             } else {
                 let attrs = try? FileManager.default.attributesOfItem(atPath: appSupportCorePath.path)
@@ -99,7 +135,7 @@ class AppDelegate: FlutterAppDelegate {
                         print("Permissions not set, setting them now...")
                         let _ = setCorePermissions(corePath: appSupportCorePath.path)
                     } else {
-                        print("FlClashCore already up-to-date with correct permissions")
+                        print("Core binary already up-to-date with correct permissions")
                     }
                 }
             }
@@ -136,20 +172,37 @@ class AppDelegate: FlutterAppDelegate {
     func showPermissionRequiredAlert() {
         let alert = NSAlert()
         alert.messageText = "Administrator Access Required"
-        alert.informativeText = "FlClashX requires administrator privileges to set up the network core. The application cannot run without these permissions.\n\nPlease restart the application and grant administrator access when prompted."
+        alert.informativeText = "avee requires administrator privileges to set up the network core. The application cannot run without these permissions.\n\nPlease restart the application and grant administrator access when prompted."
         alert.alertStyle = .critical
         alert.addButton(withTitle: "Quit")
         alert.runModal()
     }
     
-    func shouldUpdateCore(bundlePath: String, appSupportPath: String) -> Bool {
-        guard let bundleAttrs = try? FileManager.default.attributesOfItem(atPath: bundlePath),
-              let appSupportAttrs = try? FileManager.default.attributesOfItem(atPath: appSupportPath),
-              let bundleDate = bundleAttrs[.modificationDate] as? Date,
-              let appSupportDate = appSupportAttrs[.modificationDate] as? Date else {
+    // Decide whether the Application Support core must be replaced by the
+    // bundle's, by CONTENT identity (SHA-256) rather than mtime. The old
+    // mtime heuristic (bundleDate > appSupportDate) is why a wrong-arch core
+    // poisoned into Application Support survived every later correct install:
+    // a freshly installed bundle core is not "newer" than the already-copied
+    // one, so it was never re-copied, and the app kept launching an arm64-only
+    // core on an Intel Mac (`bad CPU type`). Content comparison replaces the
+    // core whenever the bytes differ — covering wrong-arch AND version bumps —
+    // so a poisoned/stale core self-heals on the next launch (the admin prompt
+    // re-appears, which is correct: the binary genuinely changed). Fast path:
+    // a size mismatch means differ without hashing; equal sizes fall through to
+    // the SHA-256 compare (~30-50MB read at launch, acceptable). On any read
+    // failure we return true (update) — fail toward a known-good bundle core.
+    func coreContentDiffers(bundlePath: String, appSupportPath: String) -> Bool {
+        let fm = FileManager.default
+        if let bundleSize = (try? fm.attributesOfItem(atPath: bundlePath))?[.size] as? Int,
+           let appSupportSize = (try? fm.attributesOfItem(atPath: appSupportPath))?[.size] as? Int,
+           bundleSize != appSupportSize {
             return true
         }
-        return bundleDate > appSupportDate
+        guard let bundleData = try? Data(contentsOf: URL(fileURLWithPath: bundlePath)),
+              let appSupportData = try? Data(contentsOf: URL(fileURLWithPath: appSupportPath)) else {
+            return true
+        }
+        return SHA256.hash(data: bundleData) != SHA256.hash(data: appSupportData)
     }
     
     override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

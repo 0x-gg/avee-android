@@ -1,9 +1,10 @@
 import 'dart:io';
 
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/state.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:screen_retriever/screen_retriever.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
 class Window {
@@ -14,9 +15,21 @@ class Window {
       exit(0);
     }
     if (Platform.isWindows) {
-      protocol.register("clashx");
-      protocol.register("flclash");
-      protocol.register("flclashx");
+      // One-time cleanup for users who were running a previous AVEE build
+      // that unconditionally overwrote flclash:// and clashx:// handlers.
+      // If the current handler still points to our exe, remove it so the
+      // scheme becomes unclaimed — letting FlClashX (or any other app) take
+      // it back on its next launch. No-op if the handler points elsewhere.
+      await _migrateHijackedSchemes();
+
+      // Always claim our own scheme.
+      protocol.register("avee");
+
+      // Claim common schemes only if no other app currently owns them.
+      // This lets users without FlClashX still open flclash:// links in
+      // avee, while leaving FlClashX-owned handlers untouched.
+      protocol.register("flclash", onlyIfMissing: true);
+      protocol.register("clashx", onlyIfMissing: true);
     }
 
     // On macOS, the app runs in status bar with popover - no window manager needed
@@ -25,9 +38,20 @@ class Window {
     }
 
     await windowManager.ensureInitialized();
+    // Width is clamped to 600px on Windows by a Win32 WM_GETMINMAXINFO hook
+    // in windows/runner/flutter_window.cpp (window_manager.setMaximumSize is
+    // unreliable on frameless windows). The Dart-side clamp here only
+    // protects against a stored windowProps.width > 600 from previous
+    // releases — fresh installs never hit it.
+    // Fixed window size on Windows + Linux: a roomier fixed 450x720 window
+    // (not the macOS 375x600 status-bar popover) — locked via equal min/max +
+    // non-resizable below.
+    // (macOS returns earlier, so only Windows/Linux reach this code.)
+    const fixedSize = Size(450, 720);
     final windowOptions = WindowOptions(
-      size: Size(props.width, props.height),
-      minimumSize: const Size(380, 400),
+      size: fixedSize,
+      minimumSize: fixedSize,
+      maximumSize: fixedSize,
     );
     await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
     if (!Platform.isMacOS) {
@@ -62,6 +86,7 @@ class Window {
       }
     }
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.setResizable(false);
       await windowManager.setPreventClose(true);
     });
   }
@@ -84,6 +109,23 @@ class Window {
   }
 
   Future<void> close() async {
+    if (Platform.isWindows) {
+      try {
+        // Clean engine shutdown. destroy() is PostQuitMessage(0): the runner's
+        // GetMessage loop exits → wWinMain returns → ~FlutterWindow shuts the
+        // engine down in order (raster thread joined, isolate torn down) →
+        // DestroyWindow. Same teardown as clicking X, minus the WM_CLOSE /
+        // preventClose hop — so onWindowClose is NOT re-entered.
+        // A raw exit(0) instead runs CRT/DLL-detach teardown with live engine
+        // and plugin threads → AV → the Windows "Unknown Hard Error" dialog.
+        await windowManager.destroy();
+        return;
+      } catch (_) {
+        // Channel/engine already unavailable — kernel-level kill below
+        // (exit(0) here could reproduce the teardown crash).
+      }
+      windows?.forceExit();
+    }
     exit(0);
   }
 
@@ -93,6 +135,25 @@ class Window {
     render?.pause();
     await windowManager.hide();
     await windowManager.setSkipTaskbar(true);
+  }
+
+  static const _migrationPrefKey = 'windows_protocol_cleanup_v1';
+
+  /// Runs once per install. Removes our own claims on flclash:// and clashx://
+  /// so [Protocol.register] with `onlyIfMissing: true` can see them as free.
+  /// Guarded by a SharedPreferences flag so repeated launches don't churn the
+  /// registry. Safe to call on every launch.
+  Future<void> _migrateHijackedSchemes() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_migrationPrefKey) == true) return;
+      protocol.unregisterIfOurs('flclash');
+      protocol.unregisterIfOurs('clashx');
+      await prefs.setBool(_migrationPrefKey, true);
+    } catch (_) {
+      // Migration is best-effort. A failure here just means the user keeps
+      // the hijacked handler — they can reinstall to retry. Do not crash.
+    }
   }
 }
 

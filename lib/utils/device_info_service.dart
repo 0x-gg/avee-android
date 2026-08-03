@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:flclashx/common/common.dart';
+import 'package:avee/common/common.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,8 +29,7 @@ class DeviceDetails {
 class DeviceInfoService {
   final DeviceInfoPlugin _deviceInfoPlugin = DeviceInfoPlugin();
   static const String _hwidStorageKey = 'app_persistent_hwid';
-  static const MethodChannel _channel =
-      MethodChannel('com.follow.clashx/device_id');
+  static const MethodChannel _channel = MethodChannel('com.avee.vpn/device_id');
 
   String _generateCompact16CharId(String fullId) {
     final bytes = utf8.encode(fullId);
@@ -110,6 +111,22 @@ class DeviceInfoService {
     try {
       final prefs = await SharedPreferences.getInstance();
 
+      // Sideload debug builds get a fresh fingerprint after each pm clear /
+      // reinstall so emulator screenshot runs can create accounts and start
+      // trials without recovering a previous session on the same AVD.
+      if (kDebugMode && !kIsPlayBuild) {
+        final storedHwid = prefs.getString(_hwidStorageKey);
+        if (storedHwid != null && storedHwid.isNotEmpty) {
+          return storedHwid;
+        }
+        final bytes =
+            List<int>.generate(24, (_) => Random.secure().nextInt(256));
+        final newHwid =
+            _generateCompact16CharId(base64UrlEncode(bytes));
+        await prefs.setString(_hwidStorageKey, newHwid);
+        return newHwid;
+      }
+
       final storedHwid = prefs.getString(_hwidStorageKey);
       if (storedHwid != null && storedHwid.isNotEmpty) {
         return storedHwid;
@@ -122,10 +139,9 @@ class DeviceInfoService {
         return null;
       }
 
-      // For Android, use ANDROID_ID directly without hashing
-      // For other platforms, hash the device ID to 16 characters
-      final newHwid =
-          Platform.isAndroid ? deviceId : _generateCompact16CharId(deviceId);
+      // Hash every platform's stable device ID to a compact 16-char value.
+      // The raw system identifier (e.g. ANDROID_ID) is never persisted or sent.
+      final newHwid = _generateCompact16CharId(deviceId);
 
       await prefs.setString(_hwidStorageKey, newHwid);
 

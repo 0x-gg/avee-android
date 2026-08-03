@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 class ActivateBox extends StatelessWidget {
-
   const ActivateBox({
     super.key,
     required this.child,
@@ -12,7 +11,7 @@ class ActivateBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IgnorePointer(
-      ignoring: !active,
-      child: child,
-    );
+        ignoring: !active,
+        child: child,
+      );
 }

@@ -1,19 +1,19 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flclashx/clash/clash.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/models/core.dart';
-import 'package:flclashx/providers/app.dart';
-import 'package:flclashx/state.dart';
-import 'package:flclashx/widgets/widgets.dart';
+import 'package:avee/clash/clash.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/models/core.dart';
+import 'package:avee/providers/app.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 typedef UpdatingMap = Map<String, bool>;
 
 class ProvidersView extends ConsumerStatefulWidget {
-
   const ProvidersView({
     super.key,
   });
@@ -23,7 +23,6 @@ class ProvidersView extends ConsumerStatefulWidget {
 }
 
 class _ProvidersViewState extends ConsumerState<ProvidersView> {
-
   Future<void> _updateProviders() async {
     final providers = ref.read(providersProvider);
     final providersNotifier = ref.read(providersProvider.notifier);
@@ -88,8 +87,9 @@ class _ProvidersViewState extends ConsumerState<ProvidersView> {
       actions: [
         IconButton(
           onPressed: _updateProviders,
-          icon: const Icon(
-            Icons.sync,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedRefresh,
+            size: 24,
           ),
         )
       ],
@@ -103,7 +103,6 @@ class _ProvidersViewState extends ConsumerState<ProvidersView> {
 }
 
 class ProviderItem extends StatelessWidget {
-
   const ProviderItem({
     super.key,
     required this.provider,
@@ -165,63 +164,65 @@ class ProviderItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListItem(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 4,
-      ),
-      title: Text(provider.name),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(
-            height: 4,
-          ),
-          Text(
-            _buildProviderDesc(),
-          ),
-          const SizedBox(
-            height: 4,
-          ),
-          if (provider.subscriptionInfo != null)
-            SubscriptionInfoView(
-              subscriptionInfo: provider.subscriptionInfo,
-            ),
-          const SizedBox(
-            height: 8,
-          ),
-          Wrap(
-            runSpacing: 6,
-            spacing: 12,
-            children: [
-              CommonChip(
-                avatar: const Icon(Icons.upload),
-                label: appLocalizations.upload,
-                onPressed: _handleSideLoadProvider,
-              ),
-              if (provider.vehicleType == "HTTP")
-                CommonChip(
-                  avatar: const Icon(Icons.sync),
-                  label: appLocalizations.sync,
-                  onPressed: _handleUpdateProvider,
-                ),
-            ],
-          ),
-          const SizedBox(
-            height: 4,
-          ),
-        ],
-      ),
-      trailing: SizedBox(
-        height: 48,
-        width: 48,
-        child: FadeThroughBox(
-          child: provider.isUpdating
-              ? const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: CircularProgressIndicator(),
-                )
-              : const SizedBox(),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 4,
         ),
-      ),
-    );
+        title: Text(provider.name),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(
+              height: 4,
+            ),
+            Text(
+              _buildProviderDesc(),
+            ),
+            const SizedBox(
+              height: 4,
+            ),
+            if (provider.subscriptionInfo != null)
+              SubscriptionInfoView(
+                subscriptionInfo: provider.subscriptionInfo,
+              ),
+            const SizedBox(
+              height: 8,
+            ),
+            Wrap(
+              runSpacing: 6,
+              spacing: 12,
+              children: [
+                CommonChip(
+                  avatar:
+                      HugeIcon(icon: HugeIcons.strokeRoundedUpload01, size: 24),
+                  label: appLocalizations.upload,
+                  onPressed: _handleSideLoadProvider,
+                ),
+                if (provider.vehicleType == "HTTP")
+                  CommonChip(
+                    avatar: HugeIcon(
+                        icon: HugeIcons.strokeRoundedRefresh, size: 24),
+                    label: appLocalizations.sync,
+                    onPressed: _handleUpdateProvider,
+                  ),
+              ],
+            ),
+            const SizedBox(
+              height: 4,
+            ),
+          ],
+        ),
+        trailing: SizedBox(
+          height: 48,
+          width: 48,
+          child: FadeThroughBox(
+            child: provider.isUpdating
+                ? const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: CircularProgressIndicator(),
+                  )
+                : const SizedBox(),
+          ),
+        ),
+      );
 }

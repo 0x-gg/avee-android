@@ -1,9 +1,8 @@
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
 import 'package:flutter/scheduler.dart';
 
 class Render {
-
   factory Render() {
     _instance ??= Render._internal();
     return _instance!;

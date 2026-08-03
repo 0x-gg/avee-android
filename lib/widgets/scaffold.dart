@@ -1,20 +1,22 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/providers/providers.dart';
-import 'package:flclashx/state.dart';
-import 'package:flclashx/widgets/fade_box.dart';
-import 'package:flclashx/widgets/pop_scope.dart';
-import 'package:flclashx/widgets/search_order_marker.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/common/error_mapper.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/fade_box.dart';
+import 'package:avee/widgets/mesh_background.dart';
+import 'package:avee/widgets/pop_scope.dart';
+import 'package:avee/widgets/search_order_marker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import 'chip.dart';
 
 class CommonScaffold extends ConsumerStatefulWidget {
-
   const CommonScaffold({
     super.key,
     this.appBar,
@@ -24,6 +26,7 @@ class CommonScaffold extends ConsumerStatefulWidget {
     this.bottomNavigationBar,
     this.leading,
     this.title,
+    this.titleBuilder,
     this.actions,
     this.automaticallyImplyLeading = true,
     this.centerTitle,
@@ -38,11 +41,13 @@ class CommonScaffold extends ConsumerStatefulWidget {
     required String title,
     required Function onBack,
     required List<Widget> actions,
+    String Function(BuildContext context)? titleBuilder,
     bool disableBackground = false,
   }) : this(
           key: key,
           body: body,
           title: title,
+          titleBuilder: titleBuilder,
           automaticallyImplyLeading: false,
           actions: actions,
           disableBackground: disableBackground,
@@ -59,6 +64,12 @@ class CommonScaffold extends ConsumerStatefulWidget {
   final Widget? sideNavigationBar;
   final Color? backgroundColor;
   final String? title;
+
+  /// Optional locale-reactive title resolver. When supplied, the app-bar
+  /// title is re-resolved on each build so a page that was pushed before a
+  /// language change re-localizes its header without remounting. Falls back
+  /// to [title] when null.
+  final String Function(BuildContext context)? titleBuilder;
   final Widget? leading;
   final List<Widget>? actions;
   final bool automaticallyImplyLeading;
@@ -158,15 +169,33 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
     String? title,
   }) async {
     _loading.value = true;
+    final label = title ?? 'loadingRun';
+    commonPrint.log('[loadingRun] start: $label');
     try {
-      final res = await futureFunction();
+      // Catastrophic backstop ONLY — not the primary timeout. Every operation
+      // reachable from here is already individually bounded at the source: core
+      // FFI calls go through invoke()/safeFuture (30s default, up to 120s for
+      // setup/updateConfig — see clash/interface.dart), helper HTTP calls carry
+      // their own .timeout(), and withGeoFileLock serializes already-bounded
+      // actions. A composite flow (e.g. applyProfile = wait-for-geo-lock +
+      // setupConfig + group/provider refresh) can legitimately run well past a
+      // minute, so a short bound here fired SPURIOUSLY mid-setup while the inner
+      // core call kept running underneath (and could double-apply). 5 minutes
+      // exceeds any legitimate composite duration, so this only trips if
+      // something is catastrophically wedged outside those source-level bounds.
+      final res = await futureFunction().timeout(const Duration(minutes: 5));
       _loading.value = false;
+      commonPrint.log('[loadingRun] done: $label');
       return res;
     } catch (e) {
+      commonPrint.log('[loadingRun] error/timeout: $label -> $e');
+      final message = ErrorMapper.mapError(e.toString()) ??
+          appLocalizations.genericErrorMessage;
       globalState.showMessage(
-        title: title ?? appLocalizations.tip,
+        title: title ?? appLocalizations.errorTitle,
+        cancelable: false,
         message: TextSpan(
-          text: e.toString(),
+          text: message,
         ),
       );
       _loading.value = false;
@@ -246,38 +275,38 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
     if (_isEdit) {
       return IconButton(
         onPressed: _appBarState.value.editState?.onExit,
-        icon: const Icon(Icons.close),
+        icon: HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 24),
       );
     }
     return _isSearch
         ? IconButton(
             onPressed: _handleExitSearching,
-            icon: const Icon(Icons.arrow_back),
+            icon: HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, size: 24),
           )
         : widget.leading;
   }
 
   Widget _buildTitle(AppBarSearchState? startState) => _isSearch
-        ? TextField(
-            autofocus: true,
-            controller: _textController,
-            style: context.textTheme.titleLarge,
-            onChanged: (value) {
-              if (startState != null) {
-                startState.onSearch(value);
-              }
-            },
-            decoration: InputDecoration(
-              hintText: appLocalizations.search,
-            ),
-          )
-        : Text(
-            !_isEdit
-                ? widget.title!
-                : appLocalizations.selectedCountTitle(
-                    "${_appBarState.value.editState?.editCount ?? 0}",
-                  ),
-          );
+      ? TextField(
+          autofocus: true,
+          controller: _textController,
+          style: context.textTheme.titleLarge,
+          onChanged: (value) {
+            if (startState != null) {
+              startState.onSearch(value);
+            }
+          },
+          decoration: InputDecoration(
+            hintText: appLocalizations.search,
+          ),
+        )
+      : Text(
+          !_isEdit
+              ? (widget.titleBuilder?.call(context) ?? widget.title!)
+              : appLocalizations.selectedCountTitle(
+                  "${_appBarState.value.editState?.editCount ?? 0}",
+                ),
+        );
 
   List<Widget> _buildActions(
     AppBarSearchState? searchState,
@@ -287,7 +316,7 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
       return genActions([
         IconButton(
           onPressed: _handleClear,
-          icon: const Icon(Icons.close),
+          icon: HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 24),
         ),
       ]);
     }
@@ -301,7 +330,7 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
           ),
         );
       },
-      icon: const Icon(Icons.search),
+      icon: HugeIcon(icon: HugeIcons.strokeRoundedSearch01, size: 24),
     );
 
     if (!hasSearch) {
@@ -325,7 +354,6 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
       searchButton,
       ...actions,
     ]);
-  
   }
 
   Widget _buildAppBarWrap(Widget child) {
@@ -349,27 +377,27 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
   }
 
   PreferredSizeWidget _buildAppBar() {
-    final backgroundUrl = widget.disableBackground ? null : ref.watch(backgroundUrlProvider);
+    final backgroundUrl =
+        widget.disableBackground ? null : ref.watch(backgroundUrlProvider);
     final isTransparent = backgroundUrl != null;
-    
+    // Theme.of(context) was hit 7 times inside this single build path —
+    // cache it once so scaffold rebuilds don't pay the InheritedWidget
+    // lookup cost per frame.
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final iconBrightness = isDark ? Brightness.light : Brightness.dark;
+    final transparentAppBar = isTransparent || isDark;
+
     return PreferredSize(
       preferredSize: const Size.fromHeight(kToolbarHeight),
       child: Theme(
-        data: Theme.of(context).copyWith(
+        data: theme.copyWith(
           appBarTheme: AppBarTheme(
             systemOverlayStyle: SystemUiOverlayStyle(
               statusBarColor: Colors.transparent,
-              statusBarIconBrightness:
-                  Theme.of(context).brightness == Brightness.dark
-                      ? Brightness.light
-                      : Brightness.dark,
-              systemNavigationBarIconBrightness:
-                  Theme.of(context).brightness == Brightness.dark
-                      ? Brightness.light
-                      : Brightness.dark,
-              systemNavigationBarColor: widget.bottomNavigationBar != null
-                  ? context.colorScheme.surfaceContainer
-                  : context.colorScheme.surface,
+              statusBarIconBrightness: iconBrightness,
+              systemNavigationBarIconBrightness: iconBrightness,
+              systemNavigationBarColor: context.colorScheme.surface,
               systemNavigationBarDividerColor: Colors.transparent,
             ),
           ),
@@ -381,28 +409,28 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
                 ValueListenableBuilder<AppBarState>(
                   valueListenable: _appBarState,
                   builder: (_, state, __) => _buildAppBarWrap(
-                      AppBar(
-                        backgroundColor: isTransparent ? Colors.transparent : null,
-                        elevation: isTransparent ? 0 : null,
-                        centerTitle: widget.centerTitle ?? false,
-                        automaticallyImplyLeading:
-                            widget.automaticallyImplyLeading,
-                        leading: _buildLeading(),
-                        title: _buildTitle(state.searchState),
-                        actions: _buildActions(
-                          state.searchState,
-                          state.actions.isNotEmpty
-                              ? state.actions
-                              : widget.actions ?? [],
-                        ),
+                    AppBar(
+                      backgroundColor:
+                          transparentAppBar ? Colors.transparent : null,
+                      elevation: transparentAppBar ? 0 : null,
+                      centerTitle: widget.centerTitle ?? false,
+                      automaticallyImplyLeading:
+                          widget.automaticallyImplyLeading,
+                      leading: _buildLeading(),
+                      title: _buildTitle(state.searchState),
+                      actions: _buildActions(
+                        state.searchState,
+                        state.actions.isNotEmpty
+                            ? state.actions
+                            : widget.actions ?? [],
                       ),
                     ),
+                  ),
                 ),
             ValueListenableBuilder(
               valueListenable: _loading,
-              builder: (_, value, __) => value == true
-                    ? const LinearProgressIndicator()
-                    : Container(),
+              builder: (_, value, __) =>
+                  value == true ? const LinearProgressIndicator() : Container(),
             ),
           ],
         ),
@@ -410,14 +438,21 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
     );
   }
 
-  Widget _buildBackground(String? backgroundUrl) {
+  Widget _buildBackground(BuildContext context, String? backgroundUrl) {
     if (backgroundUrl == null || backgroundUrl.isEmpty) {
       return const SizedBox.shrink();
     }
 
+    // Decode the full-bleed background at physical screen width only; no height
+    // cap so BoxFit.cover keeps the aspect ratio.
+    final memCacheWidth = (MediaQuery.sizeOf(context).width *
+            MediaQuery.devicePixelRatioOf(context))
+        .round();
+
     return Positioned.fill(
       child: CachedNetworkImage(
         imageUrl: backgroundUrl,
+        memCacheWidth: memCacheWidth,
         fit: BoxFit.cover,
         placeholder: (context, url) => const SizedBox.shrink(),
         errorWidget: (context, url, error) => const SizedBox.shrink(),
@@ -445,8 +480,9 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
   @override
   Widget build(BuildContext context) {
     assert(widget.appBar != null || widget.title != null);
-    final backgroundUrl = widget.disableBackground ? null : ref.watch(backgroundUrlProvider);
-    
+    final backgroundUrl =
+        widget.disableBackground ? null : ref.watch(backgroundUrlProvider);
+
     final body = SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -490,36 +526,88 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
         ],
       ),
     );
-    
-    final scaffold = Scaffold(
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // ── Build the scaffold body with mesh gradient INSIDE ──
+    // Instead of layering MeshBackground behind the scaffold in a Stack
+    // (which fails because the Scaffold's Material can paint opaque even
+    // when scaffoldBackgroundColor is transparent), we wrap the body so
+    // that the mesh renders INSIDE the scaffold's body area — on top of
+    // the opaque void fill, below the actual content.
+    // ── Compose body layers ──
+    // Bottom nav bar is placed INSIDE the body Stack (not Scaffold.bottomNavigationBar)
+    // so it stays in the same compositing boundary as the mesh-backed body.
+    final Widget bodyWithMesh;
+    final hasBottomNav = widget.bottomNavigationBar != null;
+    if (isDark && !widget.disableBackground) {
+      bodyWithMesh = Stack(
+        children: [
+          const Positioned.fill(child: MeshBackground()),
+          Positioned.fill(child: body),
+          if (hasBottomNav)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: widget.bottomNavigationBar!,
+            ),
+        ],
+      );
+    } else {
+      bodyWithMesh = hasBottomNav
+          ? Stack(
+              children: [
+                Positioned.fill(child: body),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: widget.bottomNavigationBar!,
+                ),
+              ],
+            )
+          : body;
+    }
+
+    final scaffoldFinal = Scaffold(
       appBar: _buildAppBar(),
-      body: body,
+      body: bodyWithMesh,
+      extendBodyBehindAppBar: isDark,
       resizeToAvoidBottomInset: true,
-      backgroundColor: backgroundUrl != null ? Colors.transparent : widget.backgroundColor,
+      backgroundColor: isDark
+          ? Lumina.void_
+          : (backgroundUrl != null
+              ? Colors.transparent
+              : widget.backgroundColor),
       floatingActionButton: widget.floatingActionButton ??
           ValueListenableBuilder<Widget?>(
             valueListenable: _floatingActionButton,
             builder: (_, value, __) => IntrinsicWidth(
-                child: IntrinsicHeight(
-                  child: FadeScaleBox(
-                    child: value ?? const SizedBox(),
-                  ),
+              child: IntrinsicHeight(
+                child: FadeScaleBox(
+                  child: value ?? const SizedBox(),
                 ),
               ),
+            ),
           ),
-      bottomNavigationBar: widget.bottomNavigationBar,
     );
-    
+
     final scaffoldWithBackground = backgroundUrl != null
         ? Stack(
             children: [
-              _buildBackground(backgroundUrl),
+              _buildBackground(context, backgroundUrl),
               _buildOverlay(context),
-              scaffold,
+              Theme(
+                data: Theme.of(context).copyWith(
+                  scaffoldBackgroundColor: Colors.transparent,
+                ),
+                child: scaffoldFinal,
+              ),
             ],
           )
-        : scaffold;
-    
+        : scaffoldFinal;
+
     return _sideNavigationBar != null
         ? Row(
             mainAxisSize: MainAxisSize.min,
@@ -536,12 +624,12 @@ class CommonScaffoldState extends ConsumerState<CommonScaffold> {
 }
 
 List<Widget> genActions(List<Widget> actions, {double? space}) => <Widget>[
-    ...actions.separated(
-      SizedBox(
-        width: space ?? 4,
+      ...actions.separated(
+        SizedBox(
+          width: space ?? 4,
+        ),
       ),
-    ),
-    const SizedBox(
-      width: 8,
-    )
-  ];
+      const SizedBox(
+        width: 8,
+      )
+    ];

@@ -1,6 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SECURITY: narrow exposure — don't widen to whole files/ or add cache root. -->
 <paths>
     <files-path
-        name="files"
-        path="."/>
+        name="configs"
+        path="configs/" />
+    <files-path
+        name="logs"
+        path="logs/" />
+    <cache-path
+        name="cache"
+        path="shared/" />
+    <!-- APK staging for the in-app updater — narrow cache subpath, NOT the cache root. -->
+    <cache-path
+        name="updates"
+        path="updates/" />
 </paths>
-

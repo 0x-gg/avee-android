@@ -1,7 +1,7 @@
 // ignore_for_file: invalid_annotation_target
 
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/models.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'generated/core.freezed.dart';
@@ -15,13 +15,9 @@ abstract mixin class AppMessageListener {
   void onRequest(Connection connection) {}
 
   void onLoaded(String providerName) {}
-}
 
-// abstract mixin class ServiceMessageListener {
-//   onProtect(Fd fd) {}
-//
-//   onProcess(ProcessData process) {}
-// }
+  void onTun(Map<String, dynamic> data) {}
+}
 
 @freezed
 class SetupParams with _$SetupParams {
@@ -34,15 +30,6 @@ class SetupParams with _$SetupParams {
   factory SetupParams.fromJson(Map<String, dynamic> json) =>
       _$SetupParamsFromJson(json);
 }
-
-// extension SetupParamsExt on SetupParams {
-//   Map<String, dynamic> get json {
-//     final json = Map<String, dynamic>.from(config);
-//     json["selected-map"] = selectedMap;
-//     json["test-url"] = testUrl;
-//     return json;
-//   }
-// }
 
 @freezed
 class UpdateParams with _$UpdateParams {
@@ -91,10 +78,26 @@ class AndroidVpnOptions with _$AndroidVpnOptions {
     required String ipv6Address,
     @Default([]) List<String> routeAddress,
     required String dnsServerAddress,
+    List<String>? includePackage,
+    List<String>? excludePackage,
   }) = _AndroidVpnOptions;
 
   factory AndroidVpnOptions.fromJson(Map<String, Object?> json) =>
       _$AndroidVpnOptionsFromJson(json);
+}
+
+/// Randomly generated credentials for SOCKS/HTTP proxy authentication.
+/// Regenerated on each VPN connect to prevent detection by other apps.
+@freezed
+class ProxyCredentials with _$ProxyCredentials {
+  const factory ProxyCredentials({
+    required int port,
+    required String username,
+    required String password,
+  }) = _ProxyCredentials;
+
+  factory ProxyCredentials.fromJson(Map<String, Object?> json) =>
+      _$ProxyCredentialsFromJson(json);
 }
 
 @freezed
@@ -173,27 +176,6 @@ class Now with _$Now {
   factory Now.fromJson(Map<String, Object?> json) => _$NowFromJson(json);
 }
 
-// @freezed
-// class ProcessData with _$ProcessData {
-//   const factory ProcessData({
-//     required String id,
-//     required Metadata metadata,
-//   }) = _ProcessData;
-//
-//   factory ProcessData.fromJson(Map<String, Object?> json) =>
-//       _$ProcessDataFromJson(json);
-// }
-//
-// @freezed
-// class Fd with _$Fd {
-//   const factory Fd({
-//     required String id,
-//     required int value,
-//   }) = _Fd;
-//
-//   factory Fd.fromJson(Map<String, Object?> json) => _$FdFromJson(json);
-// }
-
 @freezed
 class ProviderSubscriptionInfo with _$ProviderSubscriptionInfo {
   const factory ProviderSubscriptionInfo({
@@ -264,7 +246,12 @@ extension ActionResultExt on ActionResult {
     if (code == ResultType.success) {
       return Result.success(data);
     } else {
-      return Result.error(data);
+      // The core's error payload is `dynamic` (it can be a Map/JSON object), but
+      // Result.error requires a String. Stringify so a non-String error body is
+      // surfaced as a readable message instead of throwing a cast — that cast
+      // previously escaped into handleResult and left the caller's completer
+      // hanging until its invoke timeout (getConfig = 2 min → frozen UI).
+      return Result.error(data is String ? data : '$data');
     }
   }
 }

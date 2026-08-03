@@ -1,13 +1,14 @@
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/models/clash_config.dart';
-import 'package:flclashx/providers/config.dart' show patchClashConfigProvider;
-import 'package:flclashx/state.dart';
-import 'package:flclashx/views/config/dns.dart';
-import 'package:flclashx/views/config/general.dart';
-import 'package:flclashx/views/config/network.dart';
-import 'package:flclashx/widgets/widgets.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/models/clash_config.dart';
+import 'package:avee/providers/config.dart' show patchClashConfigProvider;
+import 'package:avee/state.dart';
+import 'package:avee/views/config/dns.dart';
+import 'package:avee/views/config/general.dart';
+import 'package:avee/views/config/network.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class ConfigView extends StatefulWidget {
   const ConfigView({super.key});
@@ -23,7 +24,7 @@ class _ConfigViewState extends State<ConfigView> {
       ListItem.open(
         title: Text(appLocalizations.general),
         subtitle: Text(appLocalizations.generalDesc),
-        leading: const Icon(Icons.build),
+        leading: HugeIcon(icon: HugeIcons.strokeRoundedLegalHammer, size: 24),
         delegate: OpenDelegate(
           title: appLocalizations.general,
           widget: generateListView(
@@ -35,7 +36,7 @@ class _ConfigViewState extends State<ConfigView> {
       ListItem.open(
         title: Text(appLocalizations.network),
         subtitle: Text(appLocalizations.networkDesc),
-        leading: const Icon(Icons.vpn_key),
+        leading: HugeIcon(icon: HugeIcons.strokeRoundedKey01, size: 24),
         delegate: OpenDelegate(
           title: appLocalizations.network,
           blur: false,
@@ -45,31 +46,32 @@ class _ConfigViewState extends State<ConfigView> {
       ListItem.open(
         title: const Text("DNS"),
         subtitle: Text(appLocalizations.dnsDesc),
-        leading: const Icon(Icons.dns),
+        leading: HugeIcon(icon: HugeIcons.strokeRoundedServerStack01, size: 24),
         delegate: OpenDelegate(
           title: "DNS",
-          action: Consumer(builder: (_, ref, __) => IconButton(
-              onPressed: () async {
-                final res = await globalState.showMessage(
-                  title: appLocalizations.reset,
-                  message: TextSpan(
-                    text: appLocalizations.resetTip,
-                  ),
-                );
-                if (res != true) {
-                  return;
-                }
-                ref.read(patchClashConfigProvider.notifier).updateState(
-                      (state) => state.copyWith(
-                        dns: defaultDns,
-                      ),
-                    );
-              },
-              tooltip: appLocalizations.reset,
-              icon: const Icon(
-                Icons.replay,
-              ),
-            )),
+          action: Consumer(
+              builder: (_, ref, __) => IconButton(
+                    onPressed: () async {
+                      final res = await globalState.showMessage(
+                        title: appLocalizations.reset,
+                        message: TextSpan(
+                          text: appLocalizations.resetTip,
+                        ),
+                      );
+                      if (res != true) {
+                        return;
+                      }
+                      ref.read(patchClashConfigProvider.notifier).updateState(
+                            (state) => state.copyWith(
+                              dns: defaultDns,
+                            ),
+                          );
+                    },
+                    tooltip: appLocalizations.reset,
+                    icon: HugeIcon(
+                        icon: HugeIcons.strokeRoundedArrowReloadHorizontal,
+                        size: 24),
+                  )),
           widget: const DnsListView(),
           blur: false,
         ),

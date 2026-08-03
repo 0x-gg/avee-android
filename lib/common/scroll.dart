@@ -1,8 +1,8 @@
 import 'dart:math';
 import 'dart:ui';
 
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/widgets/scroll.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/widgets/scroll.dart';
 import 'package:flutter/material.dart';
 
 class BaseScrollBehavior extends MaterialScrollBehavior {
@@ -23,7 +23,8 @@ class HiddenBarScrollBehavior extends BaseScrollBehavior {
     BuildContext context,
     Widget child,
     ScrollableDetails details,
-  ) => child;
+  ) =>
+      child;
 }
 
 class ShowBarScrollBehavior extends BaseScrollBehavior {
@@ -32,17 +33,19 @@ class ShowBarScrollBehavior extends BaseScrollBehavior {
     BuildContext context,
     Widget child,
     ScrollableDetails details,
-  ) => CommonAutoHiddenScrollBar(
-      controller: details.controller,
-      child: child,
-    );
+  ) =>
+      CommonAutoHiddenScrollBar(
+        controller: details.controller,
+        child: child,
+      );
 }
 
 class NextClampingScrollPhysics extends ClampingScrollPhysics {
   const NextClampingScrollPhysics({super.parent});
 
   @override
-  NextClampingScrollPhysics applyTo(ScrollPhysics? ancestor) => NextClampingScrollPhysics(parent: buildParent(ancestor));
+  NextClampingScrollPhysics applyTo(ScrollPhysics? ancestor) =>
+      NextClampingScrollPhysics(parent: buildParent(ancestor));
 
   @override
   Simulation? createBallisticSimulation(
@@ -94,14 +97,15 @@ class ReverseScrollController extends ScrollController {
     ScrollPhysics physics,
     ScrollContext context,
     ScrollPosition? oldPosition,
-  ) => ReverseScrollPosition(
-      physics: physics,
-      context: context,
-      initialPixels: initialScrollOffset,
-      keepScrollOffset: keepScrollOffset,
-      oldPosition: oldPosition,
-      debugLabel: debugLabel,
-    );
+  ) =>
+      ReverseScrollPosition(
+        physics: physics,
+        context: context,
+        initialPixels: initialScrollOffset,
+        keepScrollOffset: keepScrollOffset,
+        oldPosition: oldPosition,
+        debugLabel: debugLabel,
+      );
 }
 
 class ReverseScrollPosition extends ScrollPositionWithSingleContext {

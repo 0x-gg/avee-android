@@ -1,8 +1,8 @@
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/state.dart';
 import 'package:dynamic_color/dynamic_color.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -12,6 +12,14 @@ import 'config.dart';
 
 part 'generated/state.g.dart';
 
+// CONFIG MIRROR — aggregation site (2 of 3).
+// `configState` re-assembles the 13 config slice providers
+// (lib/providers/config.dart) back into a single `Config`. It is the reverse
+// of each slice's `build()` seed and must list EVERY `Config` field. A field
+// added to `Config` (lib/models/config.dart) + its slice provider but forgotten
+// HERE silently falls back to the default and is dropped — caught by
+// test/common/config_roundtrip_test.dart. The flat ref-less mirror these slices
+// shadow is owned by lib/common/config_repository.dart.
 @riverpod
 Config configState(Ref ref) {
   final themeProps = ref.watch(themeSettingProvider);
@@ -25,10 +33,8 @@ Config configState(Ref ref) {
   final proxiesStyle = ref.watch(proxiesStyleSettingProvider);
   final scriptProps = ref.watch(scriptStateProvider);
   final hotKeyActions = ref.watch(hotKeyActionsProvider);
-  final dav = ref.watch(appDAVSettingProvider);
   final windowProps = ref.watch(windowSettingProvider);
   return Config(
-    dav: dav,
     windowProps: windowProps,
     hotKeyActions: hotKeyActions,
     scriptProps: scriptProps,
@@ -51,9 +57,12 @@ GroupsState currentGroupsState(Ref ref) {
   final groups = ref.watch(groupsProvider);
   return GroupsState(
     value: switch (mode) {
-      Mode.direct => [],
-      Mode.global => groups.toList(),
       Mode.rule => groups
+          .where((item) => item.hidden == false)
+          .where((element) => element.name != GroupName.GLOBAL.name)
+          .toList(),
+      Mode.global => groups.toList(),
+      _ => groups
           .where((item) => item.hidden == false)
           .where((element) => element.name != GroupName.GLOBAL.name)
           .toList(),
@@ -63,7 +72,8 @@ GroupsState currentGroupsState(Ref ref) {
 
 @riverpod
 NavigationItemsState navigationsState(Ref ref) {
-  final openLogs = ref.watch(appSettingProvider).openLogs;
+  final openLogs =
+      ref.watch(appSettingProvider.select((state) => state.openLogs));
   final hasProxies = ref.watch(
       currentGroupsStateProvider.select((state) => state.value.isNotEmpty));
   return NavigationItemsState(
@@ -78,36 +88,39 @@ NavigationItemsState navigationsState(Ref ref) {
 NavigationItemsState currentNavigationsState(Ref ref) {
   final viewWidth = ref.watch(viewWidthProvider);
   final navigationItemsState = ref.watch(navigationsStateProvider);
+  final hasProfiles = ref.watch(
+    profilesProvider.select((profiles) => profiles.isNotEmpty),
+  );
   final navigationItemMode = switch (viewWidth <= maxMobileWidth) {
     true => NavigationItemMode.mobile,
     false => NavigationItemMode.desktop,
   };
+  final filtered = navigationItemsState.value
+      .where(
+        (element) => element.modes.contains(navigationItemMode),
+      )
+      .toList();
+  // Without any profile/subscription there is nothing to navigate to —
+  // collapse the tab menu and screen indicator to a single Dashboard entry
+  // so the user only sees the connect / add-subscription affordance.
   return NavigationItemsState(
-    value: navigationItemsState.value
-        .where(
-          (element) => element.modes.contains(navigationItemMode),
-        )
-        .toList(),
+    value: hasProfiles
+        ? filtered
+        : filtered
+            .where((element) => element.label == PageLabel.dashboard)
+            .toList(),
   );
 }
 
 @riverpod
 CoreState coreState(Ref ref) {
-  var vpnProps = ref.watch(vpnSettingProvider);
-  final mixedPort = ref.watch(
-    patchClashConfigProvider.select((state) => state.mixedPort),
-  );
-  // With mixed-port disabled there is no HTTP proxy to advertise to the OS.
-  // Force VpnProps.systemProxy off so FlClashVpnService doesn't register a
-  // ProxyInfo pointing at 127.0.0.1:0 via setHttpProxy. Traffic is still
-  // routed through the VPN/TUN, just without the HTTP-proxy hint.
-  if (mixedPort == 0 && vpnProps.systemProxy) {
-    vpnProps = vpnProps.copyWith(systemProxy: false);
-  }
+  final vpnProps = ref.watch(vpnSettingProvider);
   final currentProfile = ref.watch(currentProfileProvider);
+  final onlyStatisticsProxy = ref
+      .watch(appSettingProvider.select((state) => state.onlyStatisticsProxy));
   return CoreState(
     vpnProps: vpnProps,
-    onlyStatisticsProxy: false,
+    onlyStatisticsProxy: onlyStatisticsProxy,
     currentProfileName: currentProfile?.label ?? currentProfile?.id ?? "",
   );
 }
@@ -149,13 +162,9 @@ ProxyState proxyState(Ref ref) {
   final mixedPort = ref.watch(
     patchClashConfigProvider.select((state) => state.mixedPort),
   );
-  // Mixed-port = 0 means the HTTP proxy inbound is disabled, so there's
-  // nothing for the OS-level system proxy to point at. Force it off here so
-  // ProxyManager calls stopProxy() instead of startProxy(0, ...).
-  final systemProxy = mixedPort == 0 ? false : vm2.a;
   return ProxyState(
     isStart: isStart,
-    systemProxy: systemProxy,
+    systemProxy: vm2.a,
     bassDomain: vm2.b,
     port: mixedPort,
   );
@@ -164,12 +173,23 @@ ProxyState proxyState(Ref ref) {
 @riverpod
 TrayState trayState(Ref ref) {
   final isStart = ref.watch(runTimeProvider.select((state) => state != null));
-  final networkProps = ref.watch(networkSettingProvider);
-  final clashConfig = ref.watch(
-    patchClashConfigProvider,
+  final systemProxy = ref.watch(
+    networkSettingProvider.select((state) => state.systemProxy),
   );
-  final appSetting = ref.watch(
-    appSettingProvider,
+  final mode = ref.watch(
+    patchClashConfigProvider.select((state) => state.mode),
+  );
+  final mixedPort = ref.watch(
+    patchClashConfigProvider.select((state) => state.mixedPort),
+  );
+  final tunEnable = ref.watch(
+    patchClashConfigProvider.select((state) => state.tun.enable),
+  );
+  final autoLaunch = ref.watch(
+    appSettingProvider.select((state) => state.autoLaunch),
+  );
+  final locale = ref.watch(
+    appSettingProvider.select((state) => state.locale),
   );
   final groups = ref
       .watch(
@@ -184,13 +204,13 @@ TrayState trayState(Ref ref) {
   final globalModeEnabled = ref.watch(globalModeEnabledProvider);
 
   return TrayState(
-    mode: clashConfig.mode,
-    port: clashConfig.mixedPort,
-    autoLaunch: appSetting.autoLaunch,
-    systemProxy: networkProps.systemProxy,
-    tunEnable: clashConfig.tun.enable,
+    mode: mode,
+    port: mixedPort,
+    autoLaunch: autoLaunch,
+    systemProxy: systemProxy,
+    tunEnable: tunEnable,
     isStart: isStart,
-    locale: appSetting.locale,
+    locale: locale,
     brightness: brightness,
     groups: groups,
     selectedMap: selectedMap,
@@ -216,7 +236,7 @@ HomeState homeState(Ref ref) {
   final pageLabel = ref.watch(currentPageLabelProvider);
   final navigationItems = ref.watch(currentNavigationsStateProvider).value;
   final viewMode = ref.watch(viewModeProvider);
-  final locale = ref.watch(appSettingProvider).locale;
+  final locale = ref.watch(appSettingProvider.select((state) => state.locale));
   return HomeState(
     pageLabel: pageLabel,
     navigationItems: navigationItems,
@@ -284,7 +304,8 @@ ProfilesSelectorState profilesSelectorState(Ref ref) {
 
 @riverpod
 ProxiesListSelectorState proxiesListSelectorState(Ref ref) {
-  final groupNames = ref.watch(currentGroupsStateProvider.select((state) => state.value.map((e) => e.name).toList()));
+  final groupNames = ref.watch(currentGroupsStateProvider
+      .select((state) => state.value.map((e) => e.name).toList()));
   final currentUnfoldSet = ref.watch(unfoldSetProvider);
   final proxiesStyle = ref.watch(proxiesStyleSettingProvider);
   final sortNum = ref.watch(sortNumProvider);
@@ -323,12 +344,12 @@ ProxiesSelectorState proxiesSelectorState(Ref ref) {
 
 @riverpod
 GroupNamesState groupNamesState(Ref ref) => GroupNamesState(
-    groupNames: ref.watch(
-      currentGroupsStateProvider.select(
-        (state) => state.value.map((e) => e.name).toList(),
+      groupNames: ref.watch(
+        currentGroupsStateProvider.select(
+          (state) => state.value.map((e) => e.name).toList(),
+        ),
       ),
-    ),
-  );
+    );
 
 @riverpod
 ProxyGroupSelectorState proxyGroupSelectorState(Ref ref, String groupName) {
@@ -344,7 +365,9 @@ ProxyGroupSelectorState proxyGroupSelectorState(Ref ref, String groupName) {
   final columns = ref.watch(getProxiesColumnsProvider);
   final query =
       ref.watch(proxiesQueryProvider.select((state) => state.toLowerCase()));
-  final proxies = group?.all.where((item) => item.name.toLowerCase().contains(query)).toList() ??
+  final proxies = group?.all
+          .where((item) => item.name.toLowerCase().contains(query))
+          .toList() ??
       [];
   return ProxyGroupSelectorState(
     testUrl: group?.testUrl,
@@ -371,15 +394,17 @@ PackageListSelectorState packageListSelectorState(Ref ref) {
 @riverpod
 MoreToolsSelectorState moreToolsSelectorState(Ref ref) {
   final viewMode = ref.watch(viewModeProvider);
-  final navigationItems = ref.watch(navigationsStateProvider.select((state) => state.value.where((element) {
-      final isMore = element.modes.contains(NavigationItemMode.more);
-      final isDesktop = element.modes.contains(NavigationItemMode.desktop);
-      if (isMore && !isDesktop) return true;
-      if (viewMode != ViewMode.mobile || !isMore) {
-        return false;
-      }
-      return true;
-    }).toList()));
+  final navigationItems = ref.watch(
+      navigationsStateProvider.select((state) => state.value.where((element) {
+            final isMore = element.modes.contains(NavigationItemMode.more);
+            final isDesktop =
+                element.modes.contains(NavigationItemMode.desktop);
+            if (isMore && !isDesktop) return true;
+            if (viewMode != ViewMode.mobile || !isMore) {
+              return false;
+            }
+            return true;
+          }).toList()));
 
   return MoreToolsSelectorState(navigationItems: navigationItems);
 }
@@ -403,7 +428,8 @@ bool isCurrentPage(
 
 @riverpod
 String getRealTestUrl(Ref ref, [String? testUrl]) {
-  final currentTestUrl = ref.watch(appSettingProvider).testUrl;
+  final currentTestUrl =
+      ref.watch(appSettingProvider.select((state) => state.testUrl));
   return testUrl.getSafeValue(currentTestUrl);
 }
 
@@ -449,17 +475,17 @@ Set<String> unfoldSet(Ref ref) {
 
 @riverpod
 HotKeyAction getHotKeyAction(Ref ref, HotAction hotAction) => ref.watch(
-    hotKeyActionsProvider.select(
-      (state) {
-        final index = state.indexWhere((item) => item.action == hotAction);
-        return index != -1
-            ? state[index]
-            : HotKeyAction(
-                action: hotAction,
-              );
-      },
-    ),
-  );
+      hotKeyActionsProvider.select(
+        (state) {
+          final index = state.indexWhere((item) => item.action == hotAction);
+          return index != -1
+              ? state[index]
+              : HotKeyAction(
+                  action: hotAction,
+                );
+        },
+      ),
+    );
 
 @riverpod
 Profile? currentProfile(Ref ref) {
@@ -468,10 +494,83 @@ Profile? currentProfile(Ref ref) {
       .watch(profilesProvider.select((state) => state.getProfile(profileId)));
 }
 
+const _cabinetTruthyValues = {'true', '1', 'yes', 'enabled', 'cabinet'};
+
+bool _isCabinetHeaderTruthy(String? value) {
+  if (value == null) return false;
+  final normalized = value.trim().toLowerCase();
+  if (normalized.isEmpty) return false;
+  if (_cabinetTruthyValues.contains(normalized)) return true;
+  // Legacy fallback: accept any value containing the Cyrillic marker.
+  return normalized.contains('кабинет');
+}
+
+bool profileHasCabinetMarker(Profile? profile) {
+  final headers = profile?.providerHeaders;
+  if (headers == null) return false;
+  if (_isCabinetHeaderTruthy(headers['avee-cabinet'])) return true;
+  // Legacy fallback: older profiles may carry the Cyrillic marker in any header.
+  return headers.values.any(
+    (value) => value.toLowerCase().contains('кабинет'),
+  );
+}
+
+/// Default cabinet URL used as a fallback when the legacy marker value
+/// `cabinet` (or its truthy aliases) is present without an explicit URL.
+const String defaultCabinetUrl = 'https://aveevpn.com';
+
+/// Returns `true` for loopback hostnames that may legitimately be served
+/// over plain `http://` during local development.
+bool _isLocalHttpCabinetHost(String host) {
+  final normalized = host.toLowerCase();
+  return normalized == 'localhost' ||
+      normalized == '127.0.0.1' ||
+      normalized == '::1' ||
+      // `Uri.host` lowercases IPv6 literals and strips the surrounding
+      // brackets, but keep the bracketed form as a safety net.
+      normalized == '[::1]';
+}
+
+/// Resolves the cabinet URL declared by the panel via
+/// `avee-cabinet: <url>` response header.
+///
+/// Accepts:
+///   * any absolute `https://` URI with a non-empty host;
+///   * `http://` URIs only when the host is a loopback address
+///     (`localhost`, `127.0.0.1`, `::1`) — strictly for local dev.
+/// Returns the default cabinet URL when the header carries a legacy
+/// truthy marker (e.g. `cabinet`, `true`).
+/// Returns `null` for missing, invalid, or unsupported values
+/// (relative paths, hostless URIs, plain `http://` on public hosts,
+/// `tg://`, `intent://`, `javascript:` etc.).
+Uri? profileCabinetUri(Profile? profile) {
+  final raw = profile?.providerHeaders['avee-cabinet'];
+  if (raw == null) return null;
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return null;
+
+  final parsed = Uri.tryParse(trimmed);
+  if (parsed != null && parsed.hasScheme && parsed.host.isNotEmpty) {
+    if (parsed.scheme == 'https') {
+      return parsed;
+    }
+    if (parsed.scheme == 'http' && _isLocalHttpCabinetHost(parsed.host)) {
+      return parsed;
+    }
+  }
+
+  // Legacy truthy marker → fall back to the well-known cabinet URL.
+  if (_isCabinetHeaderTruthy(trimmed)) {
+    return Uri.parse(defaultCabinetUrl);
+  }
+
+  return null;
+}
+
 @riverpod
 bool globalModeEnabled(Ref ref) {
   final profile = ref.watch(currentProfileProvider);
-  final value = profile?.providerHeaders['flclashx-globalmode'];
+  final value = profile?.providerHeaders['avee-globalmode'];
   return value?.toLowerCase() != 'false';
 }
 
@@ -485,21 +584,21 @@ bool hasAnnounceData(Ref ref) {
 @riverpod
 bool hasServiceInfoData(Ref ref) {
   final profile = ref.watch(currentProfileProvider);
-  final value = profile?.providerHeaders['flclashx-servicename'];
+  final value = profile?.providerHeaders['avee-servicename'];
   return value != null && value.isNotEmpty;
 }
 
 @riverpod
 bool hasServerInfoData(Ref ref) {
   final profile = ref.watch(currentProfileProvider);
-  final value = profile?.providerHeaders['flclashx-serverinfo'];
+  final value = profile?.providerHeaders['avee-serverinfo'];
   return value != null && value.isNotEmpty;
 }
 
 @riverpod
 String? backgroundUrl(Ref ref) {
   final profile = ref.watch(currentProfileProvider);
-  return profile?.providerHeaders['flclashx-background'];
+  return profile?.providerHeaders['avee-background'];
 }
 
 @riverpod
@@ -520,8 +619,12 @@ ProxyCardState _getProxyCardState(
       groups.indexWhere((element) => element.name == proxyDelayState.proxyName);
   if (index == -1) return proxyDelayState;
   final group = groups[index];
-  final currentSelectedName = group
-      .getCurrentSelectedName(selectedMap[proxyDelayState.proxyName] ?? '');
+  // resolveSelectedName (NOT getCurrentSelectedName): an unpinned smart group
+  // yields "" here, terminating resolution at the group itself so delay tests
+  // and badge lookups target a name the core can actually URLTest. The
+  // display label "Auto" must never leak into this chain.
+  final currentSelectedName =
+      group.resolveSelectedName(selectedMap[proxyDelayState.proxyName] ?? '');
   if (currentSelectedName.isEmpty) {
     return proxyDelayState;
   }
@@ -570,16 +673,8 @@ String getProxyDesc(Ref ref, Proxy proxy) {
     final groups = ref.watch(groupsProvider);
     final index = groups.indexWhere((element) => element.name == proxy.name);
     if (index == -1) return proxy.serverDescription ?? proxy.type;
-    // Custom description from YAML wins over the group type when present.
-    // Otherwise show the currently selected proxy instead of "Type(selection)".
-    final customDesc = globalState.groupDescriptions.value[proxy.name];
-    if (customDesc != null && customDesc.isNotEmpty) {
-      return customDesc;
-    }
     final state = ref.watch(getProxyCardStateProvider(proxy.name));
-    return state.proxyName.isNotEmpty
-        ? state.proxyName
-        : (proxy.serverDescription ?? proxy.type);
+    return "${proxy.serverDescription ?? proxy.type}(${state.proxyName.isNotEmpty ? state.proxyName : '*'})";
   }
 }
 
@@ -587,8 +682,8 @@ String getProxyDesc(Ref ref, Proxy proxy) {
 class ProfileOverrideState extends _$ProfileOverrideState {
   @override
   ProfileOverrideStateModel build() => const ProfileOverrideStateModel(
-      selectedRules: {},
-    );
+        selectedRules: {},
+      );
 
   void updateState(
     ProfileOverrideStateModel? Function(ProfileOverrideStateModel state)
@@ -604,10 +699,10 @@ class ProfileOverrideState extends _$ProfileOverrideState {
 
 @riverpod
 OverrideData? getProfileOverrideData(Ref ref, String profileId) => ref.watch(
-    profilesProvider.select(
-      (state) => state.getProfile(profileId)?.overrideData,
-    ),
-  );
+      profilesProvider.select(
+        (state) => state.getProfile(profileId)?.overrideData,
+      ),
+    );
 
 @riverpod
 VM2? layoutChange(Ref ref) {
@@ -651,9 +746,6 @@ ColorScheme genColorScheme(
     ),
   );
   if (color == null && (ignoreConfig == true || vm2.a == null)) {
-    // if (globalState.corePalette != null) {
-    //   return globalState.corePalette!.toColorScheme(brightness: brightness);
-    // }
     return ColorScheme.fromSeed(
       seedColor: globalState.corePalette
               ?.toColorScheme(brightness: brightness)
@@ -663,11 +755,20 @@ ColorScheme genColorScheme(
       dynamicSchemeVariant: vm2.b,
     );
   }
-  return ColorScheme.fromSeed(
-    seedColor: color ?? Color(vm2.a!),
+  // Override fromSeed's tone-mapped primary with the HSL-filtered seed so the
+  // accent stays exact (fromSeed lightens/desaturates for contrast).
+  final seed = color ?? Color(vm2.a!);
+  final scheme = ColorScheme.fromSeed(
+    seedColor: seed,
     brightness: brightness,
     dynamicSchemeVariant: vm2.b,
   );
+  final filtered = applyColorFilter(seed, vm2.b);
+  final onAccent =
+      ThemeData.estimateBrightnessForColor(filtered) == Brightness.dark
+          ? Colors.white
+          : Colors.black;
+  return scheme.copyWith(primary: filtered, onPrimary: onAccent);
 }
 
 @riverpod

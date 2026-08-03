@@ -2,8 +2,9 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flclashx/common/common.dart';
+import 'package:avee/common/common.dart';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -32,18 +33,23 @@ class _ScanPageState extends State<ScanPage> {
   }
 
   Future<void> _scanFromImage() async {
+    if (!system.supportsQrFromImage) {
+      if (mounted) {
+        context.showNotifier(appLocalizations.qrScanFromImageUnsupported);
+      }
+      return;
+    }
+
     String? imagePath;
 
     if (system.isDesktop) {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.image,
       );
       if (result != null && result.files.single.path != null) {
         imagePath = result.files.single.path;
       }
-    } 
-
-    else {
+    } else {
       final picker = ImagePicker();
       final image = await picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
@@ -63,6 +69,35 @@ class _ScanPageState extends State<ScanPage> {
     }
   }
 
+  Widget _buildScannerError(
+    BuildContext context,
+    MobileScannerException error,
+  ) {
+    // Replaces the plugin's hardcoded English default ("Camera permission
+    // denied.") with a localized string so the scanner isn't a lone English
+    // pane inside an otherwise Russian UI. Non-permission codes keep the
+    // plugin's own message (rare edge cases, not the audit finding).
+    final message = error.errorCode == MobileScannerErrorCode.permissionDenied
+        ? appLocalizations.cameraPermissionDenied
+        : error.errorCode.message;
+    return ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Theme.of(context)
+                .textTheme
+                .bodyLarge
+                ?.copyWith(color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _scannerController.dispose();
@@ -71,8 +106,9 @@ class _ScanPageState extends State<ScanPage> {
 
   @override
   Widget build(BuildContext context) {
-    final double sideLength = min(400, MediaQuery.of(context).size.width * 0.67);
-    
+    final double sideLength =
+        min(400, MediaQuery.of(context).size.width * 0.67);
+
     final screenSize = MediaQuery.of(context).size;
     final scanWindow = Rect.fromCenter(
       center: Offset(screenSize.width / 2, screenSize.height / 2),
@@ -87,6 +123,7 @@ class _ScanPageState extends State<ScanPage> {
             controller: _scannerController,
             scanWindow: scanWindow,
             onDetect: _handleBarcode,
+            errorBuilder: _buildScannerError,
           ),
           CustomPaint(
             painter: ScannerOverlay(scanWindow: scanWindow),
@@ -94,7 +131,10 @@ class _ScanPageState extends State<ScanPage> {
           AppBar(
             backgroundColor: Colors.transparent,
             leading: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white),
+              icon: HugeIcon(
+                  icon: HugeIcons.strokeRoundedCancel01,
+                  size: 24,
+                  color: Colors.white),
               onPressed: () => Navigator.of(context).pop(),
             ),
             actions: [
@@ -105,12 +145,21 @@ class _ScanPageState extends State<ScanPage> {
                   builder: (context, state, child) {
                     switch (state.torchState) {
                       case TorchState.off:
-                        return const Icon(Icons.flash_off, color: Colors.grey);
+                        return HugeIcon(
+                            icon: HugeIcons.strokeRoundedFlashOff,
+                            size: 24,
+                            color: Colors.grey);
                       case TorchState.on:
-                        return const Icon(Icons.flash_on, color: Colors.yellow);
+                        return HugeIcon(
+                            icon: HugeIcons.strokeRoundedFlash,
+                            size: 24,
+                            color: Colors.yellow);
                       case TorchState.unavailable:
                       default:
-                        return const Icon(Icons.no_flash, color: Colors.grey);
+                        return HugeIcon(
+                            icon: HugeIcons.strokeRoundedFlashOff,
+                            size: 24,
+                            color: Colors.grey);
                     }
                   },
                 ),
@@ -125,12 +174,13 @@ class _ScanPageState extends State<ScanPage> {
               child: IconButton(
                 color: Colors.white,
                 style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.all(Colors.black.withValues(alpha: 0.5)),
+                  backgroundColor: WidgetStateProperty.all(
+                      Colors.black.withValues(alpha: 0.5)),
                 ),
                 padding: const EdgeInsets.all(16),
                 iconSize: 32.0,
                 onPressed: _scanFromImage,
-                icon: const Icon(Icons.photo_library_outlined),
+                icon: HugeIcon(icon: HugeIcons.strokeRoundedImage01, size: 32),
               ),
             ),
           ),
@@ -193,6 +243,7 @@ class ScannerOverlay extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(ScannerOverlay oldDelegate) => scanWindow != oldDelegate.scanWindow ||
-        borderRadius != oldDelegate.borderRadius;
+  bool shouldRepaint(ScannerOverlay oldDelegate) =>
+      scanWindow != oldDelegate.scanWindow ||
+      borderRadius != oldDelegate.borderRadius;
 }

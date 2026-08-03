@@ -1,0 +1,34 @@
+name: GPL source release audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit or tag to audit
+        required: true
+        default: main
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  source-bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          submodules: recursive
+          fetch-depth: 0
+      - name: Verify GPL notices and build source bundle
+        shell: pwsh
+        run: ./scripts/verify-gpl-release.ps1 -Tag '${{ inputs.ref || github.ref_name }}' -OutputDirectory ./release-source
+      - name: Upload source bundle and checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: avee-gpl-source-${{ github.sha }}
+          path: release-source/*
+          if-no-files-found: error

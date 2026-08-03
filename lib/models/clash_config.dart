@@ -1,7 +1,7 @@
 // ignore_for_file: invalid_annotation_target
 
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'generated/clash_config.freezed.dart';
@@ -160,7 +160,8 @@ class Sniffer with _$Sniffer {
       _$SnifferFromJson(json);
 }
 
-List<String> _formJsonPorts(List? ports) => ports?.map((item) => item.toString()).toList() ?? [];
+List<String> _formJsonPorts(List? ports) =>
+    ports?.map((item) => item.toString()).toList() ?? [];
 
 @freezed
 class SnifferConfig with _$SnifferConfig {
@@ -389,17 +390,14 @@ class ParsedRule with _$ParsedRule {
 
 extension ParsedRuleExt on ParsedRule {
   String get value => [
-      ruleAction.value,
-      if (ruleAction == RuleAction.RULE_SET)
-        ruleProvider
-      else if (ruleAction != RuleAction.MATCH)
-        content,
-      ruleAction == RuleAction.SUB_RULE ? subRule : ruleTarget,
-      if (ruleAction.hasParams) ...[
-        if (src) "src",
-        if (noResolve) "no-resolve",
-      ]
-    ].join(",");
+        ruleAction.value,
+        ruleAction == RuleAction.RULE_SET ? ruleProvider : content,
+        ruleAction == RuleAction.SUB_RULE ? subRule : ruleTarget,
+        if (ruleAction.hasParams) ...[
+          if (src) "src",
+          if (noResolve) "no-resolve",
+        ]
+      ].join(",");
 }
 
 @freezed
@@ -410,9 +408,9 @@ class Rule with _$Rule {
   }) = _Rule;
 
   factory Rule.value(String value) => Rule(
-      value: value,
-      id: utils.uuidV4,
-    );
+        value: value,
+        id: utils.uuidV4,
+      );
 
   factory Rule.fromJson(Map<String, Object?> json) => _$RuleFromJson(json);
 }
@@ -438,15 +436,16 @@ List<Rule> _genRule(List<dynamic>? rules) {
       .toList();
 }
 
-List<RuleProvider> _genRuleProviders(Map<String, dynamic> json) => json.entries.map((entry) => RuleProvider(name: entry.key)).toList();
+List<RuleProvider> _genRuleProviders(Map<String, dynamic> json) =>
+    json.entries.map((entry) => RuleProvider(name: entry.key)).toList();
 
 List<SubRule> _genSubRules(Map<String, dynamic> json) => json.entries
-      .map(
-        (entry) => SubRule(
-          name: entry.key,
-        ),
-      )
-      .toList();
+    .map(
+      (entry) => SubRule(
+        name: entry.key,
+      ),
+    )
+    .toList();
 
 @freezed
 class ClashConfigSnippet with _$ClashConfigSnippet {
@@ -477,7 +476,7 @@ class ClashConfig with _$ClashConfig {
     @Default(false) @JsonKey(name: "allow-lan") bool allowLan,
     @Default(LogLevel.error) @JsonKey(name: "log-level") LogLevel logLevel,
     @Default(true) bool ipv6,
-    @Default(FindProcessMode.always)
+    @Default(FindProcessMode.strict)
     @JsonKey(
       name: "find-process-mode",
       unknownEnumValue: FindProcessMode.always,
@@ -488,6 +487,7 @@ class ClashConfig with _$ClashConfig {
     int keepAliveInterval,
     @Default(true) @JsonKey(name: "unified-delay") bool unifiedDelay,
     @Default(true) @JsonKey(name: "tcp-concurrent") bool tcpConcurrent,
+    @Default(false) @JsonKey(name: "tls-fragment") bool tlsFragment,
     @Default(defaultTun) @JsonKey(fromJson: Tun.safeFormJson) Tun tun,
     @Default(defaultDns) @JsonKey(fromJson: Dns.safeDnsFromJson) Dns dns,
     @Default(defaultGeoXUrl)

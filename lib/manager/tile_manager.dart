@@ -1,10 +1,8 @@
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/plugins/tile.dart';
-import 'package:flclashx/state.dart';
+import 'package:avee/plugins/tile.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 
 class TileManager extends StatefulWidget {
-
   const TileManager({
     super.key,
     required this.child,
@@ -32,26 +30,9 @@ class _TileContainerState extends State<TileManager> with TileListener {
   }
 
   @override
-  void onChangeMode(String mode) {
-    try {
-      final modeEnum = Mode.values.byName(mode);
-      globalState.appController.changeMode(modeEnum);
-      // Reflect back to widget — updateClashConfigDebounce will push to core.
-      tile?.updateMode(mode);
-    } catch (_) {}
-    super.onChangeMode(mode);
-  }
-
-  @override
   void initState() {
     super.initState();
     tile?.addListener(this);
-    // Push current mode to native so widget picks up the right active button
-    // when the main engine comes online.
-    try {
-      final current = globalState.config.patchClashConfig.mode.name;
-      tile?.updateMode(current);
-    } catch (_) {}
   }
 
   @override

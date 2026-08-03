@@ -2,8 +2,8 @@
 
 import 'dart:math';
 
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
 import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -13,7 +13,7 @@ part 'generated/common.g.dart';
 @freezed
 class NavigationItem with _$NavigationItem {
   const factory NavigationItem({
-    required Icon icon,
+    required Widget icon,
     required PageLabel label,
     final String? description,
     required Widget view,
@@ -86,10 +86,6 @@ extension ConnectionExt on Connection {
 
 String _logDateTime(_) => DateTime.now().toString();
 
-// String _logId(_) {
-//   return utils.id;
-// }
-
 @freezed
 class Log with _$Log {
   const factory Log({
@@ -100,11 +96,11 @@ class Log with _$Log {
 
   factory Log.app(
     String payload,
-  ) => Log(
-      payload: payload,
-      dateTime: _logDateTime(null),
-      // id: _logId(null),
-    );
+  ) =>
+      Log(
+        payload: payload,
+        dateTime: _logDateTime(null),
+      );
 
   factory Log.fromJson(Map<String, Object?> json) => _$LogFromJson(json);
 }
@@ -165,20 +161,6 @@ extension ConnectionsStateExt on ConnectionsState {
   }
 }
 
-const defaultDavFileName = "backup.zip";
-
-@freezed
-class DAV with _$DAV {
-  const factory DAV({
-    required String uri,
-    required String user,
-    required String password,
-    @Default(defaultDavFileName) String fileName,
-  }) = _DAV;
-
-  factory DAV.fromJson(Map<String, Object?> json) => _$DAVFromJson(json);
-}
-
 @freezed
 class FileInfo with _$FileInfo {
   const factory FileInfo({
@@ -204,16 +186,15 @@ class VersionInfo with _$VersionInfo {
 }
 
 class Traffic {
-
   Traffic({int? up, int? down})
       : id = DateTime.now().millisecondsSinceEpoch,
         up = TrafficValue(value: up),
         down = TrafficValue(value: down);
 
   factory Traffic.fromMap(Map<String, dynamic> map) => Traffic(
-      up: map['up'],
-      down: map['down'],
-    );
+        up: map['up'],
+        down: map['down'],
+      );
   int id;
   TrafficValue up;
   TrafficValue down;
@@ -238,7 +219,6 @@ class Traffic {
 
 @immutable
 class TrafficValueShow {
-
   const TrafficValueShow({
     required this.value,
     required this.unit,
@@ -283,17 +263,43 @@ extension GroupsExt on List<Group> {
 extension GroupExt on Group {
   String get realNow => now ?? "";
 
-  String getCurrentSelectedName(String proxyName) {
+  /// Resolution-safe selection: the name of the member this group currently
+  /// routes through, or "" when there is no single such member.
+  ///
+  /// A `smart` group with no pinned node picks per destination, so the core
+  /// returns the placeholder "Smart - Select" as `now`. That placeholder is
+  /// NOT a proxy name — returning it (or any display label) from here would
+  /// poison `_getProxyCardState` recursion and delay tests with a name the
+  /// core cannot resolve. Returning "" lets callers terminate at the group
+  /// itself, which the core can URLTest directly (it dials through the
+  /// group's own auto-selection).
+  String resolveSelectedName(String proxyName) {
     if (type.isComputedSelected) {
+      if (type == GroupType.Smart && realNow == _smartAutoPlaceholder) {
+        return "";
+      }
       return realNow.isNotEmpty ? realNow : proxyName;
     }
     return proxyName.isNotEmpty ? proxyName : realNow;
   }
+
+  /// Display-only variant: like [resolveSelectedName], but surfaces an
+  /// explicit localized auto label for an unpinned `smart` group instead of
+  /// a fake selection that highlights nothing (which read as an empty manual
+  /// selector "awaiting a pick"). Never feed this into delay resolution.
+  String getCurrentSelectedName(String proxyName) {
+    if (type == GroupType.Smart && realNow == _smartAutoPlaceholder) {
+      return appLocalizations.smartAuto;
+    }
+    return resolveSelectedName(proxyName);
+  }
 }
+
+/// Literal the mihomo core's `Smart.Now()` returns when no manual node is pinned.
+const _smartAutoPlaceholder = 'Smart - Select';
 
 @immutable
 class TrafficValue {
-
   const TrafficValue({int? value}) : _value = value ?? 0;
   final int _value;
 
@@ -390,7 +396,6 @@ extension ColorSchemesExt on ColorSchemes {
 }
 
 class IpInfo {
-
   const IpInfo({
     required this.ip,
     required this.countryCode,
@@ -399,52 +404,52 @@ class IpInfo {
   final String countryCode;
 
   static IpInfo fromIpInfoIoJson(Map<String, dynamic> json) => switch (json) {
-      {
-        "ip": final String ip,
-        "country": final String country,
-      } =>
-        IpInfo(
-          ip: ip,
-          countryCode: country,
-        ),
-      _ => throw const FormatException("invalid json"),
-    };
+        {
+          "ip": final String ip,
+          "country": final String country,
+        } =>
+          IpInfo(
+            ip: ip,
+            countryCode: country,
+          ),
+        _ => throw const FormatException("invalid json"),
+      };
 
   static IpInfo fromIpApiCoJson(Map<String, dynamic> json) => switch (json) {
-      {
-        "ip": final String ip,
-        "country_code": final String countryCode,
-      } =>
-        IpInfo(
-          ip: ip,
-          countryCode: countryCode,
-        ),
-      _ => throw const FormatException("invalid json"),
-    };
+        {
+          "ip": final String ip,
+          "country_code": final String countryCode,
+        } =>
+          IpInfo(
+            ip: ip,
+            countryCode: countryCode,
+          ),
+        _ => throw const FormatException("invalid json"),
+      };
 
   static IpInfo fromIpSbJson(Map<String, dynamic> json) => switch (json) {
-      {
-        "ip": final String ip,
-        "country_code": final String countryCode,
-      } =>
-        IpInfo(
-          ip: ip,
-          countryCode: countryCode,
-        ),
-      _ => throw const FormatException("invalid json"),
-    };
+        {
+          "ip": final String ip,
+          "country_code": final String countryCode,
+        } =>
+          IpInfo(
+            ip: ip,
+            countryCode: countryCode,
+          ),
+        _ => throw const FormatException("invalid json"),
+      };
 
   static IpInfo fromIpwhoIsJson(Map<String, dynamic> json) => switch (json) {
-      {
-        "ip": final String ip,
-        "country_code": final String countryCode,
-      } =>
-        IpInfo(
-          ip: ip,
-          countryCode: countryCode,
-        ),
-      _ => throw const FormatException("invalid json"),
-    };
+        {
+          "ip": final String ip,
+          "country_code": final String countryCode,
+        } =>
+          IpInfo(
+            ip: ip,
+            countryCode: countryCode,
+          ),
+        _ => throw const FormatException("invalid json"),
+      };
 
   @override
   String toString() => 'IpInfo{ip: $ip, countryCode: $countryCode}';
@@ -487,7 +492,7 @@ class PopupMenuItemData {
 
   final String label;
   final VoidCallback? onPressed;
-  final IconData? icon;
+  final Widget? icon;
 }
 
 @freezed
@@ -546,11 +551,12 @@ class Script with _$Script {
   factory Script.create({
     required String label,
     required String content,
-  }) => Script(
-      id: utils.uuidV4,
-      label: label,
-      content: content,
-    );
+  }) =>
+      Script(
+        id: utils.uuidV4,
+        label: label,
+        content: content,
+      );
 
   factory Script.fromJson(Map<String, Object?> json) => _$ScriptFromJson(json);
 }

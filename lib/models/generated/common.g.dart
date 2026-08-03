@@ -93,20 +93,6 @@ const _$LogLevelEnumMap = {
   LogLevel.app: 'app',
 };
 
-_$DAVImpl _$$DAVImplFromJson(Map<String, dynamic> json) => _$DAVImpl(
-      uri: json['uri'] as String,
-      user: json['user'] as String,
-      password: json['password'] as String,
-      fileName: json['fileName'] as String? ?? defaultDavFileName,
-    );
-
-Map<String, dynamic> _$$DAVImplToJson(_$DAVImpl instance) => <String, dynamic>{
-      'uri': instance.uri,
-      'user': instance.user,
-      'password': instance.password,
-      'fileName': instance.fileName,
-    };
-
 _$VersionInfoImpl _$$VersionInfoImplFromJson(Map<String, dynamic> json) =>
     _$VersionInfoImpl(
       clashName: json['clashName'] as String? ?? "",
@@ -164,6 +150,7 @@ const _$GroupTypeEnumMap = {
   GroupType.Fallback: 'Fallback',
   GroupType.LoadBalance: 'LoadBalance',
   GroupType.Relay: 'Relay',
+  GroupType.Smart: 'Smart',
 };
 
 _$HotKeyActionImpl _$$HotKeyActionImplFromJson(Map<String, dynamic> json) =>

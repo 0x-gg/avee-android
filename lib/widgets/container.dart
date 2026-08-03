@@ -45,7 +45,8 @@ class CommonSafeArea extends StatelessWidget {
         left: math.max(left ? padding.left : 0.0, minimum.left).toDouble(),
         top: math.max(top ? realPaddingTop : 0.0, minimum.top).toDouble(),
         right: math.max(right ? padding.right : 0.0, minimum.right).toDouble(),
-        bottom: math.max(bottom ? padding.bottom : 0.0, minimum.bottom).toDouble(),
+        bottom:
+            math.max(bottom ? padding.bottom : 0.0, minimum.bottom).toDouble(),
       ),
       child: MediaQuery.removePadding(
         context: context,

@@ -4,12 +4,21 @@ plugins {
 }
 
 android {
-    namespace = "com.follow.clashx.core"
+    namespace = "com.avee.vpn.core"
     compileSdk = 36
     ndkVersion = "28.0.13004108"
 
     defaultConfig {
         minSdk = 23
+        ndk {
+            val ciAbi = System.getenv("AVEE_CI_ABI")
+                ?.split(',')
+                ?.map(String::trim)
+                ?.filter(String::isNotEmpty)
+                ?.toSet()
+                ?.takeIf { it.isNotEmpty() }
+            abiFilters += ciAbi ?: setOf("armeabi-v7a", "arm64-v8a", "x86_64")
+        }
     }
 
     buildTypes {

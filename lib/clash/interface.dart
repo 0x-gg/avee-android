@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
-import 'package:flclashx/clash/message.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/models.dart';
+import 'package:avee/clash/message.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/models.dart';
 
 mixin ClashInterface {
   Future<bool> init(InitParams params);
@@ -79,7 +79,7 @@ mixin ClashInterface {
 mixin AndroidClashInterface {
   Future<bool> updateDns(String value);
 
-  Future<String> getAndroidVpnOptions();
+  Future<AndroidVpnOptions?> getAndroidVpnOptions();
 
   Future<String> getCurrentProfileName();
 
@@ -105,7 +105,17 @@ abstract class ClashHandlerInterface with ClashInterface {
           return;
       }
     } catch (e) {
-      commonPrint.log("${result.id} error $e");
+      // DIAGNOSTIC: surface the raw core payload that broke dispatch. Without
+      // this the real error (e.g. the core's getConfig error body) is invisible
+      // because `result.toResult` throws before anything can read `data`.
+      commonPrint.log(
+          "${result.id} error $e | code=${result.code} dataType=${result.data.runtimeType} data=${result.data}");
+      // FAIL-FAST: never leave the caller's completer hanging until its invoke
+      // timeout (getConfig = 2 min) on a malformed/error message — surface the
+      // error immediately so the UI shows a fast error, not an infinite spinner.
+      if (completer != null && !completer.isCompleted) {
+        completer.completeError(e);
+      }
     }
   }
 
@@ -152,34 +162,46 @@ abstract class ClashHandlerInterface with ClashInterface {
       onLast: () {
         callbackCompleterMap.remove(id);
       },
-      onTimeout: onTimeout ??
-          () => mDefaultValue as T,
+      onTimeout: onTimeout ?? () => mDefaultValue as T,
       functionName: id,
     ) as Future<T>;
   }
 
   @override
   Future<bool> init(InitParams params) => invoke<bool>(
-      method: ActionMethod.initClash,
-      data: json.encode(params),
-    );
+        method: ActionMethod.initClash,
+        data: json.encode(params),
+        // Bound the core-init handshake. On desktop the core is a separate
+        // process that must connect back to our socket; on Android it's the
+        // service-isolate port handshake. Without a timeout, a stalled handshake
+        // (heavy machine load, a foreign clash-lineage app hogging the box, a
+        // helper-port conflict, AV scanning the core exe) hangs this invoke
+        // forever — and since the dashboard button is gated on isInit, the UI is
+        // bricked until a manual restart. Fail open so AppController.init()
+        // always completes and the UI stays usable; the core retries on connect.
+        timeout: const Duration(seconds: 15),
+      );
 
   @override
   Future<bool> setState(CoreState state) => invoke<bool>(
-      method: ActionMethod.setState,
-      data: json.encode(state),
-    );
+        method: ActionMethod.setState,
+        data: json.encode(state),
+        timeout: const Duration(seconds: 8),
+      );
 
   @override
-  @override
   Future<bool> shutdown() => invoke<bool>(
-      method: ActionMethod.shutdown,
-      timeout: const Duration(seconds: 1),
-    );
+        method: ActionMethod.shutdown,
+        timeout: const Duration(seconds: 1),
+      );
 
   @override
   Future<bool> get isInit => invoke<bool>(
         method: ActionMethod.getIsInit,
+        // Same rationale as init(): never let the readiness probe hang the
+        // boot path. A timed-out probe returns false, so _initCore() proceeds
+        // to init() instead of blocking forever on a stalled handshake.
+        timeout: const Duration(seconds: 8),
       );
 
   @override
@@ -191,6 +213,12 @@ abstract class ClashHandlerInterface with ClashInterface {
   FutureOr<String> validateConfig(String data) => invoke<String>(
         method: ActionMethod.validateConfig,
         data: data,
+        // The empty string means "valid" by contract with the Go core (it
+        // returns the error text or ""). A timed-out validate must therefore
+        // surface as an error, not "" — otherwise callers treat a dead core
+        // as "config valid" and save/apply an unvalidated config. Fail closed.
+        onTimeout: () =>
+            "error: core did not answer (timeout) — config not validated",
       );
 
   @override
@@ -198,6 +226,10 @@ abstract class ClashHandlerInterface with ClashInterface {
         method: ActionMethod.updateConfig,
         data: json.encode(updateParams),
         timeout: const Duration(minutes: 2),
+        // A timed-out mutating call must surface as an error, not the empty
+        // string (which callers treat as success and would then cache the
+        // setup hash, suppressing the next real setup). Fail closed.
+        onTimeout: () => "error: core call timed out (updateConfig)",
       );
 
   @override
@@ -205,7 +237,9 @@ abstract class ClashHandlerInterface with ClashInterface {
         method: ActionMethod.getConfig,
         data: path,
         timeout: const Duration(minutes: 2),
-        defaultValue: Result.success({}),
+        // Typed empty map: a bare `{}` is Map<dynamic,dynamic>, which then throws
+        // on the `res.data as Map<String,dynamic>` cast in ClashCore.getConfig.
+        defaultValue: Result.success(<String, dynamic>{}),
       );
 
   @override
@@ -215,92 +249,103 @@ abstract class ClashHandlerInterface with ClashInterface {
       method: ActionMethod.setupConfig,
       data: data,
       timeout: const Duration(minutes: 2),
+      // A timed-out mutating call must surface as an error, not the empty
+      // string (which callers treat as success and would then cache the
+      // setup hash, suppressing the next real setup). Fail closed.
+      onTimeout: () => "error: core call timed out (setupConfig)",
     );
   }
 
   @override
   Future<bool> crash() => invoke<bool>(
-      method: ActionMethod.crash,
-    );
+        method: ActionMethod.crash,
+      );
 
   @override
   Future<Map> getProxies() => invoke<Map>(
-      method: ActionMethod.getProxies,
-      timeout: const Duration(seconds: 5),
-    );
+        method: ActionMethod.getProxies,
+        timeout: const Duration(seconds: 5),
+      );
 
   @override
-  FutureOr<String> changeProxy(ChangeProxyParams changeProxyParams) => invoke<String>(
-      method: ActionMethod.changeProxy,
-      data: json.encode(changeProxyParams),
-    );
+  FutureOr<String> changeProxy(ChangeProxyParams changeProxyParams) =>
+      invoke<String>(
+        method: ActionMethod.changeProxy,
+        data: json.encode(changeProxyParams),
+        // A timed-out changeProxy must surface as an error, not the empty string
+        // (which callers read as "proxy changed" success). Fail closed so a dead
+        // core does not fake a successful proxy switch.
+        onTimeout: () => "error: core did not answer (timeout)",
+      );
 
   @override
   FutureOr<String> getExternalProviders() => invoke<String>(
-      method: ActionMethod.getExternalProviders,
-    );
+        method: ActionMethod.getExternalProviders,
+      );
 
   @override
-  FutureOr<String> getExternalProvider(String externalProviderName) => invoke<String>(
-      method: ActionMethod.getExternalProvider,
-      data: externalProviderName,
-    );
+  FutureOr<String> getExternalProvider(String externalProviderName) =>
+      invoke<String>(
+        method: ActionMethod.getExternalProvider,
+        data: externalProviderName,
+      );
 
   @override
   Future<String> updateGeoData(UpdateGeoDataParams params) => invoke<String>(
-        method: ActionMethod.updateGeoData,
-        data: json.encode(params),
-        timeout: const Duration(minutes: 1));
+      method: ActionMethod.updateGeoData,
+      data: json.encode(params),
+      timeout: const Duration(minutes: 1));
 
   @override
   Future<String> sideLoadExternalProvider({
     required String providerName,
     required String data,
-  }) => invoke<String>(
-      method: ActionMethod.sideLoadExternalProvider,
-      data: json.encode({
-        "providerName": providerName,
-        "data": data,
-      }),
-    );
+  }) =>
+      invoke<String>(
+        method: ActionMethod.sideLoadExternalProvider,
+        data: json.encode({
+          "providerName": providerName,
+          "data": data,
+        }),
+      );
 
   @override
   Future<String> updateExternalProvider(String providerName) => invoke<String>(
-      method: ActionMethod.updateExternalProvider,
-      data: providerName,
-      timeout: const Duration(minutes: 1),
-    );
+        method: ActionMethod.updateExternalProvider,
+        data: providerName,
+        timeout: const Duration(minutes: 1),
+      );
 
   @override
   FutureOr<String> getConnections() => invoke<String>(
-      method: ActionMethod.getConnections,
-    );
+        method: ActionMethod.getConnections,
+      );
 
   @override
   Future<bool> closeConnections() => invoke<bool>(
-      method: ActionMethod.closeConnections,
-    );
+        method: ActionMethod.closeConnections,
+      );
 
   @override
   Future<bool> resetConnections() => invoke<bool>(
-      method: ActionMethod.resetConnections,
-    );
+        method: ActionMethod.resetConnections,
+      );
 
   @override
   Future<bool> closeConnection(String id) => invoke<bool>(
-      method: ActionMethod.closeConnection,
-      data: id,
-    );
+        method: ActionMethod.closeConnection,
+        data: id,
+      );
 
   @override
   FutureOr<String> getTotalTraffic() => invoke<String>(
-      method: ActionMethod.getTotalTraffic,
-    );
+        method: ActionMethod.getTotalTraffic,
+      );
 
   @override
   FutureOr<String> getTraffic() => invoke<String>(
-      method: ActionMethod.getTraffic,
-    );
+        method: ActionMethod.getTraffic,
+      );
 
   @override
   void resetTraffic() {
@@ -321,13 +366,14 @@ abstract class ClashHandlerInterface with ClashInterface {
 
   @override
   Future<bool> startListener() => invoke<bool>(
-      method: ActionMethod.startListener,
-    );
+        method: ActionMethod.startListener,
+        timeout: const Duration(seconds: 10),
+      );
 
   @override
   Future<bool> stopListener() => invoke<bool>(
-      method: ActionMethod.stopListener,
-    );
+        method: ActionMethod.stopListener,
+      );
 
   @override
   Future<String> asyncTestDelay(String url, String proxyName) {
@@ -343,23 +389,23 @@ abstract class ClashHandlerInterface with ClashInterface {
         milliseconds: 6000,
       ),
       onTimeout: () => json.encode(
-          Delay(
-            name: proxyName,
-            value: -1,
-            url: url,
-          ),
+        Delay(
+          name: proxyName,
+          value: -1,
+          url: url,
         ),
+      ),
     );
   }
 
   @override
   FutureOr<String> getCountryCode(String ip) => invoke<String>(
-      method: ActionMethod.getCountryCode,
-      data: ip,
-    );
+        method: ActionMethod.getCountryCode,
+        data: ip,
+      );
 
   @override
   FutureOr<String> getMemory() => invoke<String>(
-      method: ActionMethod.getMemory,
-    );
+        method: ActionMethod.getMemory,
+      );
 }

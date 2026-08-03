@@ -9,15 +9,10 @@ abstract mixin class TileListener {
 
   void onStop() {}
 
-  void onChangeMode(String mode) {}
-
-  void onDetached(){
-
-  }
+  void onDetached() {}
 }
 
 class Tile {
-
   Tile._() {
     _channel.setMethodCallHandler(_methodCallHandler);
   }
@@ -37,12 +32,6 @@ class Tile {
         case "stop":
           listener.onStop();
           break;
-        case "changeMode":
-          final mode = call.arguments as String?;
-          if (mode != null) {
-            listener.onChangeMode(mode);
-          }
-          break;
         case "detached":
           listener.onDetached();
           break;
@@ -59,7 +48,7 @@ class Tile {
   void removeListener(TileListener listener) {
     _listeners.remove(listener);
   }
-  
+
   Future<void> updateTile() async {
     try {
       await _channel.invokeMethod('updateTile');
@@ -67,7 +56,7 @@ class Tile {
       // Ignore errors if tile service not available
     }
   }
-  
+
   /// Signal to native side that Dart service is ready to receive commands.
   /// This should be called after _service entrypoint has finished initialization.
   Future<void> signalServiceReady() async {
@@ -77,27 +66,6 @@ class Tile {
       // Ignore errors if tile service not available
     }
   }
-
-  /// Push the current clash mode to the native side so the home-screen
-  /// widget can highlight the active button.
-  Future<void> updateMode(String mode) async {
-    try {
-      await _channel.invokeMethod('updateMode', mode);
-    } catch (e) {
-      // Ignore errors if tile service not available
-    }
-  }
-
-  /// Tell the native side whether the Global-mode button should be shown
-  /// in the home-screen widget. Driven by the `flclashx-globalmode`
-  /// subscription header.
-  Future<void> updateGlobalModeEnabled(bool enabled) async {
-    try {
-      await _channel.invokeMethod('updateGlobalModeEnabled', enabled);
-    } catch (e) {
-      // Ignore errors if tile service not available
-    }
-  }
 }
 
-final tile =  Platform.isAndroid ? Tile.instance : null;
+final tile = Platform.isAndroid ? Tile.instance : null;

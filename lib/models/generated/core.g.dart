@@ -117,6 +117,12 @@ _$AndroidVpnOptionsImpl _$$AndroidVpnOptionsImplFromJson(
               .toList() ??
           const [],
       dnsServerAddress: json['dnsServerAddress'] as String,
+      includePackage: (json['includePackage'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
+      excludePackage: (json['excludePackage'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
     );
 
 Map<String, dynamic> _$$AndroidVpnOptionsImplToJson(
@@ -132,6 +138,24 @@ Map<String, dynamic> _$$AndroidVpnOptionsImplToJson(
       'ipv6Address': instance.ipv6Address,
       'routeAddress': instance.routeAddress,
       'dnsServerAddress': instance.dnsServerAddress,
+      'includePackage': instance.includePackage,
+      'excludePackage': instance.excludePackage,
+    };
+
+_$ProxyCredentialsImpl _$$ProxyCredentialsImplFromJson(
+        Map<String, dynamic> json) =>
+    _$ProxyCredentialsImpl(
+      port: (json['port'] as num).toInt(),
+      username: json['username'] as String,
+      password: json['password'] as String,
+    );
+
+Map<String, dynamic> _$$ProxyCredentialsImplToJson(
+        _$ProxyCredentialsImpl instance) =>
+    <String, dynamic>{
+      'port': instance.port,
+      'username': instance.username,
+      'password': instance.password,
     };
 
 _$InitParamsImpl _$$InitParamsImplFromJson(Map<String, dynamic> json) =>
@@ -191,6 +215,7 @@ const _$AppMessageTypeEnumMap = {
   AppMessageType.delay: 'delay',
   AppMessageType.request: 'request',
   AppMessageType.loaded: 'loaded',
+  AppMessageType.tun: 'tun',
 };
 
 _$InvokeMessageImpl _$$InvokeMessageImplFromJson(Map<String, dynamic> json) =>

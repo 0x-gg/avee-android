@@ -2,9 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"unsafe"
+	"fmt"
+	"runtime/debug"
 
-	"github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
 )
 
 type Action struct {
@@ -14,11 +15,11 @@ type Action struct {
 }
 
 type ActionResult struct {
-	Id       string         `json:"id"`
-	Method   Method         `json:"method"`
-	Data     interface{}    `json:"data"`
-	Code     int            `json:"code"`
-	Callback unsafe.Pointer `json:"-"`
+	Id     string      `json:"id"`
+	Method Method      `json:"method"`
+	Data   interface{} `json:"data"`
+	Code   int         `json:"code"`
+	Port   int64
 }
 
 func (result ActionResult) Json() ([]byte, error) {
@@ -39,6 +40,15 @@ func (result ActionResult) error(data interface{}) {
 }
 
 func handleAction(action *Action, result ActionResult) {
+	defer func() {
+		if r := recover(); r != nil {
+			if action.Method == crashMethod {
+				panic(r) // keep the intentional test-crash honest
+			}
+			log.Errorln("[panic] action %s recovered: %v\n%s", action.Method, r, debug.Stack())
+			result.error(fmt.Sprintf("panic: %v", r))
+		}
+	}()
 	switch action.Method {
 	case initClashMethod:
 		paramsString := action.Data.(string)
@@ -104,13 +114,10 @@ func handleAction(action *Action, result ActionResult) {
 		path := action.Data.(string)
 		config, err := handleGetConfig(path)
 		if err != nil {
-			result.error(err)
+			result.error(err.Error())
 			return
 		}
 		result.success(config)
-		return
-	case getCoreVersionMethod:
-		result.success(constant.Version)
 		return
 	case closeConnectionMethod:
 		id := action.Data.(string)
@@ -122,6 +129,7 @@ func handleAction(action *Action, result ActionResult) {
 	case getExternalProviderMethod:
 		externalProviderName := action.Data.(string)
 		result.success(handleGetExternalProvider(externalProviderName))
+		return
 	case updateGeoDataMethod:
 		paramsString := action.Data.(string)
 		var params = map[string]string{}
@@ -183,12 +191,17 @@ func handleAction(action *Action, result ActionResult) {
 		return
 	case setStateMethod:
 		data := action.Data.(string)
-		handleSetState(data)
+		if err := handleSetState(data); err != nil {
+			result.error("invalid state params")
+			return
+		}
 		result.success(true)
 	case crashMethod:
 		result.success(true)
 		handleCrash()
 	default:
-		nextHandle(action, result)
+		if !nextHandle(action, result) {
+			result.error(fmt.Sprintf("unsupported method: %s", action.Method))
+		}
 	}
 }

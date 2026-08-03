@@ -101,6 +101,3 @@ extension KeyboardKeyExt on KeyboardKey {
     return _knownKeyLabels[physicalKey] ?? physicalKey?.debugName ?? 'Unknown';
   }
 }
-
-
-

@@ -1,7 +1,6 @@
 import 'iterable.dart';
 
 class FixedList<T> {
-
   FixedList(this.maxLength, {List<T>? list})
       : _list = (list ?? [])..truncate(maxLength);
   final int maxLength;
@@ -23,13 +22,12 @@ class FixedList<T> {
   T operator [](int index) => _list[index];
 
   FixedList<T> copyWith() => FixedList(
-      maxLength,
-      list: _list,
-    );
+        maxLength,
+        list: _list,
+      );
 }
 
 class FixedMap<K, V> {
-
   FixedMap(this.maxLength, {Map<K, V>? map}) {
     _map = map ?? {};
   }

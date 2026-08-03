@@ -3,9 +3,9 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/providers/state.dart';
-import 'package:flclashx/state.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/providers/state.dart';
+import 'package:avee/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tray_manager/tray_manager.dart';
@@ -25,19 +25,43 @@ class TrayManager extends ConsumerStatefulWidget {
 class _TrayContainerState extends ConsumerState<TrayManager> with TrayListener {
   Timer? _menuMonitor;
 
+  /// Returns the handle of OUR OWN visible tray popup menu, or 0 if none is
+  /// present OR the top-most `#32768` window belongs to a DIFFERENT process.
+  /// `#32768` is the system-GLOBAL popup-menu window class, so a naive
+  /// FindWindow can return a FOREIGN app's open context menu — which we would
+  /// then dark-theme or PostMessage(WM_CLOSE), reaching into another app. The
+  /// GetWindowThreadProcessId ownership check confines every action to our
+  /// menu. Frees the alloc'd DWORD in finally so a throwing FFI call can't leak.
+  int _findOwnPopupMenu() {
+    final className = '#32768'.toNativeUtf16();
+    final pid = calloc<Uint32>();
+    try {
+      final hwnd = FindWindow(className, nullptr);
+      if (hwnd == 0) {
+        return 0;
+      }
+      GetWindowThreadProcessId(hwnd, pid);
+      if (pid.value != GetCurrentProcessId()) {
+        return 0;
+      }
+      return hwnd;
+    } finally {
+      calloc.free(className);
+      calloc.free(pid);
+    }
+  }
+
   void _closeWindowsPopupMenu() {
     if (!Platform.isWindows) return;
 
     try {
-      final className = '#32768'.toNativeUtf16();
-      final hwnd = FindWindow(className, nullptr);
-
+      final hwnd = _findOwnPopupMenu();
       if (hwnd != 0) {
         PostMessage(hwnd, WM_CLOSE, 0, 0);
       }
-
-      calloc.free(className);
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('[tray] _closeWindowsPopupMenu failed: $e');
+    }
 
     _stopMenuMonitor();
   }
@@ -49,11 +73,14 @@ class _TrayContainerState extends ConsumerState<TrayManager> with TrayListener {
     var themeApplied = false;
     var waitCycles = 0;
 
-    _menuMonitor = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+    // 200ms balances responsiveness (user clicks outside menu) vs CPU cost.
+    // TODO(perf): replace with SetWinEventHook(EVENT_SYSTEM_MENUPOPUPEND) for
+    // a proper event-driven approach — requires FFI hook plumbing.
+    _menuMonitor = Timer.periodic(const Duration(milliseconds: 200), (timer) {
       try {
-        final className = '#32768'.toNativeUtf16();
-        final hwnd = FindWindow(className, nullptr);
-        calloc.free(className);
+        // Own-menu only: never dark-theme or close a foreign app's popup that
+        // happens to be open during a polling tick (see _findOwnPopupMenu).
+        final hwnd = _findOwnPopupMenu();
 
         if (hwnd == 0) {
           _stopMenuMonitor();

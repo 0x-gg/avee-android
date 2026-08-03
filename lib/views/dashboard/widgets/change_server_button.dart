@@ -1,12 +1,13 @@
 import 'dart:convert';
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/common.dart';
-import 'package:flclashx/providers/providers.dart';
-import 'package:flclashx/state.dart';
-import 'package:flclashx/widgets/widgets.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/enum/enum.dart';
+import 'package:avee/models/common.dart';
+import 'package:avee/providers/providers.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class ChangeServerButton extends ConsumerWidget {
   const ChangeServerButton({super.key});
@@ -22,48 +23,6 @@ class ChangeServerButton extends ConsumerWidget {
     }
   }
 
-  String? _extractFlag(String text) {
-    final runes = text.runes.toList();
-
-    for (var i = 0; i < runes.length - 1; i++) {
-      final first = runes[i];
-      final second = runes[i + 1];
-
-      if (first >= 0x1F1E6 &&
-          first <= 0x1F1FF &&
-          second >= 0x1F1E6 &&
-          second <= 0x1F1FF) {
-        return String.fromCharCodes([first, second]);
-      }
-    }
-
-    return null;
-  }
-
-  String _removeFlagFromText(String text) {
-    final runes = text.runes.toList();
-    final result = <int>[];
-
-    var i = 0;
-    while (i < runes.length) {
-      final current = runes[i];
-
-      if (current >= 0x1F1E6 && current <= 0x1F1FF && i + 1 < runes.length) {
-        final next = runes[i + 1];
-
-        if (next >= 0x1F1E6 && next <= 0x1F1FF) {
-          i += 2;
-          continue;
-        }
-      }
-
-      result.add(current);
-      i++;
-    }
-
-    return String.fromCharCodes(result).trim();
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(currentProfileProvider);
@@ -73,7 +32,7 @@ class ChangeServerButton extends ConsumerWidget {
     }
 
     final serverInfoGroupName = _decodeBase64IfNeeded(
-      profile.providerHeaders['flclashx-serverinfo'],
+      profile.providerHeaders['avee-serverinfo'],
     );
 
     if (serverInfoGroupName == null || serverInfoGroupName.isEmpty) {
@@ -101,12 +60,12 @@ class ChangeServerButton extends ConsumerWidget {
       ),
     );
 
-    var flag = _extractFlag(currentProxy.name);
+    var flag = extractCountryFlag(currentProxy.name);
     if (flag == null && currentProxy.serverDescription != null) {
-      flag = _extractFlag(currentProxy.serverDescription!);
+      flag = extractCountryFlag(currentProxy.serverDescription!);
     }
 
-    final nameWithoutFlag = _removeFlagFromText(currentProxy.name);
+    final nameWithoutFlag = stripCountryFlag(currentProxy.name);
 
     return SizedBox(
       height: getWidgetHeight(1),
@@ -142,8 +101,8 @@ class ChangeServerButton extends ConsumerWidget {
                           ),
                           textAlign: TextAlign.center,
                         )
-                      : Icon(
-                          Icons.dns_rounded,
+                      : HugeIcon(
+                          icon: HugeIcons.strokeRoundedServerStack01,
                           size: 24,
                           color: context.colorScheme.primary,
                         ),
@@ -169,7 +128,8 @@ class ChangeServerButton extends ConsumerWidget {
                     testUrl: group.testUrl,
                   ));
 
-                  if (delay == null || delay <= 0) {
+                  final label = utils.delayBadgeLabel(delay);
+                  if (label == null) {
                     return const SizedBox.shrink();
                   }
 
@@ -189,7 +149,7 @@ class ChangeServerButton extends ConsumerWidget {
                     ),
                     child: Center(
                       child: Text(
-                        '$delay ms',
+                        label,
                         style: context.textTheme.labelSmall?.copyWith(
                           color: delayColor,
                           fontWeight: FontWeight.w600,
@@ -206,8 +166,8 @@ class ChangeServerButton extends ConsumerWidget {
                   color: context.colorScheme.primary,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  Icons.swap_horizontal_circle,
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedArrowDataTransferHorizontal,
                   size: 22,
                   color: context.colorScheme.onPrimary,
                 ),
@@ -252,8 +212,8 @@ class ChangeServerButton extends ConsumerWidget {
                       width: 1,
                     ),
                   ),
-                  child: Icon(
-                    Icons.language_rounded,
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedGlobe02,
                     size: 22,
                     color: context.colorScheme.primary,
                   ),
@@ -277,8 +237,8 @@ class ChangeServerButton extends ConsumerWidget {
                     color: context.colorScheme.primary,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    Icons.swap_horizontal_circle,
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedArrowDataTransferHorizontal,
                     size: 22,
                     color: context.colorScheme.onPrimary,
                   ),

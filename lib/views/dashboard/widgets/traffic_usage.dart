@@ -1,220 +1,243 @@
 import 'dart:math';
 
-import 'package:flclashx/common/common.dart';
-import 'package:flclashx/models/models.dart';
-import 'package:flclashx/providers/app.dart';
-import 'package:flclashx/state.dart';
-import 'package:flclashx/widgets/widgets.dart';
+import 'package:avee/common/common.dart';
+import 'package:avee/models/models.dart';
+import 'package:avee/providers/app.dart';
+import 'package:avee/state.dart';
+import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
+/// Traffic usage card with isolated rebuild scope.
+///
+/// Previously a single `Consumer` wrapped the entire card body → every
+/// update to `totalTrafficProvider` (every 2 seconds, see state.dart) rebuilt
+/// the CommonCard chrome alongside the inner DonutChart + legend + data
+/// items.
+///
+/// Now [TrafficUsage] is a plain [StatelessWidget] — its layout + the
+/// CommonCard scaffolding never rebuild. Only [_TrafficUsageContent]
+/// (the ConsumerWidget) rebuilds on traffic updates.
 class TrafficUsage extends StatelessWidget {
   const TrafficUsage({super.key});
 
-  Widget _buildTrafficDataItem(
-    BuildContext context,
-    Icon icon,
-    TrafficValue trafficValue,
-  ) => Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      mainAxisSize: MainAxisSize.max,
-      children: [
-        Flexible(
-          flex: 1,
-          child: Row(
-            mainAxisSize: MainAxisSize.max,
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              icon,
-              const SizedBox(
-                width: 8,
-              ),
-              Flexible(
-                flex: 1,
-                child: Text(
-                  trafficValue.showValue,
-                  style: context.textTheme.bodySmall,
-                  maxLines: 1,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Text(
-          trafficValue.showUnit,
-          style: context.textTheme.bodySmall?.toLighter,
-        ),
-      ],
-    );
-
   @override
   Widget build(BuildContext context) {
-    final primaryColor = globalState.theme.darken3PrimaryContainer;
-    final secondaryColor = globalState.theme.darken2SecondaryContainer;
     return SizedBox(
       height: getWidgetHeight(2),
       child: CommonCard(
         info: Info(
           label: appLocalizations.trafficUsage,
-          iconData: Icons.data_saver_off,
         ),
         onPressed: () {},
-        child: Consumer(
-          builder: (_, ref, __) {
-            final totalTraffic = ref.watch(totalTrafficProvider);
-            final upTotalTrafficValue = totalTraffic.up;
-            final downTotalTrafficValue = totalTraffic.down;
-            return Padding(
-              padding: baseInfoEdgeInsets.copyWith(
-                top: 0,
+        child: const _TrafficUsageContent(),
+      ),
+    );
+  }
+}
+
+class _TrafficUsageContent extends ConsumerWidget {
+  const _TrafficUsageContent();
+
+  Widget _buildTrafficDataItem(
+    BuildContext context,
+    Widget icon,
+    TrafficValue trafficValue,
+  ) =>
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          Flexible(
+            flex: 1,
+            child: Row(
+              mainAxisSize: MainAxisSize.max,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                icon,
+                const SizedBox(
+                  width: 8,
+                ),
+                Flexible(
+                  flex: 1,
+                  child: Text(
+                    trafficValue.showValue,
+                    style: context.textTheme.bodySmall,
+                    maxLines: 1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            trafficValue.showUnit,
+            style: context.textTheme.bodySmall?.toLighter,
+          ),
+        ],
+      );
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final primaryColor = globalState.theme.darken3PrimaryContainer;
+    final secondaryColor = globalState.theme.darken2SecondaryContainer;
+    // Watch only the up/down byte values, not the full Traffic object.
+    // `Traffic` carries an `id = DateTime.now().millisecondsSinceEpoch`
+    // that changes every tick, so its `==` was effectively reference
+    // equality and the card rebuilt every 2 s even when the displayed
+    // totals were unchanged. A `(int, int)` record has structural
+    // equality, so this projection rebuilds only when up or down
+    // actually changes.
+    final (upValue, downValue) = ref.watch(
+      totalTrafficProvider.select((t) => (t.up.value, t.down.value)),
+    );
+    final upTotalTrafficValue = TrafficValue(value: upValue);
+    final downTotalTrafficValue = TrafficValue(value: downValue);
+    return Padding(
+      padding: baseInfoEdgeInsets.copyWith(
+        top: 0,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.max,
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                vertical: 12,
               ),
-              child: Column(
+              child: Row(
                 mainAxisSize: MainAxisSize.max,
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  AspectRatio(
+                    aspectRatio: 1,
+                    child: DonutChart(
+                      data: [
+                        DonutChartData(
+                          value: upTotalTrafficValue.value.toDouble(),
+                          color: primaryColor,
+                        ),
+                        DonutChartData(
+                          value: downTotalTrafficValue.value.toDouble(),
+                          color: secondaryColor,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(
+                    width: 8,
+                  ),
                   Flexible(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.max,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          AspectRatio(
-                            aspectRatio: 1,
-                            child: DonutChart(
-                              data: [
-                                DonutChartData(
-                                  value: upTotalTrafficValue.value.toDouble(),
-                                  color: primaryColor,
+                    child: LayoutBuilder(
+                      builder: (_, container) {
+                        final uploadText = Text(
+                          maxLines: 1,
+                          appLocalizations.upload,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.textTheme.bodySmall,
+                        );
+                        final downloadText = Text(
+                          maxLines: 1,
+                          appLocalizations.download,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.textTheme.bodySmall,
+                        );
+                        final uploadTextSize =
+                            globalState.measure.computeTextSize(uploadText);
+                        final downloadTextSize =
+                            globalState.measure.computeTextSize(downloadText);
+                        final maxTextWidth =
+                            max(uploadTextSize.width, downloadTextSize.width);
+                        if (maxTextWidth + 24 > container.maxWidth) {
+                          return Container();
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 20,
+                                  height: 8,
+                                  decoration: ShapeDecoration(
+                                    color: primaryColor,
+                                    shape: RoundedSuperellipseBorder(
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                  ),
                                 ),
-                                DonutChartData(
-                                  value: downTotalTrafficValue.value.toDouble(),
-                                  color: secondaryColor,
+                                const SizedBox(
+                                  width: 4,
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(
-                            width: 8,
-                          ),
-                          Flexible(
-                            child: LayoutBuilder(
-                              builder: (_, container) {
-                                final uploadText = Text(
+                                Text(
                                   maxLines: 1,
                                   appLocalizations.upload,
                                   overflow: TextOverflow.ellipsis,
                                   style: context.textTheme.bodySmall,
-                                );
-                                final downloadText = Text(
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 4,
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 20,
+                                  height: 8,
+                                  decoration: ShapeDecoration(
+                                    color: secondaryColor,
+                                    shape: RoundedSuperellipseBorder(
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 4,
+                                ),
+                                Text(
                                   maxLines: 1,
                                   appLocalizations.download,
                                   overflow: TextOverflow.ellipsis,
                                   style: context.textTheme.bodySmall,
-                                );
-                                final uploadTextSize = globalState.measure
-                                    .computeTextSize(uploadText);
-                                final downloadTextSize = globalState.measure
-                                    .computeTextSize(downloadText);
-                                final maxTextWidth = max(uploadTextSize.width,
-                                    downloadTextSize.width);
-                                if (maxTextWidth + 24 > container.maxWidth) {
-                                  return Container();
-                                }
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          width: 20,
-                                          height: 8,
-                                          decoration: ShapeDecoration(
-                                            color: primaryColor,
-                                            shape: RoundedSuperellipseBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(3),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(
-                                          width: 4,
-                                        ),
-                                        Text(
-                                          maxLines: 1,
-                                          appLocalizations.upload,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: context.textTheme.bodySmall,
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(
-                                      height: 4,
-                                    ),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          width: 20,
-                                          height: 8,
-                                          decoration: ShapeDecoration(
-                                            color: secondaryColor,
-                                            shape: RoundedSuperellipseBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(3),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(
-                                          width: 4,
-                                        ),
-                                        Text(
-                                          maxLines: 1,
-                                          appLocalizations.download,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: context.textTheme.bodySmall,
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                );
-                              },
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        );
+                      },
                     ),
                   ),
-                  _buildTrafficDataItem(
-                    context,
-                    Icon(
-                      Icons.arrow_upward,
-                      color: primaryColor,
-                      size: 14,
-                    ),
-                    upTotalTrafficValue,
-                  ),
-                  const SizedBox(
-                    height: 8,
-                  ),
-                  _buildTrafficDataItem(
-                    context,
-                    Icon(
-                      Icons.arrow_downward,
-                      color: secondaryColor,
-                      size: 14,
-                    ),
-                    downTotalTrafficValue,
-                  )
                 ],
               ),
-            );
-          },
-        ),
+            ),
+          ),
+          _buildTrafficDataItem(
+            context,
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedArrowUp01,
+              color: primaryColor,
+              size: 14,
+            ),
+            upTotalTrafficValue,
+          ),
+          const SizedBox(
+            height: 8,
+          ),
+          _buildTrafficDataItem(
+            context,
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedArrowDown01,
+              color: secondaryColor,
+              size: 14,
+            ),
+            downTotalTrafficValue,
+          )
+        ],
       ),
     );
   }

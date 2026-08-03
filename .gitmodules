@@ -1,4 +1,10 @@
 [submodule "plugins/flutter_distributor"]
 	path = plugins/flutter_distributor
-	url = git@github.com:pluralplay/flutter_distributor.git
-	branch = FlClash
+	url = https://github.com/enkinvsh/flutter_distributor.git
+	branch = main
+
+
+[submodule "core/Clash.Meta"]
+	path = core/Clash.Meta
+	url = https://github.com/enkinvsh/xHomo.git
+	branch = dropweb-core-alpha-refresh
