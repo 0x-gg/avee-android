@@ -110,7 +110,7 @@ android {
 
     flavorDimensions += "distribution"
     productFlavors {
-        create("main") {
+        create("production") {
             dimension = "distribution"
             isDefault = true
         }

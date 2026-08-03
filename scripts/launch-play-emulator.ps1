@@ -2,7 +2,7 @@
 param(
     [ValidateSet('AVEE_Play_Phone', 'AVEE_Play_Tablet7', 'AVEE_Play_Tablet10')]
     [string]$Avd = 'AVEE_Play_Phone',
-    [string]$Apk = 'build/app/outputs/flutter-apk/app-main-debug.apk',
+    [string]$Apk = 'build/app/outputs/flutter-apk/app-production-debug.apk',
     [switch]$WipeData
 )
 

@@ -743,11 +743,11 @@ class BuildCommand extends Command {
     final configDefine = configPublicKey == null || configPublicKey.isEmpty
         ? ''
         : ' --build-dart-define=AVEE_CONFIG_PUBLIC_KEY=$configPublicKey';
-    // The Android app has explicit `play` and `main` flavors. The
+    // The Android app has explicit `play` and `production` flavors. The
     // distributor's default is flavor-less and then looks for app-release.apk,
-    // while the direct-download package is intentionally app-main-release.apk.
+    // while the direct-download package is intentionally app-production-release.apk.
     // Pass the flavor to the distributor itself so it resolves the same output.
-    final buildFlavor = target == Target.android ? ' --build-flavor main' : '';
+    final buildFlavor = target == Target.android ? ' --build-flavor production' : '';
     await Build.exec(
       name: name,
       Build.getExecutable(
@@ -859,15 +859,15 @@ class BuildCommand extends Command {
               "apk",
               "--release",
               "--flavor",
-              "main",
+              "production",
               "--dart-define=APP_ENV=$env",
               "--dart-define=CORE_VERSION=$coreVersion",
               if ((Platform.environment["AVEE_CONFIG_PUBLIC_KEY"] ?? '').isNotEmpty)
                 "--dart-define=AVEE_CONFIG_PUBLIC_KEY=${Platform.environment["AVEE_CONFIG_PUBLIC_KEY"]}",
             ],
           );
-          // The distributor uses the main flavor for direct downloads.
-          // Flutter therefore writes `app-main-release.apk`, not the
+          // The distributor uses the production flavor for direct downloads.
+          // Flutter therefore writes `app-production-release.apk`, not the
           // flavor-less `app-release.apk`. Keep this lookup aligned with the
           // actual Gradle output so a successful Gradle build cannot be
           // reported as an empty/failed release package.
@@ -877,7 +877,7 @@ class BuildCommand extends Command {
             "app",
             "outputs",
             "flutter-apk",
-            "app-main-release.apk",
+            "app-production-release.apk",
           );
           Build.copyFile(
             universalApk,
