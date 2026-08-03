@@ -70,7 +70,8 @@ void main() {
           'requiredUpdate': false,
           'minimumVersion': '0.9.7',
           'recommendedVersion': '1.0.0',
-          'storeUrl': 'https://play.google.com/store/apps/details?id=com.avee.vpn',
+          'storeUrl':
+              'https://play.google.com/store/apps/details?id=com.avee.vpn',
           'message': 'Update available',
           'stack': {'apiContract': 'avee-v1'},
         }),
