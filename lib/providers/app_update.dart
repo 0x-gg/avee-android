@@ -16,7 +16,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'generated/app_update.g.dart';
 
-/// In-app updater state machine (sideloaded Android only). Inert on the Play
+/// In-app updater state machine (main Android build only). Inert on the Play
 /// build (kIsPlayBuild). keepAlive so an in-flight download survives navigation
 /// between the dashboard banner and the update sheet.
 @Riverpod(keepAlive: true)

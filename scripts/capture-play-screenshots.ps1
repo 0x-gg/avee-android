@@ -1,7 +1,7 @@
 # Capture Google Play store screenshots from running emulator.
 param(
     [string]$OutDir = "dist/play-store-screenshots",
-    [string]$Apk = "build/app/outputs/flutter-apk/app-sideload-debug.apk"
+    [string]$Apk = "build/app/outputs/flutter-apk/app-main-debug.apk"
 )
 
 $ErrorActionPreference = "Stop"

@@ -110,7 +110,7 @@ android {
 
     flavorDimensions += "distribution"
     productFlavors {
-        create("sideload") {
+        create("main") {
             dimension = "distribution"
             isDefault = true
         }

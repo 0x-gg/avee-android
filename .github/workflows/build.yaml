@@ -262,7 +262,13 @@ jobs:
           notes_raw=$(grep '^- ' release.md | head -3 | sed 's/^- //' || true)
           [ -z "$notes_raw" ] && notes_raw="Release $app_version"
           notes_json=$(printf '%s\n' "$notes_raw" | jq -R . | jq -s .)
-          sha() { [ -f "./dist/$1.sha256" ] && cut -d' ' -f1 "./dist/$1.sha256" || echo ""; }
+          sha() {
+            if [ ! -s "./dist/$1.sha256" ]; then
+              echo "::error::missing checksum for required release asset: $1" >&2
+              exit 1
+            fi
+            cut -d' ' -f1 "./dist/$1.sha256"
+          }
           apk="avee-$release_version-android-arm64-v8a.apk"
           universal="avee-$release_version-android-universal.apk"
           appimage="avee-$release_version-linux-amd64.AppImage"
