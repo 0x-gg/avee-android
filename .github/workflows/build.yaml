@@ -17,18 +17,6 @@ jobs:
         include:
           - platform: android
             os: ubuntu-latest
-          - platform: windows
-            os: windows-latest
-            arch: amd64
-          - platform: macos
-            os: macos-latest
-            arch: arm64
-          # macOS Intel: setup.dart cross-builds amd64 on the arm64 runner
-          # (Target.macos/Arch.amd64 is declared in setup.dart). Same signing/
-          # Xcode steps fire for both via `matrix.platform == 'macos'`.
-          - platform: macos
-            os: macos-latest
-            arch: amd64
           - platform: linux
             os: ubuntu-24.04
             arch: amd64
@@ -60,21 +48,6 @@ jobs:
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/local.properties
           echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> android/local.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/local.properties
-
-      - name: Configure CI code signing (macOS)
-        if: matrix.platform == 'macos'
-        run: |
-          echo 'CODE_SIGN_IDENTITY = -' > macos/Runner/Configs/Local.xcconfig
-
-      - name: Select latest stable Xcode (macOS)
-        if: matrix.platform == 'macos'
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: latest-stable
-
-      - name: Install create-dmg (macOS)
-        if: matrix.platform == 'macos'
-        run: brew install create-dmg
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -292,14 +265,11 @@ jobs:
           sha() { [ -f "./dist/$1.sha256" ] && cut -d' ' -f1 "./dist/$1.sha256" || echo ""; }
           apk="avee-$release_version-android-arm64-v8a.apk"
           universal="avee-$release_version-android-universal.apk"
-          exe="avee-$release_version-windows-amd64-setup.exe"
-          dmg="avee-$release_version-macos-arm64.dmg"
-          dmg_amd64="avee-$release_version-macos-amd64.dmg"
           appimage="avee-$release_version-linux-amd64.AppImage"
           jq -n --arg version "$app_version" --argjson build "${build:-0}" --arg pubDate "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson notes "$notes_json" \\
-            --arg apk "$base/$apk" --arg universal "$base/$universal" --arg exe "$base/$exe" --arg dmg "$base/$dmg" --arg dmgAmd "$base/$dmg_amd64" --arg appimage "$base/$appimage" \\
-            --arg apkSha "$(sha "$apk")" --arg universalSha "$(sha "$universal")" --arg exeSha "$(sha "$exe")" --arg dmgSha "$(sha "$dmg")" --arg dmgAmdSha "$(sha "$dmg_amd64")" --arg appimageSha "$(sha "$appimage")" \\
-            '{version:$version,build:$build,mandatory:false,minSupported:"0.7.0",pubDate:$pubDate,notes:$notes,platforms:{"android-arm64":{url:$apk,sha256:$apkSha},"android-universal":{url:$universal,sha256:$universalSha},"windows-amd64":{url:$exe,sha256:$exeSha},"windows-arm64":{url:"",sha256:""},"linux-amd64":{url:$appimage,sha256:$appimageSha},"linux-arm64":{url:"",sha256:""},"macos":{url:$dmg,sha256:$dmgSha},"macos-amd64":{url:$dmgAmd,sha256:$dmgAmdSha},"ios":{url:"",sha256:""}}}' > ./dist/update.json
+            --arg apk "$base/$apk" --arg universal "$base/$universal" --arg appimage "$base/$appimage" \\
+            --arg apkSha "$(sha "$apk")" --arg universalSha "$(sha "$universal")" --arg appimageSha "$(sha "$appimage")" \\
+            '{version:$version,build:$build,mandatory:false,minSupported:"0.7.0",pubDate:$pubDate,notes:$notes,platforms:{"android-arm64":{url:$apk,sha256:$apkSha},"android-universal":{url:$universal,sha256:$universalSha},"linux-amd64":{url:$appimage,sha256:$appimageSha}}}' > ./dist/update.json
 
       - name: Release (Stable)
         if: ${{ env.IS_STABLE == 'true' }}
