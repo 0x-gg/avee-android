@@ -204,7 +204,7 @@ extension ProfileExtension on Profile {
   Future<void> checkAndUpdate() async {
     final isExists = await check();
     if (!isExists) {
-      if (url.isNotEmpty && realAutoUpdate) {
+      if (url.isNotEmpty) {
         await update();
       }
     }

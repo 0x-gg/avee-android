@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/metacubex/mihomo/adapter"
-	"github.com/metacubex/mihomo/adapter/provider"
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
 	"github.com/metacubex/mihomo/common/observable"
 	"github.com/metacubex/mihomo/common/utils"
@@ -25,6 +24,7 @@ import (
 	"github.com/metacubex/mihomo/constant"
 	cp "github.com/metacubex/mihomo/constant/provider"
 	"github.com/metacubex/mihomo/hub/executor"
+	"github.com/metacubex/mihomo/listener"
 	"github.com/metacubex/mihomo/log"
 	"github.com/metacubex/mihomo/tunnel/statistic"
 )
@@ -44,6 +44,7 @@ func handleInitClash(paramsString string) bool {
 		return false
 	}
 	version = params.Version
+	// Always update homeDir to ensure correct path even on re-initialization
 	constant.SetHomeDir(params.HomeDir)
 	if !isInit {
 		isInit = true
@@ -60,34 +61,10 @@ func handleInitClash(paramsString string) bool {
 
 func handleStartListener() bool {
 	runLock.Lock()
-	if isRunning {
-		runLock.Unlock()
-		return true
-	}
+	defer runLock.Unlock()
 	isRunning = true
-	if currentConfig != nil {
-		// On Android TUN is driven by a file descriptor from VpnService in
-		// handleStartTun, not by mihomo's internal TUN — keep cfg flag off.
-		// On desktop, updateListeners() below will (re)create the TUN device.
-		if runtime.GOOS == "android" {
-			currentConfig.General.Tun.Enable = false
-		} else {
-			currentConfig.General.Tun.Enable = pendingTunEnable
-		}
-	}
-	runLock.Unlock()
-
-	// setupConfig already ran executor.ApplyConfig when the profile was loaded,
-	// so proxies/rules/DNS/providers are live. Starting only needs to (re)bind
-	// listeners and (re)create the TUN device — calling ApplyConfig again would
-	// re-run updateProxies, loadProvider(wg.Wait()), updateDNS and runtime.GC()
-	// for no reason and was the main source of the long "start" delay.
-	go func() {
-		updateListeners()
-		resolver.ResetConnection()
-		startHealthCheckForwarder()
-		startRequestForwarder()
-	}()
+	updateListeners()
+	resolver.ResetConnection()
 	return true
 }
 
@@ -95,10 +72,7 @@ func handleStopListener() bool {
 	runLock.Lock()
 	defer runLock.Unlock()
 	isRunning = false
-	// Keep health-check forwarder running so proxy pings stay fresh in the UI
-	// while the VPN is off. It is torn down only on full shutdown.
-	stopRequestForwarder()
-	stopListeners()
+	listener.StopListener()
 	return true
 }
 
@@ -115,176 +89,11 @@ func handleForceGc() {
 }
 
 func handleShutdown() bool {
-	stopHealthCheckForwarder()
-	stopRequestForwarder()
 	stopListeners()
 	executor.Shutdown()
 	runtime.GC()
 	isInit = false
 	return true
-}
-
-func startHealthCheckForwarder() {
-	if healthCheckStopCh != nil {
-		return
-	}
-	healthCheckStopCh = make(chan struct{})
-	go func(stopCh chan struct{}) {
-		ticker := time.NewTicker(2 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				forwardHealthCheckDelays()
-			case <-stopCh:
-				return
-			}
-		}
-	}(healthCheckStopCh)
-}
-
-func stopHealthCheckForwarder() {
-	if healthCheckStopCh == nil {
-		return
-	}
-	close(healthCheckStopCh)
-	healthCheckStopCh = nil
-}
-
-func resetHealthCheckForwarderState() {
-	healthCheckSeen = map[string]string{}
-}
-
-func forwardHealthCheckDelays() {
-	runLock.Lock()
-	if currentConfig == nil {
-		runLock.Unlock()
-		return
-	}
-	touchProviders()
-	proxies := proxiesWithProviders()
-	runLock.Unlock()
-
-	for name, proxy := range proxies {
-		emitLatestDelay(name, "", proxy.DelayHistory())
-		for url, state := range proxy.ExtraDelayHistories() {
-			emitLatestDelay(name, url, state.History)
-		}
-	}
-}
-
-// runInitialProviderHealthChecks kicks off one HealthCheck per proxy provider
-// in background goroutines, so the UI has pings right after profile load
-// without waiting for the provider's own healthcheck-interval to elapse.
-// HealthCheck blocks until every URL test finishes, so each provider gets
-// its own goroutine to avoid serialising them.
-func runInitialProviderHealthChecks() {
-	for _, p := range tunnel.Providers() {
-		pp, ok := p.(*provider.ProxySetProvider)
-		if !ok {
-			continue
-		}
-		go pp.HealthCheck()
-	}
-}
-
-// touchProviders marks all proxy providers as recently used so that their
-// internal lazy health-check goroutines actually execute on the next tick.
-// Unlike the previous triggerProviderHealthChecks which called HealthCheck()
-// (blocking until every URL test finishes), Touch() returns immediately and
-// lets the provider's own background goroutine perform the checks without
-// holding runLock for seconds.
-func touchProviders() {
-	for _, p := range tunnel.Providers() {
-		pp, ok := p.(*provider.ProxySetProvider)
-		if !ok {
-			continue
-		}
-		pp.Touch()
-	}
-}
-
-// startRequestForwarder polls the statistic manager for newly opened trackers
-// and pushes each one to Flutter via a RequestMessage. Upstream mihomo does
-// not expose the statistic.DefaultRequestNotify hook our old Clash.Meta fork
-// relied on, so we emulate it with a short-interval poll.
-func startRequestForwarder() {
-	if requestStopCh != nil {
-		return
-	}
-	requestSeen = map[string]bool{}
-	requestStopCh = make(chan struct{})
-	go func(stopCh chan struct{}) {
-		ticker := time.NewTicker(500 * time.Millisecond)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				forwardNewRequests()
-			case <-stopCh:
-				return
-			}
-		}
-	}(requestStopCh)
-}
-
-func stopRequestForwarder() {
-	if requestStopCh == nil {
-		return
-	}
-	close(requestStopCh)
-	requestStopCh = nil
-	requestSeen = map[string]bool{}
-}
-
-func forwardNewRequests() {
-	alive := make(map[string]bool, len(requestSeen))
-	statistic.DefaultManager.Range(func(c statistic.Tracker) bool {
-		id := c.ID()
-		alive[id] = true
-		if requestSeen[id] {
-			return true
-		}
-		requestSeen[id] = true
-		sendMessage(Message{
-			Type: RequestMessage,
-			Data: c.Info(),
-		})
-		return true
-	})
-	// Drop ids that were closed so short-lived reused ids do not accumulate
-	// and a later reconnection with the same id can still be reported.
-	for id := range requestSeen {
-		if !alive[id] {
-			delete(requestSeen, id)
-		}
-	}
-}
-
-func emitLatestDelay(proxyName string, testURL string, history []constant.DelayHistory) {
-	if len(history) == 0 {
-		return
-	}
-	latest := history[len(history)-1]
-	key := proxyName + "|" + testURL
-	signature := fmt.Sprintf("%d:%d", latest.Time.UnixNano(), latest.Delay)
-	if healthCheckSeen[key] == signature {
-		return
-	}
-	healthCheckSeen[key] = signature
-
-	delayValue := int32(latest.Delay)
-	if latest.Delay == 0 {
-		delayValue = -1
-	}
-	sendMessage(Message{
-		Type: DelayMessage,
-		Data: &Delay{
-			Url:   testURL,
-			Name:  proxyName,
-			Value: delayValue,
-		},
-	})
 }
 
 func handleValidateConfig(bytes []byte) string {
@@ -293,6 +102,26 @@ func handleValidateConfig(bytes []byte) string {
 		return err.Error()
 	}
 	return ""
+}
+
+// extractProxyDescriptionsFromRaw extracts serverDescription from raw YAML config
+// Note: Caller must hold runLock
+func extractProxyDescriptionsFromRaw(rawConfig *config.RawConfig) {
+	if rawConfig == nil || rawConfig.Proxy == nil {
+		return
+	}
+	
+	// Clear previous descriptions
+	proxyDescriptions = make(map[string]string)
+	
+	// Extract serverDescription from each proxy
+	for _, proxyMap := range rawConfig.Proxy {
+		if name, ok := proxyMap["name"].(string); ok {
+			if desc, ok := proxyMap["serverDescription"].(string); ok && desc != "" {
+				proxyDescriptions[name] = desc
+			}
+		}
+	}
 }
 
 func handleGetProxies() interface{} {
@@ -443,7 +272,7 @@ func handleAsyncTestDelay(paramsString string, fn func(string)) {
 			return false, nil
 		}
 
-		testUrl := "https://www.gstatic.com/generate_204"
+		testUrl := constant.DefaultTestURL
 
 		if params.TestUrl != "" {
 			testUrl = params.TestUrl
@@ -461,13 +290,6 @@ func handleAsyncTestDelay(paramsString string, fn func(string)) {
 		delayData.Value = int32(delay)
 		data, _ := json.Marshal(delayData)
 		fn(string(data))
-
-		// Push delay update via message
-		sendMessage(Message{
-			Type: DelayMessage,
-			Data: delayData,
-		})
-
 		return false, nil
 	})
 }
@@ -563,17 +385,29 @@ func handleUpdateGeoData(geoType string, geoName string, fn func(value string)) 
 		path := constant.Path.Resolve(geoName)
 		switch geoType {
 		case "MMDB":
-			err = updater.UpdateMMDB()
+			err := updater.UpdateMMDBWithPath(path)
+			if err != nil {
+				fn(err.Error())
+				return
+			}
 		case "ASN":
-			err = updater.UpdateASN()
+			err := updater.UpdateASNWithPath(path)
+			if err != nil {
+				fn(err.Error())
+				return
+			}
 		case "GeoIp":
-			err = updater.UpdateGeoIp()
+			err := updater.UpdateGeoIpWithPath(path)
+			if err != nil {
+				fn(err.Error())
+				return
+			}
 		case "GeoSite":
-			err = updater.UpdateGeoSite()
-		}
-		if err != nil {
-			fn(err.Error())
-			return
+			err := updater.UpdateGeoSiteWithPath(path)
+			if err != nil {
+				fn(err.Error())
+				return
+			}
 		}
 		fn("")
 	}()
@@ -729,4 +563,34 @@ func handleSetupConfig(bytes []byte) string {
 		return err.Error()
 	}
 	return ""
+}
+
+func init() {
+	adapter.UrlTestHook = func(url string, name string, delay uint16) {
+		delayData := &Delay{
+			Url:  url,
+			Name: name,
+		}
+		if delay == 0 {
+			delayData.Value = -1
+		} else {
+			delayData.Value = int32(delay)
+		}
+		sendMessage(Message{
+			Type: DelayMessage,
+			Data: delayData,
+		})
+	}
+	statistic.DefaultRequestNotify = func(c statistic.Tracker) {
+		sendMessage(Message{
+			Type: RequestMessage,
+			Data: c,
+		})
+	}
+	executor.DefaultProviderLoadedHook = func(providerName string) {
+		sendMessage(Message{
+			Type: LoadedMessage,
+			Data: providerName,
+		})
+	}
 }

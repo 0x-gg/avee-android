@@ -68,42 +68,6 @@ class _AppStateManagerState extends ConsumerState<AppStateManager>
         }
       },
     );
-    ref.listenManual(
-      patchClashConfigProvider.select((state) => state.mode),
-      (prev, next) {
-        if (prev != next) {
-          tile?.updateMode(next.name);
-        }
-      },
-      fireImmediately: true,
-    );
-    ref.listenManual(
-      globalModeEnabledProvider,
-      (prev, next) {
-        if (prev != next) {
-          tile?.updateGlobalModeEnabled(next);
-        }
-      },
-      fireImmediately: true,
-    );
-    ref.listenManual(
-      globalModeEnabledProvider,
-      (prev, next) {
-        if (next) {
-          return;
-        }
-        final currentMode = ref.read(
-          patchClashConfigProvider.select((state) => state.mode),
-        );
-        if (currentMode != Mode.global) {
-          return;
-        }
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          globalState.appController.changeMode(Mode.rule);
-        });
-      },
-      fireImmediately: true,
-    );
   }
 
   @override

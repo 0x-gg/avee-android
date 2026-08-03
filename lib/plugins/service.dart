@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 import 'package:avee/state.dart';
@@ -24,9 +25,9 @@ class Service {
   Future<bool?> destroy() async => methodChannel.invokeMethod<bool>("destroy");
 
   Future<bool?> startVpn() async {
-    final options = await clashLib?.getAndroidVpnOptions() ?? "";
+    final options = await clashLib?.getAndroidVpnOptions();
     return methodChannel.invokeMethod<bool>("startVpn", {
-      'data': options,
+      'data': json.encode(options),
     });
   }
 

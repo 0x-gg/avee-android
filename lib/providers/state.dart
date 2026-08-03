@@ -114,23 +114,13 @@ NavigationItemsState currentNavigationsState(Ref ref) {
 
 @riverpod
 CoreState coreState(Ref ref) {
-  var vpnProps = ref.watch(vpnSettingProvider);
-  final mixedPort = ref.watch(
-    patchClashConfigProvider.select((state) => state.mixedPort),
-  );
-  // With mixed-port disabled there is no HTTP proxy to advertise to the OS.
-  // Force VpnProps.systemProxy off so FlClashVpnService doesn't register a
-  // ProxyInfo pointing at 127.0.0.1:0 via setHttpProxy. Traffic is still
-  // routed through the VPN/TUN, just without the HTTP-proxy hint.
-  if (mixedPort == 0 && vpnProps.systemProxy) {
-    vpnProps = vpnProps.copyWith(systemProxy: false);
-  }
+  final vpnProps = ref.watch(vpnSettingProvider);
   final currentProfile = ref.watch(currentProfileProvider);
   final onlyStatisticsProxy = ref
       .watch(appSettingProvider.select((state) => state.onlyStatisticsProxy));
   return CoreState(
     vpnProps: vpnProps,
-    onlyStatisticsProxy: false,
+    onlyStatisticsProxy: onlyStatisticsProxy,
     currentProfileName: currentProfile?.label ?? currentProfile?.id ?? "",
   );
 }
@@ -172,13 +162,9 @@ ProxyState proxyState(Ref ref) {
   final mixedPort = ref.watch(
     patchClashConfigProvider.select((state) => state.mixedPort),
   );
-  // Mixed-port = 0 means the HTTP proxy inbound is disabled, so there's
-  // nothing for the OS-level system proxy to point at. Force it off here so
-  // ProxyManager calls stopProxy() instead of startProxy(0, ...).
-  final systemProxy = mixedPort == 0 ? false : vm2.a;
   return ProxyState(
     isStart: isStart,
-    systemProxy: systemProxy,
+    systemProxy: vm2.a,
     bassDomain: vm2.b,
     port: mixedPort,
   );
@@ -687,16 +673,8 @@ String getProxyDesc(Ref ref, Proxy proxy) {
     final groups = ref.watch(groupsProvider);
     final index = groups.indexWhere((element) => element.name == proxy.name);
     if (index == -1) return proxy.serverDescription ?? proxy.type;
-    // Custom description from YAML wins over the group type when present.
-    // Otherwise show the currently selected proxy instead of "Type(selection)".
-    final customDesc = globalState.groupDescriptions.value[proxy.name];
-    if (customDesc != null && customDesc.isNotEmpty) {
-      return customDesc;
-    }
     final state = ref.watch(getProxyCardStateProvider(proxy.name));
-    return state.proxyName.isNotEmpty
-        ? state.proxyName
-        : (proxy.serverDescription ?? proxy.type);
+    return "${proxy.serverDescription ?? proxy.type}(${state.proxyName.isNotEmpty ? state.proxyName : '*'})";
   }
 }
 

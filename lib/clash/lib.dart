@@ -152,9 +152,15 @@ class ClashLib extends ClashHandlerInterface with AndroidClashInterface {
   // }
 
   @override
-  Future<String> getAndroidVpnOptions() => invoke<String>(
-        method: ActionMethod.getAndroidVpnOptions,
-      );
+  Future<AndroidVpnOptions?> getAndroidVpnOptions() async {
+    final res = await invoke<String>(
+      method: ActionMethod.getAndroidVpnOptions,
+    );
+    if (res.isEmpty) {
+      return null;
+    }
+    return AndroidVpnOptions.fromJson(json.decode(res));
+  }
 
   @override
   Future<bool> updateDns(String value) => invoke<bool>(
@@ -241,11 +247,11 @@ class ClashLibHandler {
     return currentProfile;
   }
 
-  String getAndroidVpnOptions() {
+  AndroidVpnOptions getAndroidVpnOptions() {
     final vpnOptionsRaw = clashFFI.getAndroidVpnOptions();
-    final vpnOptions = vpnOptionsRaw.cast<Utf8>().toDartString();
+    final vpnOptions = json.decode(vpnOptionsRaw.cast<Utf8>().toDartString());
     clashFFI.freeCString(vpnOptionsRaw);
-    return vpnOptions;
+    return AndroidVpnOptions.fromJson(vpnOptions);
   }
 
   Traffic getTraffic() {

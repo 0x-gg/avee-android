@@ -79,7 +79,7 @@ mixin ClashInterface {
 mixin AndroidClashInterface {
   Future<bool> updateDns(String value);
 
-  Future<String> getAndroidVpnOptions();
+  Future<AndroidVpnOptions?> getAndroidVpnOptions();
 
   Future<String> getCurrentProfileName();
 

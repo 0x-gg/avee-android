@@ -1334,9 +1334,9 @@ class __$$VpnPropsImplCopyWithImpl<$Res>
 class _$VpnPropsImpl implements _VpnProps {
   const _$VpnPropsImpl(
       {this.enable = true,
-      this.systemProxy = false,
+      this.systemProxy = true,
       this.ipv6 = true,
-      this.allowBypass = false,
+      this.allowBypass = true,
       this.accessControl = defaultAccessControl});
 
   factory _$VpnPropsImpl.fromJson(Map<String, dynamic> json) =>

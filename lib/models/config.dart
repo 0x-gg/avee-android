@@ -149,9 +149,9 @@ class WindowProps with _$WindowProps {
 class VpnProps with _$VpnProps {
   const factory VpnProps({
     @Default(true) bool enable,
-    @Default(false) bool systemProxy,
+    @Default(true) bool systemProxy,
     @Default(true) bool ipv6,
-    @Default(false) bool allowBypass,
+    @Default(true) bool allowBypass,
     @Default(defaultAccessControl) AccessControl accessControl,
   }) = _VpnProps;
 

@@ -72,7 +72,7 @@ class LogLevelItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final uiLogLevel =
+    final logLevel =
         ref.watch(patchClashConfigProvider.select((state) => state.logLevel));
     return ListItem<LogLevel>.options(
       leading:
@@ -136,7 +136,7 @@ class KeepAliveIntervalItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final uiKeepAlive = ref.watch(
+    final keepAliveInterval = ref.watch(
         patchClashConfigProvider.select((state) => state.keepAliveInterval));
     return ListItem.input(
       leading: HugeIcon(icon: HugeIcons.strokeRoundedClock01, size: 24),
@@ -244,24 +244,6 @@ class PortItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // flclashx-androidsecure header forces mixed-port=0 on Android. The port
-    // field becomes meaningless in that case, so hide it entirely rather than
-    // showing a disabled "0" row the user can't do anything about.
-    if (Platform.isAndroid) {
-      final secure = ref.watch(
-        currentProfileProvider.select(
-          (p) =>
-              p?.providerHeaders['flclashx-androidsecure']
-                  ?.trim()
-                  .toLowerCase() ==
-              'true',
-        ),
-      );
-      if (secure) {
-        return const SizedBox.shrink();
-      }
-    }
-
     final mixedPort =
         ref.watch(patchClashConfigProvider.select((state) => state.mixedPort));
     final overrideNetworkSettings = ref.watch(
@@ -463,7 +445,7 @@ class UnifiedDelayItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final uiUnifiedDelay = ref
+    final unifiedDelay = ref
         .watch(patchClashConfigProvider.select((state) => state.unifiedDelay));
 
     return ListItem.switchItem(
@@ -546,7 +528,7 @@ class TcpConcurrentItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final uiTcpConcurrent = ref
+    final tcpConcurrent = ref
         .watch(patchClashConfigProvider.select((state) => state.tcpConcurrent));
     return ListItem.switchItem(
       leading: HugeIcon(icon: HugeIcons.strokeRoundedArrowRight01, size: 24),

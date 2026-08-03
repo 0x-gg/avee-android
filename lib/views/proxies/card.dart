@@ -214,7 +214,16 @@ class ProxyCard extends StatelessWidget {
                         children: [
                           Flexible(
                             flex: 1,
-                            child: _ProxyDesc(proxy: proxy),
+                            child: TooltipText(
+                              text: Text(
+                                proxy.serverDescription ?? proxy.type,
+                                style: context.textTheme.bodySmall?.copyWith(
+                                  overflow: TextOverflow.ellipsis,
+                                  color: context
+                                      .textTheme.bodySmall?.color?.opacity80,
+                                ),
+                              ),
+                            ),
                           ),
                           delayText,
                         ],
