@@ -50,12 +50,24 @@ jobs:
           export ANDROID_NDK="$ANDROID_SDK_ROOT/ndk/28.2.13676358"
           dart setup.dart android --out core
       - name: Build debug APK
-        run: flutter build apk --debug --android-skip-build-dependency-validation
+        shell: bash
+        run: |
+          # This project has product flavors, so Flutter's generic APK
+          # resolver looks for app-debug.apk even though AGP emits the
+          # flavored artifact. Invoke the exact Gradle variant and normalize
+          # the artifact name for the CI upload step.
+          cd android
+          ./gradlew :app:assembleSideloadDebug --no-daemon --stacktrace
+          cd ..
+          apk=$(find build/app/outputs/apk -type f -name '*.apk' | head -n 1)
+          test -n "$apk"
+          mkdir -p build/ci
+          cp "$apk" build/ci/app-debug.apk
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: avee-debug-apk-${{ github.run_number }}
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          path: build/ci/app-debug.apk
           if-no-files-found: error
       - name: Verify Play permission overlay
         shell: bash
