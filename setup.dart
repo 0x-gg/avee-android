@@ -859,9 +859,21 @@ class BuildCommand extends Command {
                 "--dart-define=AVEE_CONFIG_PUBLIC_KEY=${Platform.environment["AVEE_CONFIG_PUBLIC_KEY"]}",
             ],
           );
+          // The distributor uses the sideload flavor for direct downloads.
+          // Flutter therefore writes `app-sideload-release.apk`, not the
+          // flavor-less `app-release.apk`. Keep this lookup aligned with the
+          // actual Gradle output so a successful Gradle build cannot be
+          // reported as an empty/failed release package.
+          final universalApk = join(
+            current,
+            "build",
+            "app",
+            "outputs",
+            "flutter-apk",
+            "app-sideload-release.apk",
+          );
           Build.copyFile(
-            join(current, "build", "app", "outputs", "flutter-apk",
-                "app-release.apk"),
+            universalApk,
             join(Build.distPath, "${Build.appName}-universal.apk"),
           );
 
