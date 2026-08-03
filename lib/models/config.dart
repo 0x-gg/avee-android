@@ -83,7 +83,7 @@ class AppSettingProps with _$AppSettingProps {
     @Default(true) bool closeConnections,
     @Default(defaultTestUrl) String testUrl,
     @Default(true) bool isAnimateToPage,
-    // Sideloaded build self-updates from the GitHub Release manifest by default;
+    // The main direct-download build self-updates from the GitHub Release manifest by default;
     // Play build ignores this (gated by kIsPlayBuild). Desktop just opens the
     // release page on a newer version. See docs/plans/2026-06-25-auto-update.md.
     @Default(true) bool autoCheckUpdate,

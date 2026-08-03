@@ -25,7 +25,7 @@ class VpnConsent {
   /// (treated as "not yet accepted" so the dialog is shown).
   Future<bool> isAccepted() async {
     // The in-app disclosure is a Google Play compliance artifact (VpnService
-    // prominent-disclosure mandate). Off-Play channels (sideload/site APK,
+    // prominent-disclosure mandate). Off-Play channels (direct/site APK,
     // desktop) are exempt by design: report "accepted" WITHOUT persisting a
     // flag. This is the single source of truth, so BOTH gates — the
     // StartButton dialog and the controller's defense-in-depth check in

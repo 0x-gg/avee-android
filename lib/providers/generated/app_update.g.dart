@@ -8,7 +8,7 @@ part of '../app_update.dart';
 
 String _$appUpdateHash() => r'c6bb0504ef587dd89771f86a17993078c57c877a';
 
-/// In-app updater state machine (sideloaded Android only). Inert on the Play
+/// In-app updater state machine (main Android build only). Inert on the Play
 /// build (kIsPlayBuild). keepAlive so an in-flight download survives navigation
 /// between the dashboard banner and the update sheet.
 ///

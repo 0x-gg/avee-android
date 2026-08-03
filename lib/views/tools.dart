@@ -304,7 +304,7 @@ class _UpdateItem extends ConsumerWidget {
   Future<void> _checkUpdate(BuildContext context, WidgetRef ref) async {
     final commonScaffoldState = context.commonScaffoldState;
     if (commonScaffoldState?.mounted != true) return;
-    // Android sideload: drive the in-app updater + reactive Lumina sheet.
+    // Main Android build: drive the in-app updater + reactive Lumina sheet.
     if (Platform.isAndroid) {
       final notifier = ref.read(appUpdateProvider.notifier);
       await commonScaffoldState?.loadingRun<void>(

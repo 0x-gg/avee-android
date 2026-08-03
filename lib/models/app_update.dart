@@ -2,7 +2,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'generated/app_update.freezed.dart';
 
-/// Lifecycle of the in-app updater (sideloaded Android). Drives the update
+/// Lifecycle of the in-app updater (main Android build). Drives the update
 /// state machine and the Lumina update UI. See
 /// docs/plans/2026-06-25-auto-update.md.
 enum AppUpdateStatus {

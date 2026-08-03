@@ -57,7 +57,7 @@ const maxMobileWidth = 600;
 const maxLaptopWidth = 840;
 const defaultTestUrl = "https://www.gstatic.com/generate_204";
 
-// ─── In-app auto-update (sideloaded Android) — single source of truth ─────────
+// ─── In-app auto-update (main Android build) — single source of truth ─────────
 // See docs/plans/2026-06-25-auto-update.md. No update literals are scattered
 // across services/native; everything funnels through these consts. The channel
 // gate lives here (not in a view) so non-UI code — services, controller — can
@@ -66,7 +66,7 @@ const defaultTestUrl = "https://www.gstatic.com/generate_204";
 /// True ONLY on the Google Play build (`--dart-define=PLAY_BUILD=true`). The
 /// in-app updater is inert on Play builds (Play policy forbids self-update from
 /// an external source); this const-folds so the whole updater tree-shakes out
-/// of the Play AAB. Every other channel — crucially the sideloaded RU build —
+/// of the Play AAB. Every other channel — crucially the main direct-download build —
 /// self-updates from [kUpdateManifestUrl].
 const bool kIsPlayBuild = bool.fromEnvironment('PLAY_BUILD');
 

@@ -89,7 +89,7 @@ bool shouldHandleUpdateResult({
 /// Whether [AppController.autoCheckUpdate] is allowed to self-update from our
 /// own server on startup. Disabled ONLY on the Google Play build (Play policy
 /// forbids in-app update from an external source). Every other channel —
-/// crucially the sideloaded RU Android build, our primary RU update path —
+/// crucially the main direct-download Android build, our primary direct update path —
 /// honours the user's `autoCheckUpdate` preference and self-updates from
 /// the latest GitHub Release manifest.
 ///
@@ -1298,7 +1298,7 @@ class AppController {
     // Foreground-only compatibility notice. ConnectService repeats the check
     // immediately before VPN start; there is no battery-draining poll.
     unawaited(backendCompatibilityService.checkAndNotify());
-    // Android sideload in-app updater — self-gates on Play/desktop, the
+    // Main Android in-app updater — self-gates on Play/desktop, the
     // autoCheckUpdate setting, and the once/day cadence. Surfaces only via the
     // Settings update entry (no dashboard banner).
     unawaited(_ref.read(appUpdateProvider.notifier).check());

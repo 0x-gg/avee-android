@@ -5,7 +5,7 @@ import 'package:avee/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Opens the Lumina in-app update sheet (Android sideload). Reactive to
+/// Opens the Lumina in-app update sheet (main Android build). Reactive to
 /// [appUpdateProvider]: the body morphs across available → downloading →
 /// verifying → readyToInstall → error. Compose only from existing atoms/tokens.
 Future<void> showUpdateSheet(BuildContext context) {
