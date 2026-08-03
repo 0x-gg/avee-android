@@ -1,3 +1,10 @@
+## v1.0.7
+
+- fix: generate valid GitHub update manifest
+
+- Correct shell quoting for the GitHub-only updater manifest.
+- Update changelog
+
 ## v1.0.6
 
 - ci: build only Android and Linux artifacts
