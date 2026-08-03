@@ -1,3 +1,13 @@
+## v1.0.5
+
+- release: bump app to 1.0.1
+
+- Version bump for the GitHub-only updater distribution.
+- build: remove Yandex distribution path
+
+- Use GitHub Releases only for app distributions and updater manifests. Remove Yandex storage credentials, endpoints, and release links.
+- Update changelog
+
 ## v1.0.4
 
 - Merge pull request #7 from 0x-gg/codex/avee-ecosystem-foundation
