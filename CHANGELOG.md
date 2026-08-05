@@ -1,5 +1,6 @@
 ## v1.0.8
 
+- fix: align the in-app version with the v1.0.8 release tag
 - ci: rename production Android APK sources (#14)
 - build: use production flavor for main Android APK (#13)
 - build: publish main Android release artifacts (#12)
