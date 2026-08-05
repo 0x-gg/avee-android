@@ -27,6 +27,19 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Verify release version matches tag
+        if: env.IS_STABLE == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_version="${GITHUB_REF_NAME#v}"
+          app_version=$(grep '^version:' pubspec.yaml | sed -E 's/version:[[:space:]]*([^+]+).*/\1/')
+          if [[ "$app_version" != "$release_version" ]]; then
+            echo "::error::pubspec version $app_version does not match release tag $release_version"
+            exit 1
+          fi
+          echo "Release tag and app version are aligned: $release_version"
+
       # The android job builds a UNIVERSAL APK (3 ABIs) plus the Go core, which
       # can exhaust the ~14 GB ubuntu runner during :app:mergeReleaseNativeLibs
       # ("No space left on device"). Reclaim ~15-20 GB from preinstalled
